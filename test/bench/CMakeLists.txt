@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.22)
+project(rsbench VERSION 1.0.0 LANGUAGES C CXX)
+add_subdirectory(/home/claude/juce juce EXCLUDE_FROM_ALL)
+juce_add_console_app(rsbench PRODUCT_NAME "rsbench")
+file(GLOB GEN /home/claude/port/gen/*.cpp)
+target_sources(rsbench PRIVATE Bench.cpp /home/claude/port/src/JuceGfx.cpp /home/claude/port/src/rt.cpp /home/claude/port/src/engine.cpp /home/claude/port/third_party/wdl/fft.c ${GEN})
+target_include_directories(rsbench PRIVATE /home/claude/port/src /home/claude/port/gen /home/claude/port/third_party/wdl)
+target_compile_definitions(rsbench PRIVATE WDL_FFT_REALSIZE=8 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+  JUCE_USE_XRANDR=0 JUCE_USE_XINERAMA=0 JUCE_USE_XCURSOR=0 JUCE_USE_XINPUT=0 JUCE_USE_XRENDER=0)
+target_compile_options(rsbench PRIVATE -ffp-contract=off)
+target_link_libraries(rsbench PRIVATE juce::juce_gui_basics juce::juce_recommended_config_flags)

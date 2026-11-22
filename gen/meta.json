@@ -1,0 +1,1658 @@
+{
+ "desc": "Roomservice",
+ "sliders": [
+  {
+   "idx": 1,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Mode",
+   "hidden": true,
+   "enums": [
+    "Room",
+    "Free field"
+   ]
+  },
+  {
+   "idx": 2,
+   "default": 5.5,
+   "lo": 0.8,
+   "hi": 40.0,
+   "step": 0.001,
+   "label": "Room width W (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 3,
+   "default": 4.5,
+   "lo": 0.8,
+   "hi": 40.0,
+   "step": 0.001,
+   "label": "Room depth D (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 4,
+   "default": 2.6,
+   "lo": 0.8,
+   "hi": 15.0,
+   "step": 0.001,
+   "label": "Room height H (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 5,
+   "default": 0.04,
+   "lo": 0.01,
+   "hi": 1.0,
+   "step": 0.0001,
+   "label": "Wall alpha Top",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 6,
+   "default": 0.04,
+   "lo": 0.01,
+   "hi": 1.0,
+   "step": 0.0001,
+   "label": "Wall alpha Right",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 7,
+   "default": 0.04,
+   "lo": 0.01,
+   "hi": 1.0,
+   "step": 0.0001,
+   "label": "Wall alpha Bottom",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 8,
+   "default": 0.04,
+   "lo": 0.01,
+   "hi": 1.0,
+   "step": 0.0001,
+   "label": "Wall alpha Left",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 9,
+   "default": 0.33,
+   "lo": 0.01,
+   "hi": 1.0,
+   "step": 0.0001,
+   "label": "Floor + ceiling alpha",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 10,
+   "default": 2.75,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.0001,
+   "label": "Source X (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 11,
+   "default": 0.25,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.0001,
+   "label": "Source Y (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 12,
+   "default": 1.5,
+   "lo": 0.0,
+   "hi": 15.0,
+   "step": 0.0001,
+   "label": "Source height (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 13,
+   "default": 2.75,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.0001,
+   "label": "Listener X (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 14,
+   "default": 2.25,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.0001,
+   "label": "Listener Y (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 15,
+   "default": 1.5,
+   "lo": 0.0,
+   "hi": 15.0,
+   "step": 0.0001,
+   "label": "Listener height (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 16,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 2.0,
+   "step": 1.0,
+   "label": "Listener facing",
+   "hidden": true,
+   "enums": [
+    "Face source",
+    "Fixed",
+    "Along the path"
+   ]
+  },
+  {
+   "idx": 17,
+   "default": 0.0,
+   "lo": -180.0,
+   "hi": 180.0,
+   "step": 0.01,
+   "label": "Facing angle (deg, 0 = top wall)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 18,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.01,
+   "label": "Mix dry/wet (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 19,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Floor/ceiling reflections",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 20,
+   "default": 0.0,
+   "lo": -60.0,
+   "hi": 12.0,
+   "step": 0.001,
+   "label": "Early reflections (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 21,
+   "default": 0.0,
+   "lo": -60.0,
+   "hi": 12.0,
+   "step": 0.001,
+   "label": "Late reverb (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 22,
+   "default": 0.0,
+   "lo": -72.0,
+   "hi": 24.0,
+   "step": 0.001,
+   "label": "Output (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 23,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Limiter",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 24,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Low cut",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 25,
+   "default": 80.0,
+   "lo": 20.0,
+   "hi": 2000.0,
+   "step": 0.01,
+   "label": "Low cut frequency (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 26,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 7.0,
+   "step": 1.0,
+   "label": "Low cut slope",
+   "hidden": true,
+   "enums": [
+    "6 dB/oct",
+    "12 dB/oct",
+    "18 dB/oct",
+    "24 dB/oct",
+    "30 dB/oct",
+    "36 dB/oct",
+    "42 dB/oct",
+    "48 dB/oct"
+   ]
+  },
+  {
+   "idx": 27,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "High cut",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 28,
+   "default": 12000.0,
+   "lo": 1000.0,
+   "hi": 20000.0,
+   "step": 0.1,
+   "label": "High cut frequency (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 29,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 7.0,
+   "step": 1.0,
+   "label": "High cut slope",
+   "hidden": true,
+   "enums": [
+    "6 dB/oct",
+    "12 dB/oct",
+    "18 dB/oct",
+    "24 dB/oct",
+    "30 dB/oct",
+    "36 dB/oct",
+    "42 dB/oct",
+    "48 dB/oct"
+   ]
+  },
+  {
+   "idx": 30,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Filter position",
+   "hidden": true,
+   "enums": [
+    "Pre reverb",
+    "Post reverb"
+   ]
+  },
+  {
+   "idx": 31,
+   "default": 1.0,
+   "lo": 0.25,
+   "hi": 4.0,
+   "step": 0.0001,
+   "label": "Size (room scale)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 32,
+   "default": 1.0,
+   "lo": 0.01,
+   "hi": 10.0,
+   "step": 0.0001,
+   "label": "Decay (RT60 factor)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 33,
+   "default": 0.0,
+   "lo": -100.0,
+   "hi": 100.0,
+   "step": 0.01,
+   "label": "Tone (dark \u2026 bright)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 34,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 200.0,
+   "step": 0.01,
+   "label": "Predelay (ms)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 35,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 12.0,
+   "step": 1.0,
+   "label": "Source model",
+   "hidden": true,
+   "enums": [
+    "Original",
+    "Telephone",
+    "Mobile phone",
+    "Smartphone",
+    "Walkie-talkie",
+    "Radio",
+    "Boombox",
+    "TV",
+    "Laptop",
+    "Tablet",
+    "Mini speaker",
+    "Headphones",
+    "Megaphone"
+   ]
+  },
+  {
+   "idx": 36,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Room engine (on / off)",
+   "hidden": true,
+   "enums": [
+    "On",
+    "Off"
+   ]
+  },
+  {
+   "idx": 37,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.01,
+   "label": "Source distortion (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 38,
+   "default": 80.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.01,
+   "label": "Density (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 39,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Filter bypass",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 40,
+   "default": 0.0,
+   "lo": -72.0,
+   "hi": 48.0,
+   "step": 0.001,
+   "label": "Input (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 41,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 3.0,
+   "step": 1.0,
+   "label": "Barrier",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "Wall",
+    "Window",
+    "Door"
+   ]
+  },
+  {
+   "idx": 42,
+   "default": 1.25,
+   "lo": 0.0,
+   "hi": 160.0,
+   "step": 0.001,
+   "label": "Barrier position (m from back wall)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 43,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Barrier open (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 44,
+   "default": 25.0,
+   "lo": 0.0,
+   "hi": 70.0,
+   "step": 0.1,
+   "label": "Barrier damping (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 45,
+   "default": 2.75,
+   "lo": 0.0,
+   "hi": 160.0,
+   "step": 0.001,
+   "label": "Barrier element X (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 46,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 9.0,
+   "step": 1.0,
+   "label": "Back part material",
+   "hidden": true,
+   "enums": [
+    "Same as room",
+    "Concrete",
+    "Glass",
+    "Metal",
+    "Wood",
+    "Curtain",
+    "Foam",
+    "Wool",
+    "Tiles",
+    "Plaster"
+   ]
+  },
+  {
+   "idx": 47,
+   "default": 0.0,
+   "lo": -10.0,
+   "hi": 10.0,
+   "step": 0.001,
+   "label": "Source EQ: high-pass shift (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 48,
+   "default": 0.0,
+   "lo": -10.0,
+   "hi": 10.0,
+   "step": 0.001,
+   "label": "Source EQ: low-pass shift (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 49,
+   "default": 0.0,
+   "lo": -10.0,
+   "hi": 10.0,
+   "step": 0.001,
+   "label": "Source EQ: band 1 frequency shift (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 50,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 24.0,
+   "step": 0.01,
+   "label": "Source EQ: band 1 gain offset (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 51,
+   "default": 0.0,
+   "lo": -3.0,
+   "hi": 3.0,
+   "step": 0.001,
+   "label": "Source EQ: band 1 Q (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 52,
+   "default": 0.0,
+   "lo": -10.0,
+   "hi": 10.0,
+   "step": 0.001,
+   "label": "Source EQ: band 2 frequency shift (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 53,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 24.0,
+   "step": 0.01,
+   "label": "Source EQ: band 2 gain offset (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 54,
+   "default": 0.0,
+   "lo": -3.0,
+   "hi": 3.0,
+   "step": 0.001,
+   "label": "Source EQ: band 2 Q (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 55,
+   "default": 0.0,
+   "lo": -10.0,
+   "hi": 10.0,
+   "step": 0.001,
+   "label": "Source EQ: band 3 frequency shift (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 56,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 24.0,
+   "step": 0.01,
+   "label": "Source EQ: band 3 gain offset (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 57,
+   "default": 0.0,
+   "lo": -3.0,
+   "hi": 3.0,
+   "step": 0.001,
+   "label": "Source EQ: band 3 Q (oct)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 58,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 8.0,
+   "step": 1.0,
+   "label": "Source EQ: high-pass slope",
+   "hidden": true,
+   "enums": [
+    "Model",
+    "6 dB/oct",
+    "12 dB/oct",
+    "18 dB/oct",
+    "24 dB/oct",
+    "30 dB/oct",
+    "36 dB/oct",
+    "42 dB/oct",
+    "48 dB/oct"
+   ]
+  },
+  {
+   "idx": 59,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 8.0,
+   "step": 1.0,
+   "label": "Source EQ: low-pass slope",
+   "hidden": true,
+   "enums": [
+    "Model",
+    "6 dB/oct",
+    "12 dB/oct",
+    "18 dB/oct",
+    "24 dB/oct",
+    "30 dB/oct",
+    "36 dB/oct",
+    "42 dB/oct",
+    "48 dB/oct"
+   ]
+  },
+  {
+   "idx": 60,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Equal loudness",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 61,
+   "default": 0.0,
+   "lo": -180.0,
+   "hi": 180.0,
+   "step": 0.1,
+   "label": "Source angle (deg; Fixed: 0 = towards the front wall, Listener: 0 = at the listener)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 63,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Source aim",
+   "hidden": true,
+   "enums": [
+    "Listener",
+    "Fixed"
+   ]
+  },
+  {
+   "idx": 62,
+   "default": 100.0,
+   "lo": 25.0,
+   "hi": 400.0,
+   "step": 0.1,
+   "label": "Reflectivity (% of the materials' reflection, 100 = as built)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 64,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 16.0,
+   "step": 0.001,
+   "label": "Snapshot morph (0 = off, 1-16 = snapshot, between = morph to the next)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 65,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 66,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay mode",
+   "hidden": true,
+   "enums": [
+    "Stereo",
+    "Ping-pong"
+   ]
+  },
+  {
+   "idx": 67,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay time unit",
+   "hidden": true,
+   "enums": [
+    "ms",
+    "Tempo"
+   ]
+  },
+  {
+   "idx": 68,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay link time L+R",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 69,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay link EQ L+R",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 70,
+   "default": 50.0,
+   "lo": 1.0,
+   "hi": 4000.0,
+   "step": 0.1,
+   "label": "Delay time L (ms)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 71,
+   "default": 50.0,
+   "lo": 1.0,
+   "hi": 4000.0,
+   "step": 0.1,
+   "label": "Delay time R (ms)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 72,
+   "default": 8.0,
+   "lo": 0.0,
+   "hi": 12.0,
+   "step": 1.0,
+   "label": "Delay note L (tempo)",
+   "hidden": true,
+   "enums": [
+    "1/1",
+    "1/2 dotted",
+    "1/2",
+    "1/4 dotted",
+    "1/2 triplet",
+    "1/4",
+    "1/8 dotted",
+    "1/4 triplet",
+    "1/8",
+    "1/16 dotted",
+    "1/8 triplet",
+    "1/16",
+    "1/32"
+   ]
+  },
+  {
+   "idx": 73,
+   "default": 8.0,
+   "lo": 0.0,
+   "hi": 12.0,
+   "step": 1.0,
+   "label": "Delay note R (tempo)",
+   "hidden": true,
+   "enums": [
+    "1/1",
+    "1/2 dotted",
+    "1/2",
+    "1/4 dotted",
+    "1/2 triplet",
+    "1/4",
+    "1/8 dotted",
+    "1/4 triplet",
+    "1/8",
+    "1/16 dotted",
+    "1/8 triplet",
+    "1/16",
+    "1/32"
+   ]
+  },
+  {
+   "idx": 74,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 300.0,
+   "step": 0.01,
+   "label": "Delay tempo (BPM, 0 = project tempo)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 75,
+   "default": 30.0,
+   "lo": 0.0,
+   "hi": 95.0,
+   "step": 0.1,
+   "label": "Delay feedback L (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 76,
+   "default": 30.0,
+   "lo": 0.0,
+   "hi": 95.0,
+   "step": 0.1,
+   "label": "Delay feedback R (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 77,
+   "default": 0.0,
+   "lo": -48.0,
+   "hi": 6.0,
+   "step": 0.01,
+   "label": "Delay level L (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 78,
+   "default": 0.0,
+   "lo": -48.0,
+   "hi": 6.0,
+   "step": 0.01,
+   "label": "Delay level R (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 79,
+   "default": 120.0,
+   "lo": 20.0,
+   "hi": 2000.0,
+   "step": 0.1,
+   "label": "Delay low cut L (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 80,
+   "default": 120.0,
+   "lo": 20.0,
+   "hi": 2000.0,
+   "step": 0.1,
+   "label": "Delay low cut R (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 81,
+   "default": 10000.0,
+   "lo": 1000.0,
+   "hi": 20000.0,
+   "step": 0.1,
+   "label": "Delay high cut L (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 82,
+   "default": 10000.0,
+   "lo": 1000.0,
+   "hi": 20000.0,
+   "step": 0.1,
+   "label": "Delay high cut R (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 83,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Delay tape wow + flutter (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 84,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Delay saturation (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 85,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Source model on / off",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 86,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay link level L+R",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 87,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay link feedback L+R",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 88,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Mix Filter (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 89,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Mix Source model (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 90,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Mix Delay (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 91,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Mix Room + reverb (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 92,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Mix Barrier (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 93,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay mute L",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 94,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay mute R",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 95,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.01,
+   "label": "Barrier width (m, 0 = wall to wall)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 96,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 15.0,
+   "step": 0.01,
+   "label": "Barrier height (m, 0 = floor to ceiling)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 97,
+   "default": 100.0,
+   "lo": 50.0,
+   "hi": 200.0,
+   "step": 1.0,
+   "label": "Barrier door / window size (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 98,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 200.0,
+   "step": 0.1,
+   "label": "Source width (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 99,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 24.0,
+   "step": 0.01,
+   "label": "Delay ducking (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 100,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Motion",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 101,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 2.0,
+   "step": 1.0,
+   "label": "Motion moves",
+   "hidden": true,
+   "enums": [
+    "Source",
+    "Listener",
+    "Both"
+   ]
+  },
+  {
+   "idx": 102,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 7.0,
+   "step": 1.0,
+   "label": "Motion pattern",
+   "hidden": true,
+   "enums": [
+    "Circle",
+    "Left - right",
+    "Front - back",
+    "Up - down",
+    "Pass-by",
+    "Square",
+    "Wave",
+    "Drawn"
+   ]
+  },
+  {
+   "idx": 103,
+   "default": 0.25,
+   "lo": 0.02,
+   "hi": 10.0,
+   "step": 0.001,
+   "label": "Motion rate (Hz)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 104,
+   "default": 2.0,
+   "lo": 0.1,
+   "hi": 20.0,
+   "step": 0.01,
+   "label": "Motion size (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 105,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 360.0,
+   "step": 1.0,
+   "label": "Motion start (deg)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 106,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Motion direction",
+   "hidden": true,
+   "enums": [
+    "Clockwise",
+    "Counter-clockwise"
+   ]
+  },
+  {
+   "idx": 107,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 2.0,
+   "step": 1.0,
+   "label": "Motion around",
+   "hidden": true,
+   "enums": [
+    "Listener",
+    "Own spot",
+    "Room center"
+   ]
+  },
+  {
+   "idx": 108,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 8.0,
+   "step": 1.0,
+   "label": "Motion tempo",
+   "hidden": true,
+   "enums": [
+    "Hz",
+    "8 bars",
+    "4 bars",
+    "2 bars",
+    "1 bar",
+    "1/2",
+    "1/4",
+    "1/8",
+    "1/16"
+   ]
+  },
+  {
+   "idx": 109,
+   "default": 0.5,
+   "lo": 0.0,
+   "hi": 5.0,
+   "step": 0.01,
+   "label": "Motion glide (s)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 110,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Input mono mix",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 111,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Source call: duplex (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 112,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Source call: codec artifacts (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 113,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Source call: dropouts (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 114,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 3.0,
+   "step": 1.0,
+   "label": "Source call: line bandwidth",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "Narrowband",
+    "Wideband",
+    "Super-wideband"
+   ]
+  },
+  {
+   "idx": 115,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 3.0,
+   "step": 1.0,
+   "label": "Delay type",
+   "hidden": true,
+   "enums": [
+    "Clean",
+    "Tape",
+    "Analog",
+    "Lo-Fi"
+   ]
+  },
+  {
+   "idx": 116,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Delay repeats through the device",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 117,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Distance perspective (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 118,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 16.0,
+   "step": 0.1,
+   "label": "Motion Doppler (0 = off, 1 = natural, 2 \u2026 16 = boosted)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 119,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 3.0,
+   "step": 1.0,
+   "label": "Free field: ground reflection",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "Hard (asphalt)",
+    "Grass",
+    "Snow"
+   ]
+  },
+  {
+   "idx": 120,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 5.0,
+   "step": 1.0,
+   "label": "Reflector 1 material",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "Facade",
+    "Glass",
+    "Rock",
+    "Fence",
+    "Hedge"
+   ]
+  },
+  {
+   "idx": 121,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 200.0,
+   "step": 0.01,
+   "label": "Reflector 1 X (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 122,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 200.0,
+   "step": 0.01,
+   "label": "Reflector 1 Y (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 123,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 180.0,
+   "step": 0.1,
+   "label": "Reflector 1 angle (deg)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 124,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 640.0,
+   "step": 0.01,
+   "label": "Reflector 1 length (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 125,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.01,
+   "label": "Reflector 1 height (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 126,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 5.0,
+   "step": 1.0,
+   "label": "Reflector 2 material",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "Facade",
+    "Glass",
+    "Rock",
+    "Fence",
+    "Hedge"
+   ]
+  },
+  {
+   "idx": 127,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 200.0,
+   "step": 0.01,
+   "label": "Reflector 2 X (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 128,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 200.0,
+   "step": 0.01,
+   "label": "Reflector 2 Y (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 129,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 180.0,
+   "step": 0.1,
+   "label": "Reflector 2 angle (deg)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 130,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 640.0,
+   "step": 0.01,
+   "label": "Reflector 2 length (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 131,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 40.0,
+   "step": 0.01,
+   "label": "Reflector 2 height (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 132,
+   "default": 12.0,
+   "lo": -12.0,
+   "hi": 24.0,
+   "step": 1.0,
+   "label": "Reflector 1 level (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 133,
+   "default": 12.0,
+   "lo": -12.0,
+   "hi": 24.0,
+   "step": 1.0,
+   "label": "Reflector 2 level (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 134,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Reflectors bypass",
+   "hidden": true,
+   "enums": [
+    "On",
+    "Off"
+   ]
+  },
+  {
+   "idx": 135,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Doppler when dragging by hand",
+   "hidden": true,
+   "enums": [
+    "On",
+    "Off"
+   ]
+  }
+ ],
+ "strings": {
+  "#bi1": 90000,
+  "#bi3": 90001,
+  "#bi2": 90002,
+  "#w1": 90003,
+  "#rtip": 90004,
+  "#fv": 90005,
+  "#dmw": 90006,
+  "#swt": 90007,
+  "#dmd": 90008,
+  "#dmh": 90009,
+  "#w2": 90010,
+  "#rnm": 90011,
+  "#ul": 90012,
+  "#tipb": 90013,
+  "#snt": 90014,
+  "#stp": 90015,
+  "#sts": 90016,
+  "#xpt": 90017,
+  "#utip0": 90018,
+  "#utip1": 90019,
+  "#abt": 90020,
+  "#verstr": 90021,
+  "#wmt": 90022,
+  "#rmd": 90023,
+  "#stip": 90024,
+  "#rqs": 90025,
+  "#urnm": 90026,
+  "#urtp": 90027,
+  "#rmt": 90028,
+  "#sctp": 90029,
+  "#rsn": 90030,
+  "#snh": 90031,
+  "#snc": 90032,
+  "#sne": 90033,
+  "#bpv": 90034,
+  "#tpt": 90035,
+  "#etip": 90036,
+  "#sni": 90037,
+  "#snt2": 90038,
+  "#mmtp": 90039,
+  "#mtbt": 90040,
+  "#vzt": 90041,
+  "#ssub": 90042,
+  "#w3": 90043,
+  "#bsztip": 90044,
+  "#fvs": 90045,
+  "#ftp": 90046,
+  "#hmx": 90047,
+  "#lw1": 90048,
+  "#lw3": 90049,
+  "#lw2": 90050,
+  "#snch": 90051,
+  "#swl": 90052,
+  "#swc": 90053,
+  "#ssg": 90054,
+  "#tlat": 90055,
+  "#tfit": 90056,
+  "#tfit2": 90057,
+  "#ved": 90058,
+  "#vch": 90059,
+  "#wsrc": 90060,
+  "#wln": 90061,
+  "#wwd": 90062,
+  "#wtry": 90063,
+  "#wch": 90064,
+  "#wtp": 90065,
+  "#rsn0": 90066
+ }
+}

@@ -1,0 +1,37 @@
+name: build
+# runs only when started by hand (GitHub > Actions > build > Run workflow): macOS minutes are limited on private repos
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: juce-framework/JUCE
+          ref: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port was built with
+          path: juce
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR="${{ github.workspace }}/juce"
+      - name: Build VST3
+        run: cmake --build build --config Release --target Roomservice_VST3 --parallel 4
+      - name: Build AU (macOS)
+        if: runner.os == 'macOS'
+        run: cmake --build build --config Release --target Roomservice_AU --parallel 4
+      - name: Ad-hoc sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --deep -s - build/Roomservice_artefacts/Release/VST3/Roomservice.vst3
+          codesign --force --deep -s - build/Roomservice_artefacts/Release/AU/Roomservice.component
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Roomservice-1.0.1-${{ runner.os }}
+          path: |
+            build/Roomservice_artefacts/Release/VST3/Roomservice.vst3
+            build/Roomservice_artefacts/Release/AU/Roomservice.component

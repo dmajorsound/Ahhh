@@ -1,0 +1,11 @@
+build/
+build_cli/
+test/out/
+test/iso/
+test/host/build/
+test/*.f64
+test/refrender
+test/bench/build/
+test/bench/dbg/
+test/*.png
+__pycache__/

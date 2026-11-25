@@ -19,6 +19,12 @@ Ahh places a sound in a room: source, listener, walls, barrier and motion, for f
 2. Open the installer and click through. It puts Ahh into the common plug-in folders.
 3. Start REAPER. If Ahh does not show up: **Options → Preferences → Plug-ins → VST → Re-scan**.
 
+### Uninstall
+- **Mac:** quit your audio applications, open `Ahh_FILEVER_uninstaller_mac.pkg` and click through.
+- **Windows:** quit your audio applications, open `Ahh_FILEVER_uninstaller_win64.exe` and click through. Or **Settings → Apps → Installed apps → Ahh → Uninstall**.
+
+The uninstaller also removes Roomservice, as the plug-in was called up to version 1.0.4. Your projects and presets stay untouched.
+
 > [!CAUTION]
 > **Mac: "Ahh can't be opened because it is from an unidentified developer"**
 >

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Ahh uninstaller: removes Ahh and Roomservice (its name up to 1.0.4) in every format, from the system plug-in
+# folders and from those of the logged-in user. Projects and presets stay untouched.
+USER_NAME=$(stat -f%Su /dev/console)
+USER_HOME=$(dscl . -read "/Users/$USER_NAME" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+for BASE in "/Library/Audio/Plug-Ins" "$USER_HOME/Library/Audio/Plug-Ins"; do
+  [ "$BASE" = "/Library/Audio/Plug-Ins" ] || [ -n "$USER_HOME" ] || continue
+  for NAME in Ahh Roomservice; do
+    rm -rf "$BASE/VST3/$NAME.vst3" "$BASE/Components/$NAME.component" "$BASE/CLAP/$NAME.clap"
+  done
+done
+for ID in vst3 au clap uninstall; do pkgutil --forget "com.dmajorsound.roomservice.$ID" >/dev/null 2>&1; done
+killall -9 AudioComponentRegistrar >/dev/null 2>&1   # hosts read the Audio Unit list again
+exit 0

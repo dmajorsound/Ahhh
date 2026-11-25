@@ -102,11 +102,17 @@ jobs:
           tiffutil -cathidpicheck installer/mac_ui/background-darkAqua.png installer/mac_ui/background-darkAqua@2x.png -out ui/background-darkAqua.tiff
           sed "s/VERSION/$PKGVER/g" installer/mac_ui/distribution.xml > distribution.xml
           productbuild --distribution distribution.xml --resources ui --package-path . "Ahh_${FILEVER}_installer_mac.pkg"
-          ls -la "Ahh_${FILEVER}_installer_mac.pkg"
+          # uninstaller: an empty package whose script removes Ahh and the former Roomservice
+          pkgbuild --nopayload --scripts installer/mac_uninstall --identifier com.dmajorsound.roomservice.uninstall \
+            --version "$PKGVER" ahh-uninstall-component.pkg
+          cp installer/mac_ui/uninstall.html ui/
+          sed "s/VERSION/$PKGVER/g" installer/mac_ui/uninstall.xml > uninstall.xml
+          productbuild --distribution uninstall.xml --resources ui --package-path . "Ahh_${FILEVER}_uninstaller_mac.pkg"
+          ls -la Ahh_*_mac.pkg
       - uses: actions/upload-artifact@v4
         with:
           name: Ahh_mac
-          path: Ahh_*_installer_mac.pkg
+          path: Ahh_*_mac.pkg
 
   windows:
     name: Windows
@@ -137,10 +143,12 @@ jobs:
           if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVer=$env:VERSION" "/DFileVer=$env:FILEVER" installer\win\roomservice.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVer=$env:VERSION" "/DFileVer=$env:FILEVER" installer\win\ahh_uninstall.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: Ahh_windows
-          path: installer/win/Output/Ahh_*_installer_win64.exe
+          path: installer/win/Output/Ahh_*_win64.exe
 
   # "Run workflow" with a tag (e.g. v1.0.1) publishes the installers as a GitHub release
   release:

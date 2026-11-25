@@ -3863,6 +3863,8 @@ struct Gen : Runtime {
   double L_dl_y1 = 0;
   double L_dl_y2 = 0;
   double L_dmfoot_ly = 0;
+  double L_dmfoot_mh = 0;
+  double L_dmfoot_mw = 0;
   double L_dmfoot_th = 0;
   double L_dmfoot_tw = 0;
   double L_dmfoot_ty = 0;

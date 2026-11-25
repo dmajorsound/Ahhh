@@ -11,8 +11,8 @@
 Roomservice places a sound in a room: source, listener, walls, barrier and motion, for film sound and animation.
 
 ### Download
-- **Mac** (Apple Silicon and Intel): `Roomservice_FILEVER_installer_mac.pkg` below (VST3, AU)
-- **Windows** (64-bit): `Roomservice_FILEVER_installer_win64.exe` below (VST3)
+- **Mac** (Apple Silicon and Intel): `Roomservice_FILEVER_installer_mac.pkg` below (VST3, AU, CLAP, each optional)
+- **Windows** (64-bit): `Roomservice_FILEVER_installer_win64.exe` below (VST3, CLAP, each optional)
 
 ### Install
 1. Quit REAPER.

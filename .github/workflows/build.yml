@@ -1,5 +1,5 @@
-# Builds Roomservice on GitHub's own Macs and PCs: macOS VST3 + AU (Universal: Apple Silicon and Intel,
-# ad-hoc signed), Windows VST3, plus installers (Mac .pkg, Windows .exe) with the dmajorsound artwork.
+# Builds Roomservice on GitHub's own Macs and PCs: macOS VST3 + AU + CLAP (Universal: Apple Silicon and Intel,
+# ad-hoc signed), Windows VST3 + CLAP, plus installers (Mac .pkg, Windows .exe) with the dmajorsound artwork.
 # The results are under "Actions" -> the run -> "Artifacts".
 # "Run workflow" with a tag (e.g. v1.0.1) also publishes the installers as a GitHub release.
 # Runs only when started by hand: this repository is private, and Mac build minutes are limited there.
@@ -14,9 +14,10 @@ on:
         default: ""
 
 env:
-  VERSION: "1.0.1"            # shown in the installers
-  FILEVER: "1.0.1"            # used in the file names
-  PKGVER: "1.0.1"             # numeric version for the macOS package receipts
+  VERSION: "1.0.2"            # shown in the installers
+  FILEVER: "1.0.2"            # used in the file names
+  PKGVER: "1.0.2"             # numeric version for the macOS package receipts
+  CLAP_JUCE_COMMIT: 3837f4a6ed2ab0ba46aba69ae5b7041c7c64ce74   # clap-juce-extensions (CLAP format)
   JUCE_COMMIT: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port is tested with
 
 jobs:
@@ -42,16 +43,24 @@ jobs:
           repository: juce-framework/JUCE
           ref: ${{ env.JUCE_COMMIT }}
           path: juce
+      - name: CLAP extensions
+        shell: bash
+        run: |
+          git init clap-juce-extensions
+          git -C clap-juce-extensions remote add origin https://github.com/free-audio/clap-juce-extensions.git
+          git -C clap-juce-extensions fetch --depth 1 origin $CLAP_JUCE_COMMIT
+          git -C clap-juce-extensions checkout FETCH_HEAD
+          git -C clap-juce-extensions submodule update --init --recursive --depth 1
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR="$GITHUB_WORKSPACE/juce" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR="$GITHUB_WORKSPACE/juce" -DCLAP_JUCE_DIR="$GITHUB_WORKSPACE/clap-juce-extensions" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
       - name: Build
-        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_AU -j 4
+        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_AU Roomservice_CLAP -j 4
       - name: Strip and sign (ad hoc)
         run: |
           A=build/Roomservice_artefacts/Release
           mkdir -p out
-          cp -R "$A/VST3/Roomservice.vst3" "$A/AU/Roomservice.component" out/
-          for p in out/Roomservice.vst3 out/Roomservice.component; do
+          cp -R "$A/VST3/Roomservice.vst3" "$A/AU/Roomservice.component" "$A/CLAP/Roomservice.clap" out/
+          for p in out/Roomservice.vst3 out/Roomservice.component out/Roomservice.clap; do
             strip -x "$p/Contents/MacOS/Roomservice"
             lipo -info "$p/Contents/MacOS/Roomservice"
             codesign --force --deep -s - "$p"
@@ -74,6 +83,7 @@ jobs:
           }
           mk Roomservice.vst3 vst3 /Library/Audio/Plug-Ins/VST3
           mk Roomservice.component au /Library/Audio/Plug-Ins/Components
+          mk Roomservice.clap clap /Library/Audio/Plug-Ins/CLAP
           mkdir -p ui
           cp installer/mac_ui/welcome.html ui/
           tiffutil -cathidpicheck installer/mac_ui/background.png installer/mac_ui/background@2x.png -out ui/background.tiff
@@ -96,10 +106,18 @@ jobs:
           repository: juce-framework/JUCE
           ref: ${{ env.JUCE_COMMIT }}
           path: juce
+      - name: CLAP extensions
+        shell: bash
+        run: |
+          git init clap-juce-extensions
+          git -C clap-juce-extensions remote add origin https://github.com/free-audio/clap-juce-extensions.git
+          git -C clap-juce-extensions fetch --depth 1 origin $CLAP_JUCE_COMMIT
+          git -C clap-juce-extensions checkout FETCH_HEAD
+          git -C clap-juce-extensions submodule update --init --recursive --depth 1
       - name: Configure
-        run: cmake -S . -B build -A x64 -DJUCE_DIR="${{ github.workspace }}/juce"
+        run: cmake -S . -B build -A x64 -DJUCE_DIR="${{ github.workspace }}/juce" -DCLAP_JUCE_DIR="${{ github.workspace }}/clap-juce-extensions"
       - name: Build
-        run: cmake --build build --config Release --target Roomservice_VST3 -j 4
+        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_CLAP -j 4
       - name: Installer (.exe)
         shell: pwsh
         run: |

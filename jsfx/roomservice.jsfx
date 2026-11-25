@@ -1,7 +1,7 @@
 desc: Roomservice
 //tags: reverb room acoustics image-source filter education
 //author: Bernd Dormayer
-//version: 1.0.1
+//version: 1.0.2
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -159,7 +159,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.0.1 - developed with AI assistance");
+strcpy(#verstr, "V 1.0.2 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -11581,19 +11581,22 @@ function lgsize(th) local(tw, x, y, fx, fy, x0, x1, y0, y1, i, j, wx, wy, acc)
       lgT[y * 96 + x] = acc / (fx * fy); x += 1; );
     y += 1; );
 );
-// Footer: hairline, then "dmajorsound.com" in the bottom right corner
-function dmfoot(ly, ty) local(tw, th)
+// Footer: hairline, then the dmajorsound mark in the bottom right corner with "dmajorsound.com" to its left
+// (the same in every dmajorsound plugin; the mark stays 8 units clear of the window resize corner)
+function dmfoot(ly, ty) local(tw, th, mh, mw)
 (
   col(cHAIR, 1); PXR(12, ly, WT - 24, 1); gfx_rect(gpx0, gpy0, gpw, max(1, floor(gs * 0.5 + 0.5)));
+  mh = 10; mw = mh * LGW / LGH;
+  dmlogo(WT - 20 - mw, ty - mh / 2, mh);
   gfx_setfont(7); strcpy(#dmw, "dmajorsound.com"); gfx_measurestr(#dmw, tw, th);
-  col(cMUTED, 1); txt(#dmw, WT - 12 - tw / gs, ty, 0);
+  col(cMUTED, 1); txt(#dmw, WT - 20 - mw - mh / 2, ty, 2);
 );
 // the dmajorsound mark, hU units high, top left corner at (x, y) in page units
 function dmlogo(x, y, hU) local(th, px0, py0, i, j, c)
 (
   th = floor(hU * gs + 0.5); th != lgTH ? lgsize(th);
   px0 = floor(gox + x * gs + 0.5); py0 = floor(goy + y * gs + 0.5);
-  col(cTEXT, 1);
+  col(cMUTED, 1);
   j = 0; loop(lgTH, i = 0; loop(lgTW, c = lgT[j * 96 + i]; c > 0.03 ? ( gfx_a = c; gfx_rect(px0 + i, py0 + j, 1, 1); ); i += 1; ); j += 1; );
   gfx_a = 1;
 );
@@ -11609,7 +11612,7 @@ szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx =
 // vertically centered on the switch row, the view switches start after them (TBO)
 TBO = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + TBO;   // (again with the scale of this frame's top bar)
 gsT0 = gs; gs = gT; col(cTEXT, 1); gfx_setfont(5, "Arial", 14.5 * gT, 'b'); txt("Roomservice", 11, 17 * gsT0 / gT, 0); gfx_measurestr("Roomservice", ttw, tth);
-dmlogo(11 + ttw / gT + 3, 17 * gsT0 / gT - 9.5, 9); gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
+gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
 // Basic | Expert | Learn: one segmented switch, the active segment filled
 // VIEW MODE: a dark switch right after the name (the plugin's own view - not a preset, not a snapshot)
 col(cTEXT, 1); RR(126 + TBO, 8, 106, 18, 9);

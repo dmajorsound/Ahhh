@@ -463,12 +463,12 @@ double Gen::F_dl(double p0, double p1, double p2, double p3, double p4, double p
 
 double Gen::F_dmfoot(double p0, double p1) {
   L_dmfoot_ly = p0; L_dmfoot_ty = p1;
-  return ((void)(F_col(g_chair, 1.0)), (void)(F_pxr(12.0, L_dmfoot_ly, (g_wt - 24.0), 1.0)), (void)(gfx_rect({g_gpx0, g_gpy0, g_gpw, rt_max(1.0, std::floor(((g_gs * 0.5) + 0.5)))})), (void)(gfx_setfont({7.0})), (void)(strcpy(90006.0, 10066.0)), (void)(gfx_measurestr(90006.0, L_dmfoot_tw, L_dmfoot_th)), (void)(F_col(g_cmuted, 1.0)), F_txt(90006.0, ((g_wt - 12.0) - (L_dmfoot_tw / g_gs)), L_dmfoot_ty, 0.0));
+  return ((void)(F_col(g_chair, 1.0)), (void)(F_pxr(12.0, L_dmfoot_ly, (g_wt - 24.0), 1.0)), (void)(gfx_rect({g_gpx0, g_gpy0, g_gpw, rt_max(1.0, std::floor(((g_gs * 0.5) + 0.5)))})), (void)((L_dmfoot_mh = 10.0)), (void)(ASG(L_dmfoot_mw, (L_dmfoot_mh * (g_lgw / g_lgh)))), (void)(F_dmlogo(((g_wt - 20.0) - L_dmfoot_mw), (L_dmfoot_ty - (L_dmfoot_mh / 2.0)), L_dmfoot_mh)), (void)(gfx_setfont({7.0})), (void)(strcpy(90006.0, 10066.0)), (void)(gfx_measurestr(90006.0, L_dmfoot_tw, L_dmfoot_th)), (void)(F_col(g_cmuted, 1.0)), F_txt(90006.0, (((g_wt - 20.0) - L_dmfoot_mw) - (L_dmfoot_mh / 2.0)), L_dmfoot_ty, 2.0));
 }
 
 double Gen::F_dmlogo(double p0, double p1, double p2) {
   L_dmlogo_x = p0; L_dmlogo_y = p1; L_dmlogo_hu = p2;
-  return ((void)(ASG(L_dmlogo_th, std::floor(((L_dmlogo_hu * g_gs) + 0.5)))), (void)((NE(L_dmlogo_th, g_lgth) ? (double)F_lgsize(L_dmlogo_th) : 0.0)), (void)(ASG(L_dmlogo_px0, std::floor(((g_gox + (L_dmlogo_x * g_gs)) + 0.5)))), (void)(ASG(L_dmlogo_py0, std::floor(((g_goy + (L_dmlogo_y * g_gs)) + 0.5)))), (void)(F_col(g_ctext, 1.0)), (void)((L_dmlogo_j = 0.0)), (void)([&]() -> double { int n_ = rt_i32(g_lgth); if (n_ > 1048576) n_ = 1048576; for (; n_ > 0; --n_) { (void)(((void)((L_dmlogo_i = 0.0)), (void)([&]() -> double { int n_ = rt_i32(g_lgtw); if (n_ > 1048576) n_ = 1048576; for (; n_ > 0; --n_) { (void)(((void)(ASG(L_dmlogo_c, M((g_lgt + ((L_dmlogo_j * 96.0) + L_dmlogo_i))))), (void)(((L_dmlogo_c > 0.03) ? (double)((void)((v_gfx_a = L_dmlogo_c)), gfx_rect({(L_dmlogo_px0 + L_dmlogo_i), (L_dmlogo_py0 + L_dmlogo_j), 1.0, 1.0})) : 0.0)), (L_dmlogo_i += 1.0))); } return 0.0; }()), (L_dmlogo_j += 1.0))); } return 0.0; }()), (v_gfx_a = 1.0));
+  return ((void)(ASG(L_dmlogo_th, std::floor(((L_dmlogo_hu * g_gs) + 0.5)))), (void)((NE(L_dmlogo_th, g_lgth) ? (double)F_lgsize(L_dmlogo_th) : 0.0)), (void)(ASG(L_dmlogo_px0, std::floor(((g_gox + (L_dmlogo_x * g_gs)) + 0.5)))), (void)(ASG(L_dmlogo_py0, std::floor(((g_goy + (L_dmlogo_y * g_gs)) + 0.5)))), (void)(F_col(g_cmuted, 1.0)), (void)((L_dmlogo_j = 0.0)), (void)([&]() -> double { int n_ = rt_i32(g_lgth); if (n_ > 1048576) n_ = 1048576; for (; n_ > 0; --n_) { (void)(((void)((L_dmlogo_i = 0.0)), (void)([&]() -> double { int n_ = rt_i32(g_lgtw); if (n_ > 1048576) n_ = 1048576; for (; n_ > 0; --n_) { (void)(((void)(ASG(L_dmlogo_c, M((g_lgt + ((L_dmlogo_j * 96.0) + L_dmlogo_i))))), (void)(((L_dmlogo_c > 0.03) ? (double)((void)((v_gfx_a = L_dmlogo_c)), gfx_rect({(L_dmlogo_px0 + L_dmlogo_i), (L_dmlogo_py0 + L_dmlogo_j), 1.0, 1.0})) : 0.0)), (L_dmlogo_i += 1.0))); } return 0.0; }()), (L_dmlogo_j += 1.0))); } return 0.0; }()), (v_gfx_a = 1.0));
 }
 
 double Gen::F_dnear(double p0) {
@@ -679,10 +679,5 @@ double Gen::F_ffpapply(double p0) {
 double Gen::F_ffpdesc(double p0) {
   L_ffpdesc_k = p0;
   return (EQ(L_ffpdesc_k, 0.0) ? (double)10245.0 : (double)(EQ(L_ffpdesc_k, 1.0) ? (double)10246.0 : (double)(EQ(L_ffpdesc_k, 2.0) ? (double)10247.0 : (double)(EQ(L_ffpdesc_k, 3.0) ? (double)10248.0 : (double)(EQ(L_ffpdesc_k, 4.0) ? (double)10249.0 : (double)(EQ(L_ffpdesc_k, 5.0) ? (double)10250.0 : (double)(EQ(L_ffpdesc_k, 6.0) ? (double)10251.0 : (double)(EQ(L_ffpdesc_k, 7.0) ? (double)10252.0 : (double)(EQ(L_ffpdesc_k, 8.0) ? (double)10253.0 : (double)(EQ(L_ffpdesc_k, 9.0) ? (double)10254.0 : (double)(EQ(L_ffpdesc_k, 10.0) ? (double)10255.0 : (double)(EQ(L_ffpdesc_k, 11.0) ? (double)10256.0 : (double)(EQ(L_ffpdesc_k, 12.0) ? (double)10257.0 : (double)(EQ(L_ffpdesc_k, 13.0) ? (double)10258.0 : (double)(EQ(L_ffpdesc_k, 14.0) ? (double)10259.0 : (double)(EQ(L_ffpdesc_k, 15.0) ? (double)10260.0 : (double)10261.0))))))))))))))));
-}
-
-double Gen::F_ffpname(double p0) {
-  L_ffpname_k = p0;
-  return (EQ(L_ffpname_k, 0.0) ? (double)10262.0 : (double)(EQ(L_ffpname_k, 1.0) ? (double)10263.0 : (double)(EQ(L_ffpname_k, 2.0) ? (double)10264.0 : (double)(EQ(L_ffpname_k, 3.0) ? (double)10265.0 : (double)(EQ(L_ffpname_k, 4.0) ? (double)10266.0 : (double)(EQ(L_ffpname_k, 5.0) ? (double)10267.0 : (double)(EQ(L_ffpname_k, 6.0) ? (double)10268.0 : (double)(EQ(L_ffpname_k, 7.0) ? (double)10269.0 : (double)(EQ(L_ffpname_k, 8.0) ? (double)10270.0 : (double)(EQ(L_ffpname_k, 9.0) ? (double)10271.0 : (double)(EQ(L_ffpname_k, 10.0) ? (double)10272.0 : (double)(EQ(L_ffpname_k, 11.0) ? (double)10273.0 : (double)(EQ(L_ffpname_k, 12.0) ? (double)10274.0 : (double)(EQ(L_ffpname_k, 13.0) ? (double)10275.0 : (double)(EQ(L_ffpname_k, 14.0) ? (double)10276.0 : (double)(EQ(L_ffpname_k, 15.0) ? (double)10277.0 : (double)10278.0))))))))))))))));
 }
 }

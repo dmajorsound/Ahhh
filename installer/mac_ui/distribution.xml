@@ -5,15 +5,23 @@
     <background file="background.tiff" alignment="bottomleft" scaling="none"/>
     <background-darkAqua file="background-darkAqua.tiff" alignment="bottomleft" scaling="none"/>
     <welcome file="welcome.html" mime-type="text/html"/>
-    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+    <options customize="always" require-scripts="false" hostArchitectures="arm64,x86_64"/>
     <domains enable_localSystem="true"/>
     <choices-outline>
-        <line choice="default"/>
+        <line choice="vst3"/>
+        <line choice="au"/>
+        <line choice="clap"/>
     </choices-outline>
-    <choice id="default" title="Roomservice VST3 and AU">
+    <choice id="vst3" title="VST3" description="Roomservice as VST3 plug-in, for REAPER and most other hosts. Goes to /Library/Audio/Plug-Ins/VST3." start_selected="true">
         <pkg-ref id="com.dmajorsound.roomservice.vst3"/>
+    </choice>
+    <choice id="au" title="Audio Unit" description="Roomservice as Audio Unit, for Logic Pro, GarageBand and other hosts that use Audio Units. Goes to /Library/Audio/Plug-Ins/Components." start_selected="true">
         <pkg-ref id="com.dmajorsound.roomservice.au"/>
+    </choice>
+    <choice id="clap" title="CLAP" description="Roomservice as CLAP plug-in, for REAPER, Bitwig Studio and other hosts that support CLAP. Goes to /Library/Audio/Plug-Ins/CLAP." start_selected="true">
+        <pkg-ref id="com.dmajorsound.roomservice.clap"/>
     </choice>
     <pkg-ref id="com.dmajorsound.roomservice.vst3" version="VERSION" onConclusion="none">roomservice-vst3.pkg</pkg-ref>
     <pkg-ref id="com.dmajorsound.roomservice.au" version="VERSION" onConclusion="none">roomservice-au.pkg</pkg-ref>
+    <pkg-ref id="com.dmajorsound.roomservice.clap" version="VERSION" onConclusion="none">roomservice-clap.pkg</pkg-ref>
 </installer-gui-script>

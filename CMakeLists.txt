@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 # Universal (Apple Silicon + Intel). For a faster Intel-only build: -DCMAKE_OSX_ARCHITECTURES=x86_64
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
-project(Roomservice VERSION 1.0.1 LANGUAGES C CXX)
+project(Roomservice VERSION 1.0.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,7 +24,7 @@ juce_add_plugin(Roomservice
   PLUGIN_CODE Rmsv
   FORMATS ${RS_FORMATS}
   PRODUCT_NAME "Roomservice"
-  VERSION 1.0.1
+  VERSION 1.0.2
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT FALSE
   NEEDS_MIDI_OUTPUT FALSE
@@ -60,3 +60,12 @@ endif()
 target_link_libraries(Roomservice PRIVATE
   juce::juce_audio_processors juce::juce_gui_basics
   PUBLIC juce::juce_recommended_config_flags)
+
+# CLAP (via clap-juce-extensions, fetched next to JUCE; skipped if missing)
+set(CLAP_JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../clap-juce-extensions" CACHE PATH "clap-juce-extensions checkout")
+if(EXISTS "${CLAP_JUCE_DIR}/CMakeLists.txt")
+  add_subdirectory(${CLAP_JUCE_DIR} clap-juce EXCLUDE_FROM_ALL)
+  clap_juce_extensions_plugin(TARGET Roomservice
+    CLAP_ID "com.dmajorsound.roomservice"
+    CLAP_FEATURES audio-effect reverb stereo mono)
+endif()

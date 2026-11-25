@@ -70,12 +70,27 @@ double RoomServiceEditor::scale() const {
     return g->v_gfx_ext_retina > 0 ? (double)lastPaintScale : 1.0;
 }
 
+void RoomServiceEditor::resized() { repaint(); }
+
 void RoomServiceEditor::timerCallback() {
+    if (!isShowing() || getWidth() <= 0 || getHeight() <= 0) return;   // closed or hidden window: no frames
+    // a frame that took long is followed by a pause at least as long: the host's own window, mouse and keyboard
+    // handling always get half of the time, however large the window is (the picture slows down, nothing freezes)
+    if (juce::Time::getMillisecondCounterHiRes() < nextFrameMs) return;
+    // the script expects @init before @gfx (REAPER guarantees it); a host may show the editor before the first block
+    if (proc.engine.needsInit() || proc.hasHeldState()) proc.initForEditor();
     const double s = scale();
     const int w = juce::roundToInt(getWidth() * s), h = juce::roundToInt(getHeight() * s);
     auto* g = proc.engine.gen.get();
     if (g->v_gfx_ext_retina > 0) g->v_gfx_ext_retina = s;
     g->v_mouse_cap = liveCap | latchedButtons;   // a press seen since the last frame counts for this frame
+    // a newer release on GitHub: the script shows a small button in the footer (updav, string 1000 = the tag)
+    if (updState != 1) {
+        std::string tag;
+        updState = rs::UpdateCheck::state(&tag, &updUrl);
+        if (updState == 1) g->setString(1000, tag.c_str());
+    }
+    g->g_updav = updState == 1 ? 1.0 : 0.0;
     const double t0 = juce::Time::getMillisecondCounterHiRes();
     gfx.beginFrame(w, h);
     proc.engine.runGfx(&gfx, w, h);
@@ -87,19 +102,50 @@ void RoomServiceEditor::timerCallback() {
         lastTick = t0;
         diagTick();
     }
+    {
+        const double t1 = juce::Time::getMillisecondCounterHiRes(), busy = (t1 - t0) + lastPaintMs;
+        // (the script draws a full frame after a gap of 0.25 s: up to 200 ms the pause keeps the frames closer than that)
+        const double pause = busy < 200.0 ? juce::jmax(busy * 0.33, juce::jmin(busy, 200.0 - busy)) : juce::jmin(busy, 250.0);
+        nextFrameMs = busy > 16.0 ? t1 + pause : 0.0;
+    }
     latchedButtons = 0;
+    if (g->g_updgo != 0.0) { g->g_updgo = 0.0; rs::UpdateCheck::openPage(updUrl); }
     g->v_mouse_cap = liveCap;                     // the next frame sees the release
-    repaint();
+    // only what changed goes to the screen: nothing when the picture stands still, a meter's own area when it moves
+    gfx.takeDirty(dirty);
+    for (const auto& r : dirty) {
+        const int x0 = (int)std::floor(r.getX() / s) - 1, y0 = (int)std::floor(r.getY() / s) - 1;
+        const int x1 = (int)std::ceil(r.getRight() / s) + 1, y1 = (int)std::ceil(r.getBottom() / s) + 1;
+        repaint(x0, y0, x1 - x0, y1 - y0);
+    }
 }
 
 void RoomServiceEditor::paint(juce::Graphics& g) {
     const double pt0 = juce::Time::getMillisecondCounterHiRes();
-    const juce::ScopeGuard sg { [&] { if (diagFile != juce::File()) { const double dt = juce::Time::getMillisecondCounterHiRes() - pt0; dPaints++; dPaint += dt; dPaintMax = juce::jmax(dPaintMax, dt); } } };
-    lastPaintScale = juce::jmax(1.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+    const juce::ScopeGuard sg { [&] { lastPaintMs = juce::Time::getMillisecondCounterHiRes() - pt0; if (diagFile != juce::File()) { const double dt = juce::Time::getMillisecondCounterHiRes() - pt0; dPaints++; dPaint += dt; dPaintMax = juce::jmax(dPaintMax, dt); } } };
+    const float ps = juce::jlimit(1.0f, 4.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+    if (std::abs(ps - lastPaintScale) > 0.01f) {
+        if (std::abs(ps - candidateScale) <= 0.01f) lastPaintScale = ps; else candidateScale = ps;
+    } else candidateScale = lastPaintScale;
     const juce::Image& img = gfx.screen();
     if (!img.isValid()) { g.fillAll(juce::Colours::black); return; }
-    if (img.getWidth() == getWidth() && img.getHeight() == getHeight()) { g.drawImageAt(img, 0, 0); return; }
-    g.setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
+    const int W = img.getWidth(), H = img.getHeight();
+    if (W == getWidth() && H == getHeight()) {
+        // one image pixel per point: copy the invalid part only
+        const auto r = g.getClipBounds().getIntersection(img.getBounds());
+        if (!r.isEmpty()) g.drawImageAt(img.getClippedImage(r), r.getX(), r.getY());
+        return;
+    }
+    if (W == juce::roundToInt(getWidth() * ps) && H == juce::roundToInt(getHeight() * ps)) {
+        // HiDPI: the frame was drawn at the screen's pixel size - it goes out 1:1 in device pixels, no resampling
+        juce::Graphics::ScopedSaveState ss(g);
+        g.addTransform(juce::AffineTransform::scale(1.0f / ps));
+        const auto r = g.getClipBounds().expanded(1).getIntersection(img.getBounds());
+        if (!r.isEmpty()) g.drawImageAt(img.getClippedImage(r), r.getX(), r.getY());
+        return;
+    }
+    // the frame size is still the one of the previous scale or window size (one frame): stretched for now
+    g.setImageResamplingQuality(juce::Graphics::lowResamplingQuality);
     g.drawImage(img, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
 }
 

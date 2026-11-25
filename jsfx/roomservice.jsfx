@@ -1,7 +1,7 @@
 desc: Roomservice
 //tags: reverb room acoustics image-source filter education
 //author: Bernd Dormayer
-//version: 1.0.2
+//version: 1.0.3
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -159,7 +159,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.0.2 - developed with AI assistance");
+strcpy(#verstr, "V 1.0.3 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -3675,9 +3675,13 @@ function krow(x, y, k, d, ovkw, ovdw) local(w)
 );
 // ---- a PAGE over everything (help, keys) - the title row stays, the body is drawn into image 2 and shown through
 // a window of the page's height; the wheel or the bar at its right edge scrolls it, the round × on its corner, Esc or a
-// click beside it close it. pgopen(id, width, height, body height, title) ... body ... pgclose() ----
-function pgopen(id, cw, ch, bodyh, tt) local(ih, iw)
+// click beside it close it. pgopen(id, width, height, body height, title, dyn) ? ( body ); pgclose() ----
+// THE BODY IS DRAWN ONCE and kept in image 2: pgopen returns 1 only when it has to be drawn again (page just opened,
+// another size, scale or theme, or dyn - the page's own changing state, e.g. a hovered button - is different). Scrolling
+// only moves the window over the kept image. (Drawing all the text again in every frame made large windows slow.)
+function pgopen(id, cw, ch, bodyh, tt, dyn) local(ih, iw, re)
 (
+  re = pgWho != id;
   pgWho != id ? ( pgSc = 0; pgWho = id; );
   pgCW = cw; pgCH = ch; pgCX = (WT - cw) / 2; pgCY = max(12, (HT - ch) / 2) + scy;
   pgBY = pgCY + 44; pgBH = ch - 54; pgMax = max(0, bodyh - pgBH); pgSc = min(max(pgSc, 0), pgMax);
@@ -3688,10 +3692,13 @@ function pgopen(id, cw, ch, bodyh, tt) local(ih, iw)
   col(cHAIR, 1); LN(pgCX + 12, pgBY - 1, pgCX + cw - 12, pgBY - 1);
   // the body into image 2: page coordinates, its top left = (pgCX, pgBY); the mouse moves with the scroll
   pgGX = gox; pgGY = goy; iw = ceil(cw * gs) + 1; ih = ceil(max(bodyh, pgBH) * gs) + 1;
-  gfx_setimgdim(2, iw, ih); gfx_dest = 2;
-  col(cSURF, 1); gfx_a = 1; gfx_mode = 0; gfx_rect(0, 0, iw, ih);
+  re = re || iw != pgKw || ih != pgKh || gs != pgKs || cSURF != pgK1 || cTEXT != pgK2 || cMUTED != pgK3 || cHAIR != pgK4 || cLINE != pgK5 || monoOn != pgK6 || cfade != pgKf || dyn != pgKd;
+  pgKw = iw; pgKh = ih; pgKs = gs; pgK1 = cSURF; pgK2 = cTEXT; pgK3 = cMUTED; pgK4 = cHAIR; pgK5 = cLINE; pgK6 = monoOn; pgKf = cfade; pgKd = dyn;
+  gfx_setimgdim(2, iw, ih);
+  re ? ( gfx_dest = 2; col(cSURF, 1); gfx_a = 1; gfx_mode = 0; gfx_rect(0, 0, iw, ih); );
   gox = -pgCX * gs; goy = -pgBY * gs;
   pgMY = my; my += pgSc;
+  re;
 );
 // Ends a page body: restores drawing offsets, blits the scrolled body image to the screen, draws scroll bar and close button, stores click rects.
 function pgclose() local(bx, th, by, xx, xy, k)
@@ -3699,11 +3706,11 @@ function pgclose() local(bx, th, by, xx, xy, k)
   gox = pgGX; goy = pgGY; my = pgMY; gfx_dest = 1; gfx_a = 1; gfx_mode = 0;
   gfx_blit(2, 1, 0, 0, pgSc * gs, pgCW * gs, pgBH * gs, gox + pgCX * gs, goy + pgBY * gs, pgCW * gs, pgBH * gs);
   pgMax > 0 ? (                                                       // the scroll bar at the right edge of the body
-    bx = pgCX + pgCW - 9; th = max(16, pgBH * pgBH / (pgBH + pgMax)); by = pgBY + (pgBH - th) * pgSc / pgMax;
+    bx = pgCX + pgCW - 9; pbX0 = gox + (bx - 4) * gs; pbX1 = pbX0 + 12 * gs; th = max(16, pgBH * pgBH / (pgBH + pgMax)); by = pgBY + (pgBH - th) * pgSc / pgMax;
     col(cTEXT, pgDrag || inbox(bx - 4, pgBY, 12, pgBH) ? 0.45 : 0.22); RR(bx, by, 4, th, 2);
     pgClk && inbox(bx - 4, pgBY, 12, pgBH) ? ( pgDrag = 1; pgDmy = my; pgDs0 = pgSc; );
     pgDrag && (mouse_cap & 1) ? ( pgSc = min(max(pgDs0 + (my - pgDmy) * (pgBH + pgMax) / pgBH, 0), pgMax); ) : ( pgDrag = 0; );
-  ) : ( pgDrag = 0; );
+  ) : ( pgDrag = 0; pbX0 = pbX1 = -1; );
   // the round × on the top right corner (as on the zoom windows)
   xx = pgCX + pgCW - 16; xy = pgCY + 16; pgXh = sqr(mx - xx) + sqr(my - xy) <= 110;
   closex(xx, xy);
@@ -3718,7 +3725,7 @@ function kovldraw() local(cw, ovch, cx, cy, c1, c2, y, ovkw, ovdw)
 (
 // page and body heights are fixed values that must fit the rows below (25 px per row): two columns 577 / 523, one column 1006 / 952 (+ 4 mouse rows)
   cw = min(WT - 24, 720); c2 = cw >= 560; ovch = min(c2 ? 577 : 1006, HT - 24);
-  pgopen(2, cw, ovch, c2 ? 523 : 952, "Keys and mouse");
+  pgopen(2, cw, ovch, c2 ? 523 : 952, "Keys and mouse", 0) ? (
   cx = pgCX; cy = pgBY - 44;
   ovdw = c2 ? cw / 2 - 30 : cw - 40; ovkw = c2 ? 108 : 120;
   c1 = cx + 20; y = cy + 58;
@@ -3759,6 +3766,7 @@ function kovldraw() local(cw, ovch, cx, cy, c1, c2, y, ovkw, ovdw)
   krow(c1, y, "Bar over tabs", "Drag = Stage View height, double-click = auto", ovkw, ovdw); y += 25;
   krow(c1, y, "Shift + click", "Module in the strip: solo it", ovkw, ovdw); y += 25;
   krow(c1, y, "Alt + click", "Section heading: fold / open all", ovkw, ovdw); y += 25;
+  );
   pgclose();
 );
 // Draws a rotary knob (0 = up, 270 deg) with value text vs and name nm, handles hover, wheel and value entry; returns new position 0..1, sets kchg.
@@ -8169,8 +8177,17 @@ gtnow = time_precise(); gfxgap = gtnow - lastgfx; lastgfx = gtnow;   // window r
 // only while it taps or listens)
 ukey += rqlen * 97.3 + rsnlen * 89.1 + rscat * 83.3 + rsave * 4337.1 + urcount() * 79.7 + rmenu * 4201.3 + smenu * 4211.7 + fmenu * 4219.1 + bmenu * 4229.3 + kmenu * 4231.9 + wmenu * 4241.3 + emenu * 4243.7 + helpon * 4253.1 + tpon * 4259.9 + xpon * 4261.3 + dmenu * 4271.7 + tptg * 4273.1 + tnsel * 4283.3 + anaSel * 4289.9 + anaDone * 4297.1 + soloM * 7.7;
 ukey += lpGen * 4099.3;   // Learn: a held frame (gfxpL) forces the next one to be drawn in full
-dofull = mtRec || (mtE > 0 && time_precise() - lastblk < 0.3) || ((szoom == 7 || szoom == 6) && time_precise() - lastblk < 0.3) || tbdrag || fhdrag || prOn || vedit || vedPend || kovl || kovlw || hlpon || hlpw || snctx || snctxw || (abOn && abCur == 1 && abMatch && (floor(time_precise() * 4) != abfr ? ( abfr = floor(time_precise() * 4); 1; ) : 0)) || time_precise() - wcT < 1 || ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 4) || (lastcap & 4) || mouse_wheel != 0 || (tpon && (anaOn || anaCmd != anaSeen || time_precise() - tapLast < 2.2)) || snedit || snPend || shpin || shlast || kdrag || eqdrag || wbdrag || animing || sbdrag || (mouse_cap & 1) || (wavesOn && (time_precise() - wlast < wlife + 0.2 || dbs(max(pkIL, pkIR)) > -59 && time_precise() - lastblk < 0.3));   // waves: animate only while fronts are alive
-dofull ? ( lastukey = ukey; fullcnt = 15; ) : ( fullcnt -= 1; );
+// A PAGE (help, keys) that stands still: the plug-in under it rests - no frame is drawn until the page itself changes
+// (scrolled, a button under the mouse, closed), a key changes something, or the window does. pgkey = the page's state.
+pgst = (kovl || hlpon) && kovl == kovlw && hlpon == hlpw;
+pgkey = pgSc * 3.7 + pgDrag * 811.3 + hlpH * 1.3
+      + (sqr(mouse_x - pxX) + sqr(mouse_y - pxY) <= sqr(pxR + 1)) * 1013.9
+      + (mouse_x >= pbX0 && mouse_x < pbX1 && mouse_y >= pbY0 && mouse_y < pbY1) * 2027.3
+      + (hlpon && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3049.7;
+pgst ? ( ukey += pgkey; );
+dofull = pgst ? ( ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 3) || (lastcap & 3) || mouse_wheel != 0 )
+              : ( mtRec || (mtE > 0 && time_precise() - lastblk < 0.3) || ((szoom == 7 || szoom == 6) && time_precise() - lastblk < 0.3) || tbdrag || fhdrag || prOn || vedit || vedPend || kovl || kovlw || hlpon || hlpw || snctx || snctxw || (abOn && abCur == 1 && abMatch && (floor(time_precise() * 4) != abfr ? ( abfr = floor(time_precise() * 4); 1; ) : 0)) || time_precise() - wcT < 1 || ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 4) || (lastcap & 4) || mouse_wheel != 0 || (tpon && (anaOn || anaCmd != anaSeen || time_precise() - tapLast < 2.2)) || snedit || snPend || shpin || shlast || kdrag || eqdrag || wbdrag || animing || sbdrag || (mouse_cap & 1) || (wavesOn && (time_precise() - wlast < wlife + 0.2 || dbs(max(pkIL, pkIR)) > -59 && time_precise() - lastblk < 0.3)) );   // waves: animate only while fronts are alive
+dofull ? ( lastukey = ukey; fullcnt = 15; ) : ( !pgst ? ( fullcnt -= 1; ); );
 vedSeen = 0;                              // set again by the control that owns an open value box
 // ---- theme: dark (the default) or light, both in the gray design (block below); black & white (Expert) has its own palette ----
 // (only the wall lift of dark mode is set here - the palettes follow below)
@@ -9715,7 +9732,8 @@ function hlpsec(x, y, w, hd, bd) local(h) (
 function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
 (
   cw = min(WT - 24, 780); two = cw >= 640; hpch = min(HT - 24, max(200, hlpH + 54));
-  pgopen(1, cw, hpch, max(hlpH, 100), "Roomservice – how it works");
+  // (the only thing that changes on this page: the button at its end under the mouse)
+  pgopen(1, cw, hpch, max(hlpH, 100), "Roomservice – how it works", mx >= (WT - cw) / 2 + cw - 200 && mx < (WT - cw) / 2 + cw - 20 && my + pgSc >= pgBY + hlpYr && my + pgSc < pgBY + hlpYr + 20) ? (
   cx = pgCX; cy = pgBY - 44;
   w1 = two ? cw / 2 - 34 : cw - 40; x1 = cx + 20; x2 = two ? cx + cw / 2 + 14 : x1;
   y = cy + 54;
@@ -9734,9 +9752,10 @@ function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
   yb = max(ya, y) + 4;
   // the keys page (its screen place is kept for the click test at the start of the next frame)
   col(inbox(cx + cw - 200, yb, 180, 20) ? cHAIR : cLINE, 1); RR(cx + cw - 200, yb, 180, 20, 6); col(cTEXT, 1); gfx_setfont(6); txt("All keys and mouse actions", cx + cw - 110, yb + 10, 1);
-  hlpH = yb + 34 - pgBY;                                               // the body as tall as its text (next frame)
+  hlpYr = yb - pgBY; hlpH = hlpYr + 34;                                               // the body as tall as its text (next frame)
+  );
   pgclose();
-  hkX0 = gox + (cx + cw - 200) * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + (yb - pgSc) * gs; hkY1 = hkY0 + 20 * gs;   // (screen place, scrolled)
+  hkX0 = gox + (pgCX + cw - 200) * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + (pgBY + hlpYr - pgSc) * gs; hkY1 = hkY0 + 20 * gs;   // (screen place, scrolled)
 );
 // a label in the room view: title in its color, one line below; kept inside the view
 LBB = 4194304 + 44200;   // labels already placed in this frame (x, y, w) - a new one moves out of their way
@@ -11581,6 +11600,29 @@ function lgsize(th) local(tw, x, y, fx, fy, x0, x1, y0, y1, i, j, wx, wy, acc)
       lgT[y * 96 + x] = acc / (fx * fy); x += 1; );
     y += 1; );
 );
+// the dmajorsound mark, hU units high, top left corner at (x, y) in page units
+function dmlogo(x, y, hU) local(th, px0, py0, i, j, c)
+(
+  th = floor(hU * gs + 0.5); th != lgTH ? lgsize(th);
+  px0 = floor(gox + x * gs + 0.5); py0 = floor(goy + y * gs + 0.5);
+  col(cMUTED, 1);
+  j = 0; loop(lgTH, i = 0; loop(lgTW, c = lgT[j * 96 + i]; c > 0.03 ? ( gfx_a = c; gfx_rect(px0 + i, py0 + j, 1, 1); ); i += 1; ); j += 1; );
+  gfx_a = 1;
+);
+// UPDATE NOTE (VST3 / AU / CLAP only): the plug-in asks GitHub once per session whether a newer release is out and
+// then sets updav = 1 and string 1000 = its tag. A small button right after the version text shows it; a click sets
+// updgo = 1 and the plug-in opens the download page. As a JSFX in REAPER nothing sets updav: nothing is drawn.
+function updnote(ty) local(x, w, h)
+(
+  updav ? (
+    gfx_setfont(7); x = 12 + tws(#verstr) + 8;
+    sprintf(#updl, "Update %s", 1000); w = tws(#updl) + 14;
+    h = inbox(x, ty - 6, w, 12);
+    col(cACT, h ? 0.85 : 1); RR(x, ty - 6, w, 12, 6); col(cACTX, 1); gfx_setfont(7); txt(#updl, x + w / 2, ty, 1);
+    h ? ( sprintf(#updt, "Roomservice %s is out. Click to open the download page.", 1000); tipbox(x, ty - 6, w, 12, #updt); tipforce = 1; );
+    h && click ? ( updgo = 1; click = 0; );
+  );
+);
 // Footer: hairline, then the dmajorsound mark in the bottom right corner with "dmajorsound.com" to its left
 // (the same in every dmajorsound plugin; the mark stays 8 units clear of the window resize corner)
 function dmfoot(ly, ty) local(tw, th, mh, mw)
@@ -11590,15 +11632,6 @@ function dmfoot(ly, ty) local(tw, th, mh, mw)
   dmlogo(WT - 20 - mw, ty - mh / 2, mh);
   gfx_setfont(7); strcpy(#dmw, "dmajorsound.com"); gfx_measurestr(#dmw, tw, th);
   col(cMUTED, 1); txt(#dmw, WT - 20 - mw - mh / 2, ty, 2);
-);
-// the dmajorsound mark, hU units high, top left corner at (x, y) in page units
-function dmlogo(x, y, hU) local(th, px0, py0, i, j, c)
-(
-  th = floor(hU * gs + 0.5); th != lgTH ? lgsize(th);
-  px0 = floor(gox + x * gs + 0.5); py0 = floor(goy + y * gs + 0.5);
-  col(cMUTED, 1);
-  j = 0; loop(lgTH, i = 0; loop(lgTW, c = lgT[j * 96 + i]; c > 0.03 ? ( gfx_a = c; gfx_rect(px0 + i, py0 + j, 1, 1); ); i += 1; ); j += 1; );
-  gfx_a = 1;
 );
 // Top bar: name, Basic/Expert and view mode switches, Tabs/All/Fit, room presets menu button and snapshot slots
 function gfxp11()
@@ -11911,9 +11944,9 @@ gfx_setfont(6); txt(vlock ? "GUI locked" : "Lock GUI", lkx + 21, fsC, 0);
 click && lkhit ? ( vopt[15] = vlock ? 0 : 1; click = 0; );
 lkhit ? ( tipon = 1; tipforce = 0; tipstr = vlock ? "GUI locked: folding, column widths and view options stay (also on Reset) – click to unlock. The sound is not affected" : "Lock the GUI: folding, column widths and view options stay as they are (also on Reset) – saved with the project. The sound is not affected"; tipx = lkx + lkw / 2 - 120; tipy = fsY + fsH + 12; );
 // footer
-!szoom ? ( dmfoot(LH - 15.5, LH - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, LH - 8, 0); );
+!szoom ? ( dmfoot(LH - 15.5, LH - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, LH - 8, 0); updnote(LH - 8); );
 tabm && szoom ? ( !vgone ? gfxp4(); !zoomv && !vgone ? viewgrp(VX + VW - 78 - 180, VY + 12 - 17); tabrow();   // tabs: room view and tab row at the page scale, above the module
-  !zoomv ? ( dmfoot(HT - 15.5, HT - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, HT - 8, 0); ); );   // the footer also in Tabs
+  !zoomv ? ( dmfoot(HT - 15.5, HT - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, HT - 8, 0); updnote(HT - 8); ); );   // the footer also in Tabs
 szoom ? (                                                    // back to the zoom scale for the section
   tabm && tipon ? ( tipx = (tipx * gsN + goxN - goxZ) / gsZ; tipy = (tipy * gsN + goyN - goyZ) / gsZ; ) : ( tipon = 0; );   // tabs: a tip of the room view stays
   gs = gsZ; gox = goxZ; goy = goyZ; WT = (gfx_w - gox) / gs; HT = (gfx_h - goy) / gs;
@@ -12735,7 +12768,7 @@ gfxp15();
   // an open menu, panel or page lies on top: no repaint of the section through it - the next frame is a full one
   ovlon = rsave || rmenu || smenu || fmenu || bmenu || kmenu || wmenu || emenu || helpon || xpon || dmenu || tpvis || snedit || shpin || shcur || hlpon || snctx || mpmenu || ffpmenu || rpmenu || kovl;   // + the Motion, Free field and Reflector menus and the keys page
   iokey != lastiokey ? (
-    !zoomv && !szoom ? ( ovlon ? ( fullcnt = 0; ) : ( col(cBG, 1); R(IOX - 1, IOY - 1, IOW + 2, IOH + 2); drawio(); rzon && rzok(basic ? 22 : 7) ? rcdraw(basic ? 44 : 7); ); );   // (its corner grip lies inside: drawn again)
+    !zoomv && !szoom ? ( ovlon ? ( !(hlpon || kovl) ? ( fullcnt = 0; ); ) : ( col(cBG, 1); R(IOX - 1, IOY - 1, IOW + 2, IOH + 2); drawio(); rzon && rzok(basic ? 22 : 7) ? rcdraw(basic ? 44 : 7); ); );   // (its corner grip lies inside: drawn again)
 // the mini correlation meter in the strip moves too - also in Tabs, where another module is open (szoom)
     mcOn && !ovlon && (tabm || (!zoomv && !szoom)) ? ( mgsS = gs; mgxS = gox; mgyS = goy; gs = mcGS; gox = mcGX; goy = mcGY; setfonts(); col(tabm ? cBG : cSURF, 1); R(mcX - 2, mcCY - 8, mcW + 4, 16); mcorrdraw(mcX, mcCY); gs = mgsS; gox = mgxS; goy = mgyS; setfonts(); );
     lastiokey = iokey; );
@@ -12788,8 +12821,8 @@ mouse_wheel = 0;
 !(mouse_cap & 3) && !vedit && !snedit && !rsave && time_precise() - ulast > 0.4 ? ucommit();
 udone = 0;
 (hlpon || kovl) && tabm && szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx = (mouse_x - gox) / gs; my = (mouse_y - goy) / gs; );   // pages at the page scale
-hlpon ? ( tipon = 0; hlpdraw(); );
-kovl ? ( tipon = 0; kovldraw(); );
+hlpon && dofull ? ( tipon = 0; hlpdraw(); );   // (a page that stands still is kept in the frame)
+kovl && dofull ? ( tipon = 0; kovldraw(); );
 kovlw = kovl; hlpw = hlpon; snctxw = snctx;   // (the frame after closing a page or menu is a full one too)
 // ---- notify REAPER about this frame's gesture changes (one call per frame keeps the touch alive) ----
 // reflectors changed in the GUI (knobs, handles, setups, undo, snapshots, A/B) -> their sliders + automation (touch while the mouse is held)

@@ -14,9 +14,9 @@ on:
         default: ""
 
 env:
-  VERSION: "1.0.2"            # shown in the installers
-  FILEVER: "1.0.2"            # used in the file names
-  PKGVER: "1.0.2"             # numeric version for the macOS package receipts
+  VERSION: "1.0.3"            # shown in the installers
+  FILEVER: "1.0.3"            # used in the file names
+  PKGVER: "1.0.3"             # numeric version for the macOS package receipts
   CLAP_JUCE_COMMIT: 3837f4a6ed2ab0ba46aba69ae5b7041c7c64ce74   # clap-juce-extensions (CLAP format)
   JUCE_COMMIT: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port is tested with
 
@@ -30,6 +30,14 @@ jobs:
         run: |
           python3 tools/transpile.py jsfx/roomservice.jsfx gen
           git diff --exit-code gen
+      - name: The JSFX loads in REAPER (functions defined above their first call)
+        run: python3 tools/check_order.py jsfx/roomservice.jsfx
+      - name: A preset keeps the view (view options and sound settings stay apart)
+        run: python3 tools/check_vopt.py jsfx/roomservice.jsfx
+      - name: Every character is in the built-in font
+        run: |
+          python3 -m pip install --quiet fonttools
+          python3 tools/check_fonts.py jsfx/roomservice.jsfx
 
   macos:
     name: macOS (Apple Silicon + Intel)

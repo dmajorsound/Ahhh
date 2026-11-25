@@ -16,6 +16,9 @@ public:
     void beginFrame(int w, int h);
     void endFrame();
     const juce::Image& screen() const { return screenImg; }
+    // which parts of the screen changed since the last call (image pixels). The editor repaints only those:
+    // a frame in which nothing moved costs no screen output at all, a moving meter only its own area.
+    void takeDirty(juce::RectangleList<int>& out);
 
     // keyboard / window state (filled by the editor)
     std::deque<int> keyQueue;
@@ -43,13 +46,19 @@ private:
     juce::Graphics& G();          // graphics for the current gfx_dest
     juce::Image* destImage();
     juce::Colour colour() const;
-    struct FontSlot { juce::Font font { juce::FontOptions() }; std::string key; bool set = false; };
+    // Text never uses a system font: the plug-in carries its own (Arimo, the metric twin of Arial, SIL OFL), so
+    // every machine draws the same glyphs with the same widths - whatever fonts are installed or missing there.
+    // The one character Arimo lacks (U+2713, the check mark) is drawn as a path.
+    static juce::Typeface::Ptr typeface(bool bold);
+    struct FontSlot { juce::Font font { juce::FontOptions() }; std::string key; bool bold = false; bool set = false; };
     // text is the expensive part in JUCE: fonts, string widths and laid-out glyphs are cached
     std::unordered_map<std::string, juce::Font> fontCache;
     std::unordered_map<std::string, float> widthCache;
     std::unordered_map<std::string, juce::Image> textCache;   // rendered strings (font + colour + text): a blit per frame
                                                               // instead of rasterizing glyphs (CoreText on the Mac) every time
     float textWidth(const std::string& s);
+    float plainWidth(const juce::Font& f, const std::string& s) const;
+    void drawRuns(juce::Graphics& tg, const juce::Font& f, bool bold, const std::string& s, float th);
     FontSlot fonts[17];
     int curFont = 0;
     bool inClip = false;   // a clip region is active (direct pixel writes would ignore it)
@@ -57,6 +66,7 @@ private:
 
     Runtime& rt;
     juce::Image screenImg;
+    juce::Image shownImg;         // what the editor has been told about (takeDirty)
     std::map<int, juce::Image> images;
     int gDest = -2;               // which image the cached Graphics draws into
     std::unique_ptr<juce::Graphics> g;

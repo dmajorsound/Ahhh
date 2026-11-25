@@ -2,7 +2,12 @@
 
 namespace rs {
 
-Engine::Engine() : gen(std::make_unique<Gen>()) {
+Engine::Engine() { reset(); }
+
+// a fresh script instance (as REAPER creates one when it loads a project): sliders at their defaults, @init pending
+void Engine::reset() {
+    gen = std::make_unique<Gen>();
+    mustInit = mustSlider = gfxMustInit = true;
     gen->host = this;
     for (int i = 0; i < 1024; i++) gen->setString(i, "");   // pre-create user strings: no map inserts at run time
     gen->initStrings();
@@ -62,17 +67,30 @@ void Engine::process(const double* const* in, double* const* out, int nIn, int n
 
 std::vector<float> Engine::saveState() {
     Gen& g = *gen;
+    ensureInit();
     g.serBuf.clear(); g.serPos = 0; g.serMode = 1;
     g.S_serialize();
     g.serMode = -1;
     return g.serBuf;
 }
 
-void Engine::loadState(const std::vector<float>& data) {
+// The script keeps its view options and some sound settings in one block, vopt[0 .. 69] (written by @serialize).
+// Sound: 18 (solo, cleared on load), 49 (ear model), 52 .. 66 (reflectors), 68 (input guard), 69. All other entries
+// are read by @gfx only: Basic / Expert / Learn, tabs, folded modules, heights, column width, zoom, ...
+// tools/check_vopt.py checks this split against the JSFX on every build.
+static bool isViewOption(int i) { return (i >= 1 && i <= 51 && i != 18 && i != 49) || i == 67; }
+
+void Engine::loadState(const std::vector<float>& data, bool keepView) {
     Gen& g = *gen;
+    ensureInit();
+    const int kVoptBase = g.g_vopt > 0 ? (int)g.g_vopt : 2048, kVoptCount = 70;
+    double view[kVoptCount];
+    if (keepView && g.mem.ok()) for (int i = 0; i < kVoptCount; i++) view[i] = g.mem[(size_t)(kVoptBase + i)];
     g.serBuf = data; g.serPos = 0; g.serMode = 0;
     g.S_serialize();
     g.serMode = -1; g.serBuf.clear();
+    if (keepView && g.mem.ok())
+        for (int i = 0; i < kVoptCount; i++) if (isViewOption(i)) g.mem[(size_t)(kVoptBase + i)] = view[i];
     mustSlider = true;
 }
 

@@ -19,14 +19,22 @@ public:
     void setBlockSize(int bs);
     // slider by JSFX number (1-based), from the host / GUI side of the plugin
     void setSlider(int n, double v);
+    void reset();
     double getSlider(int n) const { return gen->sl[n]; }
 
     void process(const double* const* in, double* const* out, int nIn, int nOut, int frames, const TimeInfo& ti);
     template <class Real> void processT(const Real* const* in, Real* const* out, int nIn, int nOut, int frames, const TimeInfo& ti);
 
+    // @init must have run before @serialize or @gfx see the script (REAPER always runs it first). A host may ask for
+    // the state or open the editor before the first audio block; these make sure of it. Call them with the engine lock.
+    bool needsInit() const { return mustInit; }
+    void ensureInit() { if (mustInit) init(); }
+
     // @serialize
     std::vector<float> saveState();
-    void loadState(const std::vector<float>& data);
+    // keepView: a preset is loaded into a running instance - the view (Basic / Expert, tabs, folded modules, sizes)
+    // stays as it is; everything that sounds comes from the preset. A project load restores the view too.
+    void loadState(const std::vector<float>& data, bool keepView = false);
 
     // @gfx (message thread)
     void runGfx(GfxBackend* b, int w, int h);

@@ -9,7 +9,7 @@ public:
     ~RoomServiceEditor() override;
 
     void paint(juce::Graphics&) override;
-    void resized() override {}
+    void resized() override;
 
     void mouseMove(const juce::MouseEvent& e) override { mouse(e); }
     void mouseDrag(const juce::MouseEvent& e) override { mouse(e); }
@@ -29,7 +29,12 @@ private:
 
     RoomServiceProcessor& proc;
     rs::JuceGfx gfx;
-    float lastPaintScale = 1.0f;
+    // pixel scale of the screen the window is on (1, 1.25, 1.5, 2 ...), taken from the paint context. A new value
+    // counts only when two paints in a row report it, so the frame size cannot flip between two values.
+    int updState = 0; std::string updUrl;
+    double nextFrameMs = 0, lastPaintMs = 0;
+    float lastPaintScale = 1.0f, candidateScale = 1.0f;
+    juce::RectangleList<int> dirty;
     int liveCap = 0;          // modifier + button state right now
     int latchedButtons = 0;
     int lastCursor = -1;

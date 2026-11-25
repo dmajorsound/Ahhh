@@ -16,6 +16,8 @@ RoomServiceProcessor::RoomServiceProcessor()
     lastPushed.reset(new std::atomic<float>[257]);
     for (int i = 0; i < 257; i++) lastPushed[i] = 0.0f;
     touching.assign(257, 0);
+    pending.reset(new std::atomic<int>[257]);
+    for (int i = 0; i < 257; i++) pending[i] = 0;
     for (int i = 0; i < rs::kNumSliders; i++) {
         const rs::SliderInfo& s = rs::kSliders[i];
         juce::NormalisableRange<float> range((float)s.lo, (float)s.hi, (float)juce::jmax(0.0, s.step));
@@ -32,17 +34,45 @@ RoomServiceProcessor::RoomServiceProcessor()
     }
     engine.onAutomate = [this](int idx, int mode) { scriptAutomate(idx, mode); };
     engine.onChanged = [this](int idx) { scriptChanged(idx); };
+    startTimerHz(30);
 }
+
+RoomServiceProcessor::~RoomServiceProcessor() { stopTimer(); }
 
 bool RoomServiceProcessor::isBusesLayoutSupported(const BusesLayout& l) const {
     return l.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
         && (l.getMainInputChannelSet() == juce::AudioChannelSet::stereo() || l.getMainInputChannelSet() == juce::AudioChannelSet::mono());
 }
 
+// a state that arrived before the host told us the sample rate: read now, after @init at the real rate
+// (@init first, then @serialize - the order REAPER uses)
+void RoomServiceProcessor::applyHeldState() {
+    if (heldSer.empty()) return;
+    engine.ensureInit();
+    engine.loadState(heldSer, false);
+    heldSer.clear(); heldAny = false;
+}
+
+void RoomServiceProcessor::initForEditor() {
+    const juce::ScopedLock l(engineLock);
+    engine.ensureInit();
+    applyHeldState();
+}
+
 void RoomServiceProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    const juce::ScopedLock sl(engineLock);
-    engine.setSampleRate(sampleRate);
-    engine.setBlockSize(samplesPerBlock);
+    int lat = 0;
+    {
+        const juce::ScopedLock sl(engineLock);
+        engine.setSampleRate(sampleRate);
+        engine.setBlockSize(samplesPerBlock);
+        // @init runs here, not inside the first audio block: the host gets the latency before it starts processing
+        // (no restart request out of the first block), and the first block carries no start-up work
+        engine.ensureInit();
+        prepared = true;
+        applyHeldState();
+        lat = engine.latency();
+    }
+    if (lat != lastLatency) { lastLatency = lat; setLatencySamples(lat); }
 }
 
 // host / automation -> script: only real host changes are pushed (a value the script wrote itself is not sent back,
@@ -64,9 +94,17 @@ void RoomServiceProcessor::syncParamsToEngine() {
     }
 }
 
-// script (slider_automate) -> host
+// script (slider_automate) -> host. Hosts expect parameter edits on the message thread (Steinberg hosts in particular),
+// and the script also automates from the audio thread (Motion moves the source every block): those are noted here and
+// delivered by the timer.
 void RoomServiceProcessor::scriptAutomate(int idx, int mode) {
     if (idx < 1 || idx > 256 || !paramBySlider[(size_t)idx]) return;
+    if (juce::MessageManager::existsAndIsCurrentThread()) { notifyAutomate(idx, mode); return; }
+    pending[idx].fetch_or(mode == 0 ? 3 : (mode == 1 ? 5 : 1));
+    pendingAny = true;
+}
+
+void RoomServiceProcessor::notifyAutomate(int idx, int mode) {
     auto* p = paramBySlider[(size_t)idx];
     const float v = (float)engine.getSlider(idx);
     const double t0 = juce::Time::getMillisecondCounterHiRes();
@@ -80,6 +118,13 @@ void RoomServiceProcessor::scriptAutomate(int idx, int mode) {
 
 // script (sliderchange) -> host display
 void RoomServiceProcessor::scriptChanged(int idx) {
+    if (juce::MessageManager::existsAndIsCurrentThread()) { notifyChanged(idx); return; }
+    if (idx < 0) { for (int i = 0; i < rs::kNumSliders; i++) pending[rs::kSliders[i].idx].fetch_or(8); }
+    else if (idx <= 256) pending[idx].fetch_or(8);
+    pendingAny = true;
+}
+
+void RoomServiceProcessor::notifyChanged(int idx) {
     for (int i = 0; i < rs::kNumSliders; i++) {
         const int n = rs::kSliders[i].idx;
         if (idx >= 0 && n != idx) continue;
@@ -92,11 +137,25 @@ void RoomServiceProcessor::scriptChanged(int idx) {
     }
 }
 
+void RoomServiceProcessor::timerCallback() {
+    if (!pendingAny.exchange(false)) return;
+    for (int i = 0; i < rs::kNumSliders; i++) {
+        const int n = rs::kSliders[i].idx;
+        const int f = pending[n].exchange(0);
+        if (f == 0 || !paramBySlider[(size_t)n]) continue;
+        if (f & 7) {
+            if ((f & 2) && !touching[(size_t)n]) notifyAutomate(n, 0); else notifyAutomate(n, -1);
+            if ((f & 4) && touching[(size_t)n]) notifyAutomate(n, 1);
+        } else notifyChanged(n);
+    }
+}
+
 template <class Real>
 void RoomServiceProcessor::process(juce::AudioBuffer<Real>& buffer) {
     // no ScopedNoDenormals: the script handles denormals itself (assignments flush them, as in EEL2), and FTZ/DAZ
     // would change the arithmetic against the JSFX
     const juce::ScopedLock sl(engineLock);
+    hasRun = true;
     syncParamsToEngine();
     rs::TimeInfo ti;
     if (auto* ph = getPlayHead()) {
@@ -130,7 +189,7 @@ void RoomServiceProcessor::getStateInformation(juce::MemoryBlock& dest) {
     {
         const juce::ScopedLock l(engineLock);
         for (int i = 0; i < rs::kNumSliders; i++) sl[(size_t)i] = engine.getSlider(rs::kSliders[i].idx);
-        ser = engine.saveState();
+        if (!heldSer.empty()) ser = heldSer; else ser = engine.saveState();
     }
     os.writeInt(0x31565352);   // "RSV1"
     os.writeInt(rs::kNumSliders);
@@ -150,8 +209,17 @@ void RoomServiceProcessor::setStateInformation(const void* data, int size) {
     for (int i = 0; i < nf && !is.isExhausted(); i++) ser.push_back(is.readFloat());
     {
         const juce::ScopedLock l(engineLock);
+        // project load into an instance that has not run yet: start from a fresh script, so @init sees the stored
+        // values (REAPER's order: values, @init, @serialize). A host that prepares the plug-in before it sends the
+        // state would otherwise leave an @init with the default values behind.
+        if (!hasRun.load()) engine.reset();
         for (auto& [n, v] : sl) engine.setSlider(n, v);
-        if (!ser.empty()) engine.loadState(ser);   // no @serialize data: nothing to read (running it would zero its variables)
+        // no @serialize data: nothing to read (running it would zero its variables)
+        const bool preset = hasRun.load() && juce::Time::getMillisecondCounterHiRes() - createdMs > 1500.0;
+        if (!ser.empty()) {
+            if (prepared) engine.loadState(ser, preset);
+            else { heldSer = ser; heldAny = true; }   // sample rate not known yet: read in prepareToPlay
+        }
     }
     for (auto& [n, v] : sl) {
         if (n < 1 || n > 256 || !paramBySlider[(size_t)n]) continue;
@@ -161,6 +229,6 @@ void RoomServiceProcessor::setStateInformation(const void* data, int size) {
     }
 }
 
-juce::AudioProcessorEditor* RoomServiceProcessor::createEditor() { return new RoomServiceEditor(*this); }
+juce::AudioProcessorEditor* RoomServiceProcessor::createEditor() { hasRun = true; return new RoomServiceEditor(*this); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new RoomServiceProcessor(); }

@@ -92,11 +92,26 @@ struct HostCallbacks {
     virtual void sliderChanged(int idx) = 0;                    // idx < 0: all
 };
 
+// The script's memory: 8M doubles (64 MB of address space). Taken as zero pages the system only backs with RAM when
+// they are first written, so an instance costs what the script really uses, not 64 MB, and opens without a 64 MB fill.
+struct Mem {
+    double* p = nullptr;
+    Mem();
+    ~Mem();
+    Mem(const Mem&) = delete;
+    Mem& operator=(const Mem&) = delete;
+    double& operator[](size_t i) { return p[i]; }
+    const double& operator[](size_t i) const { return p[i]; }
+    double* begin() { return p; }
+    bool ok() const { return p != nullptr; }
+};
+
 struct Runtime {
     Runtime();
     virtual ~Runtime() = default;
 
-    std::vector<double> mem;
+    Mem mem;
+    double memLimit = 0.0;      // MEMSIZE, or 0 when the memory could not be reserved (every access then hits memfail)
     double memfail = 0.0;
     double sl[257] = {};
     double spl[64] = {};
@@ -112,7 +127,7 @@ struct Runtime {
 
     inline double& M(double a) {
         const double x = a + 0.00001;
-        if (!(x > -1.0 && x < (double)MEMSIZE)) return memfail;
+        if (!(x > -1.0 && x < memLimit)) return memfail;
         return mem[(size_t)(int64_t)x];
     }
     inline double& SL(double n) {

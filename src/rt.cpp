@@ -1,5 +1,6 @@
 #include "rt.h"
 #include <chrono>
+#include <cstdlib>
 #include <cstdio>
 #include <algorithm>
 #include <cctype>
@@ -27,7 +28,11 @@ RS_NOINLINE double rt_atan2(double a, double b) { return ::atan2(a, b); }
 
 static bool g_fftInit = false;
 
-Runtime::Runtime() : mem((size_t)MEMSIZE, 0.0) {
+Mem::Mem() { p = (double*)std::calloc((size_t)MEMSIZE, sizeof(double)); }
+Mem::~Mem() { std::free(p); }
+
+Runtime::Runtime() {
+    memLimit = mem.ok() ? (double)MEMSIZE : 0.0;
     if (!g_fftInit) { WDL_fft_init(); g_fftInit = true; }
 }
 
@@ -35,7 +40,7 @@ Runtime::Runtime() : mem((size_t)MEMSIZE, 0.0) {
 double Runtime::memset(double dest, double v, double lenv) {
     int offs = (int)(dest + 0.0001), len = (int)(lenv + 0.0001);
     if (offs < 0) { len += offs; offs = 0; }
-    if (offs >= MEMSIZE) return dest;
+    if (!mem.ok() || offs >= MEMSIZE) return dest;
     if (offs + (int64_t)len > MEMSIZE) len = (int)(MEMSIZE - offs);
     if (len < 1) return dest;
     std::fill(mem.begin() + offs, mem.begin() + offs + len, v);
@@ -45,6 +50,7 @@ double Runtime::memcpy(double dest, double src, double lenv) {
     int d = (int)(dest + 0.0001), s = (int)(src + 0.0001), len = (int)(lenv + 0.0001);
     if (s < 0) { len += s; d -= s; s = 0; }
     if (d < 0) { len += d; s -= d; d = 0; }
+    if (!mem.ok()) return dest;
     if (s + (int64_t)len > MEMSIZE) len = (int)(MEMSIZE - s);
     if (d + (int64_t)len > MEMSIZE) len = (int)(MEMSIZE - d);
     if (s == d || len < 1) return dest;
@@ -63,7 +69,7 @@ static double doFFT(Runtime& r, double start, double lenv, int dir) {
     const int ilen = 1 << bitl;
     const int shift = (dir & 2) ? 0 : 1;
     if (offs < 0 || offs / 65536 != (offs + (ilen << shift) - 1) / 65536) return start;
-    if (offs + (ilen << shift) > MEMSIZE) return start;
+    if (!r.mem.ok() || offs + (ilen << shift) > MEMSIZE) return start;
     double* data = &r.mem[offs];
     if (dir == 4 || dir == 5) {
         std::vector<double> tmp(data, data + ilen * 2);

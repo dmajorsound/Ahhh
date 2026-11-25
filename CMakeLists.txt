@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 # Universal (Apple Silicon + Intel). For a faster Intel-only build: -DCMAKE_OSX_ARCHITECTURES=x86_64
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
-project(Roomservice VERSION 1.0.2 LANGUAGES C CXX)
+project(Roomservice VERSION 1.0.3 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,7 +24,7 @@ juce_add_plugin(Roomservice
   PLUGIN_CODE Rmsv
   FORMATS ${RS_FORMATS}
   PRODUCT_NAME "Roomservice"
-  VERSION 1.0.2
+  VERSION 1.0.3
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT FALSE
   NEEDS_MIDI_OUTPUT FALSE
@@ -34,9 +34,15 @@ juce_add_plugin(Roomservice
   AU_MAIN_TYPE kAudioUnitType_Effect
   COPY_PLUGIN_AFTER_BUILD FALSE)
 
+# The plug-in's own font (Arimo: the metric twin of Arial, SIL Open Font License, resources/fonts/OFL.txt) is built in,
+# so the text looks the same on every machine and never depends on installed fonts.
+juce_add_binary_data(RoomserviceData NAMESPACE RsData HEADER_NAME RsData.h
+  SOURCES resources/fonts/Arimo-Regular.ttf resources/fonts/Arimo-Bold.ttf)
+set_target_properties(RoomserviceData PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 file(GLOB RS_GEN ${CMAKE_CURRENT_SOURCE_DIR}/gen/*.cpp)
 target_sources(Roomservice PRIVATE
-  src/PluginProcessor.cpp src/PluginEditor.cpp src/JuceGfx.cpp src/rt.cpp src/engine.cpp
+  src/PluginProcessor.cpp src/PluginEditor.cpp src/JuceGfx.cpp src/UpdateCheck.cpp src/rt.cpp src/engine.cpp
   third_party/wdl/fft.c ${RS_GEN})
 target_include_directories(Roomservice PRIVATE src gen third_party/wdl)
 
@@ -58,6 +64,7 @@ else()
 endif()
 
 target_link_libraries(Roomservice PRIVATE
+  RoomserviceData
   juce::juce_audio_processors juce::juce_gui_basics
   PUBLIC juce::juce_recommended_config_flags)
 

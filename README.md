@@ -1,4 +1,4 @@
-# Roomservice 1.0.4 – nativer VST3/AU/CLAP-Port (JUCE)
+# Ahhh / former Roomservice 1.0.4 – nativer VST3/AU/CLAP-Port (JUCE)
 
 Nativer C++-Port von `Roomservice.jsfx` (Version 1.0.4, Stereo) als VST3 und CLAP (macOS zusätzlich AU).
 Audio und Oberfläche sind die der JSFX. Es läuft keine EEL2-Engine mit, der ganze Code ist kompiliertes C++.

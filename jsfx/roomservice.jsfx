@@ -1,7 +1,7 @@
-desc: Roomservice
+desc: Ahh
 //tags: reverb room acoustics image-source filter education
 //author: Bernd Dormayer
-//version: 1.0.4
+//version: 1.0.5
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -159,7 +159,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.0.4 - developed with AI assistance");
+strcpy(#verstr, "V 1.0.5 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -9735,7 +9735,7 @@ function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
 (
   cw = min(WT - 24, 780); two = cw >= 640; hpch = min(HT - 24, max(200, hlpH + 54));
   // (the only thing that changes on this page: the button at its end under the mouse)
-  pgopen(1, cw, hpch, max(hlpH, 100), "Roomservice – how it works", mx >= (WT - cw) / 2 + cw - 200 && mx < (WT - cw) / 2 + cw - 20 && my + pgSc >= pgBY + hlpYr && my + pgSc < pgBY + hlpYr + 20) ? (
+  pgopen(1, cw, hpch, max(hlpH, 100), "Ahh! – how it works", mx >= (WT - cw) / 2 + cw - 200 && mx < (WT - cw) / 2 + cw - 20 && my + pgSc >= pgBY + hlpYr && my + pgSc < pgBY + hlpYr + 20) ? (
   cx = pgCX; cy = pgBY - 44;
   w1 = two ? cw / 2 - 34 : cw - 40; x1 = cx + 20; x2 = two ? cx + cw / 2 + 14 : x1;
   y = cy + 54;
@@ -10621,7 +10621,7 @@ tipbox(x0 + w0 - 36, syD + 5, 26, 14, "Delay on / off – it works before the ro
 tpbx = x0 + w0 - (tabm ? 218 : 198);
 hmix(60, x0 + w0 - (tabm ? 132 : 112), syD + 12, 90, cDLTT, "Amount of the delay (module mix): the share of the echoes – 100 % = as set, 0 % = no echoes (double-click = type a value, Alt+click = 100 %, automatable)");
 chip(tpbx, syD + 5, 76, 14, "Tempo tools", tpon && tpctx != 14, cDLTT) ? ( tpon = !tpon; tpctx = 10; tpmv = 0; );   // opens at its place again
-tipbox(tpbx, syD + 5, 76, 14, "Tempo tools: tap the tempo or let Roomservice listen to the song – then send a note value to the delay");
+tipbox(tpbx, syD + 5, 76, 14, "Tempo tools: tap the tempo or let Ahh listen to the song – then send a note value to the delay");
 d3on = vopt[20] < 0.5;
 chip(tpbx - 32, syD + 5, 28, 14, "3D", d3on, cTEXT) ? ( vopt[20] = d3on ? 1 : 0; );
 tipbox(tpbx - 32, syD + 5, 28, 14, d3on ? "Delay times at the source in the 3D view: shown (while the delay is on) – click to hide" : "Delay times at the source in the 3D view: hidden – click to show");
@@ -11187,7 +11187,7 @@ function gfxpM() local(x0, w0, y0, mtq, pat, mvs, ctr, k, cx, cy, tw1, bx, bw, n
       anaok = anaDone == 1 && anaRes == 1 && anaRefId == anaSeen;
       anaReq = anaCmd != anaSeen; anaRun = anaOn || anaReq;
       chip(tmbLx, tmbTy, tmbLw, 15, anaRun ? "Stop listening" : "Listen to the song", anaRun, cMOTT) ? ( anaRun ? ( anaStp += 1; ) : ( anaCmd += 1; anaSel = 0; ); click = 0; );
-      tipbox(tmbLx, tmbTy, tmbLw, 15, "Click, then play the selected clip or the time selection – Roomservice listens for 10 s and finds the tempo");
+      tipbox(tmbLx, tmbTy, tmbLw, 15, "Click, then play the selected clip or the time selection – Ahh listens for 10 s and finds the tempo");
       col(cHAIR, 1); RR(tmbLx, tmbTy + 19, tmbLw, 3, 1.5); anaN > 0 ? ( col(cMOTT, 1); RR(tmbLx, tmbTy + 19, max(3, tmbLw * anaN / ANAMAX), 3, 1.5); );
       anaRun ? ( (play_state & 1) && anaOn ? sprintf(#w1, "listening %.1f s of 10 s", anaN / 100) : strcpy(#w1, "waiting – start playback") )
              : ( anaok ? ( selb = anaSel == 1 ? anaBf / 2 : (anaSel == 2 ? anaBf * 2 : anaBf); sprintf(#w1, "found %.1f BPM (%s)", selb, anaConf >= 4.5 ? "sure" : (anaConf >= 3 ? "fairly sure" : "unsure")); )
@@ -11621,7 +11621,7 @@ function updnote(ty) local(x, w, h)
     sprintf(#updl, "Update %s", 1000); w = tws(#updl) + 14;
     h = inbox(x, ty - 6, w, 12);
     col(cACT, h ? 0.85 : 1); RR(x, ty - 6, w, 12, 6); col(cACTX, 1); gfx_setfont(7); txt(#updl, x + w / 2, ty, 1);
-    h ? ( sprintf(#updt, "Roomservice %s is out. Click to open the download page.", 1000); tipbox(x, ty - 6, w, 12, #updt); tipforce = 1; );
+    h ? ( sprintf(#updt, "Ahh %s is out. Click to open the download page.", 1000); tipbox(x, ty - 6, w, 12, #updt); tipforce = 1; );
     h && click ? ( updgo = 1; click = 0; );
   );
 );
@@ -11646,7 +11646,7 @@ szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx =
 // THE NAME AND THE MARK keep one size in every view (Basic, Expert, Tabs, All, Learn): drawn at gT (window only), not at the page scale;
 // vertically centered on the switch row, the view switches start after them (TBOFS)
 TBOFS = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + TBOFS;   // (again with the scale of this frame's top bar)
-gsT0 = gs; gs = gT; col(cTEXT, 1); gfx_setfont(5, "Arial", 14.5 * gT, 'b'); txt("Roomservice", 11, 17 * gsT0 / gT, 0); gfx_measurestr("Roomservice", ttw, tth);
+gsT0 = gs; gs = gT; col(cTEXT, 1); gfx_setfont(5, "Arial", 14.5 * gT, 'b'); txt("Ahh!", 11, 17 * gsT0 / gT, 0); gfx_measurestr("Ahh!", ttw, tth);
 gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
 // Basic | Expert | Learn: one segmented switch, the active segment filled
 // VIEW MODE: a dark switch right after the name (the plugin's own view - not a preset, not a snapshot)
@@ -11752,7 +11752,7 @@ hlpbx = 516 + TBOFS;
   col(hlpon ? cSRC : (hbqh ? cHAIR : cLINE), 1); RR(hlpbx, 9, 19, 16, 8);
   col(hlpon ? 0xFFFFFF : (hbqh ? cTEXT : cMUTED), 1); gfx_setfont(6); txt("?", hlpbx + 9.5, 17, 1);
   click && hbqh ? ( hlpon = !hlpon; click = 0; );
-  tipbox(hlpbx, 9, 19, 16, "Help: how Roomservice works and the most used keys");
+  tipbox(hlpbx, 9, 19, 16, "Help: how Ahh works and the most used keys");
 );
 // RESET: a button next to View (Save belongs to the snapshots)
 vgx = WT - 204; rsx = tabm ? 522 + TBOFS : vgx - 42;
@@ -11897,7 +11897,7 @@ upx = ux + 46; uhit = inbox(upx, uy, 19, 16);
 col(kovl || ((tabm || basic) && hlpon) ? cSRC : (uhit ? cHAIR : cLINE), 1); RR(upx, uy, 19, 16, 8);
 col(kovl || ((tabm || basic) && hlpon) ? 0xFFFFFF : (uhit ? cTEXT : cMUTED), 1); gfx_setfont(6); txt("?", upx + 9.5, uy + 8, 1);
 click && uhit ? ( tabm || basic ? ( hlpon = !hlpon; ) : ( kovl = !kovl; ); click = 0; );
-tipbox(upx, uy, 19, 16, tabm || basic ? "Help: how Roomservice works – with every key and mouse shortcut (key ?)" : "Keys and mouse: every shortcut on one page (key ?)");
+tipbox(upx, uy, 19, 16, tabm || basic ? "Help: how Ahh works – with every key and mouse shortcut (key ?)" : "Keys and mouse: every shortcut on one page (key ?)");
 // the Tabs | All | Fit switch moved under the view modes (modeview) - no Tabs | All switch and no Fit all chip in the strip any more
 basic ? (   // BASIC Fit all - the whole page in the window (no scrolling, smaller on a low window)
   fitx = WT - stRm - lkw - 8 - 44 - (stpw > 0 ? stpw + 10 : 0); fiton = vopt[36] >= 0.5;
@@ -12632,7 +12632,7 @@ tpvis ? (
   anaok = anaDone == 1 && anaRes == 1 && anaRefId == anaSeen;
   anaReq = anaCmd != anaSeen; anaRun = anaOn || anaReq;
   chip(arx, tpy0 + 26, arw, 16, anaRun ? "Stop listening" : "Listen to the song", anaRun, cDLTT) ? ( anaRun ? ( anaStp += 1; ) : ( anaCmd += 1; anaSel = 0; ); );
-  tipbox(arx, tpy0 + 26, arw, 16, "Click, then play the selected clip or the time selection – Roomservice listens for 10 s (a JSFX cannot read files directly)");
+  tipbox(arx, tpy0 + 26, arw, 16, "Click, then play the selected clip or the time selection – Ahh listens for 10 s (a JSFX cannot read files directly)");
   col(cHAIR, 1); RR(arx, tpy0 + 46, arw, 3, 1.5); anaN > 0 ? ( col(cDLTT, 1); RR(arx, tpy0 + 46, max(3, arw * anaN / ANAMAX), 3, 1.5); );
   col(cBG, 1); RR(arx, tpy0 + 52, arw, 13, 3);
   anaN > 4 ? (

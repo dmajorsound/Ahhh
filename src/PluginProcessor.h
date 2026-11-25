@@ -35,7 +35,7 @@ public:
 
     rs::Engine engine;
 
-    // diagnostics (roomservice-debug.txt on the desktop): time spent in host notifications and state calls
+    // diagnostics (ahh-debug.txt on the desktop): time spent in host notifications and state calls
     struct Diag { std::atomic<int> notifyCount { 0 }, stateCount { 0 }; std::atomic<double> notifyMs { 0 }, notifyMaxMs { 0 }, stateMs { 0 }; };
     Diag diag;
     juce::CriticalSection engineLock;            // @serialize vs audio (the @gfx thread runs unlocked, as in REAPER)

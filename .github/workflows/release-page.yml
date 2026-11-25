@@ -25,4 +25,4 @@ jobs:
           FILEVER=$(grep -m1 'FILEVER:' .github/workflows/build.yml | sed 's/.*FILEVER: *"\([^"]*\)".*/\1/')
           sed "s/FILEVER/$FILEVER/g; s/VERSION/$VERSION/g" installer/release_notes.md > notes.txt
           cat notes.txt
-          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --title "Roomservice $VERSION" --notes-file notes.txt --prerelease=false --latest
+          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --title "Ahh! $VERSION" --notes-file notes.txt --prerelease=false --latest

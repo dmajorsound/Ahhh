@@ -38,7 +38,7 @@ private:
     int liveCap = 0;          // modifier + button state right now
     int latchedButtons = 0;
     int lastCursor = -1;
-    // diagnostics: per-second timing lines appended to ~/Desktop/roomservice-debug.txt if that file exists
+    // diagnostics: per-second timing lines appended to ~/Desktop/ahh-debug.txt if that file exists
     juce::File diagFile;
     double diagT0 = 0, lastTick = 0;
     int dFrames = 0, dPaints = 0, dEvents = 0;

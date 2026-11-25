@@ -4,8 +4,9 @@
 
 namespace rs {
 
-static const char* kApi = "https://api.github.com/repos/dmajorsound/Roomservice/releases?per_page=1";   // newest, betas included
-static const char* kPages = "https://github.com/dmajorsound/Roomservice/";
+// (the repository is called Ahhh; if it is renamed, GitHub forwards the request)
+static const char* kApi = "https://api.github.com/repos/dmajorsound/Ahhh/releases?per_page=1";   // newest, betas included
+static const char* kPages = "https://github.com/dmajorsound/";   // (any repository of ours: the page survives a rename)
 
 static std::atomic<int> g_state { 0 };
 static std::atomic<bool> g_started { false };
@@ -45,13 +46,13 @@ static bool ownPage(const std::string& u) {
     return true;
 }
 
-UpdateCheck::UpdateCheck() : juce::Thread("Roomservice update check") {
+UpdateCheck::UpdateCheck() : juce::Thread("Ahh update check") {
     if (g_started.exchange(true)) return;   // once per host session
     mine = true;
 #if JUCE_LINUX
     // test hook (Linux builds are not shipped and have no HTTPS here): pretend that this release is out
-    if (const char* t = std::getenv("ROOMSERVICE_TEST_UPDATE")) {
-        if (plainTag(t)) { { std::lock_guard<std::mutex> l(g_mu); g_tag = t; g_url = std::string(kPages) + "releases/tag/" + t; } g_state = 1; return; }
+    if (const char* t = std::getenv("AHH_TEST_UPDATE")) {
+        if (plainTag(t)) { { std::lock_guard<std::mutex> l(g_mu); g_tag = t; g_url = std::string(kPages) + "Ahhh/releases/tag/" + t; } g_state = 1; return; }
     }
 #endif
     startThread(juce::Thread::Priority::low);
@@ -69,7 +70,7 @@ void UpdateCheck::run() {
     juce::String js;
     {
         juce::WebInputStream in(juce::URL(kApi), false);
-        in.withExtraHeaders("Accept: application/vnd.github+json\r\nUser-Agent: Roomservice/" JucePlugin_VersionString "\r\n")
+        in.withExtraHeaders("Accept: application/vnd.github+json\r\nUser-Agent: Ahh/" JucePlugin_VersionString "\r\n")
           .withConnectionTimeout(4000)
           .withNumRedirectsToFollow(3);
         { const juce::ScopedLock l(streamLock); stream = &in; }

@@ -295,7 +295,7 @@ void Gen::initStrings() {
   setLiteral(10290, "  \302\267  delay echoes (magenta) closer than real");
   setLiteral(10291, "FREE FIELD");
   setLiteral(10292, "ROOM OFF \342\200\223 stereo panner: drag the source left / right");
-  setLiteral(10293, "Roomservice");
+  setLiteral(10293, "Ahh!");
   setLiteral(10294, "Basic");
   setLiteral(10295, "Expert");
   setLiteral(10296, "Learn");
@@ -332,7 +332,7 @@ void Gen::initStrings() {
   setLiteral(10327, "Now click a snapshot 1\342\200\2238 to store the current settings");
   setLiteral(10328, "Save: click, then choose snapshot 1\342\200\2238 to store the current settings there");
   setLiteral(10329, "?");
-  setLiteral(10330, "Help: how Roomservice works and the most used keys");
+  setLiteral(10330, "Help: how Ahh works and the most used keys");
   setLiteral(10331, "Reset");
   setLiteral(10332, "Reset: only the room stays on \342\200\223 living room, listener in the middle, source 2 m in front of it; delay, barrier, filters, source model and EQ off. The limiter stays on as a protection. The layout is locked and stays (snapshots are kept)");
   setLiteral(10333, "Reset: only the room stays on \342\200\223 living room, listener in the middle, source 2 m in front of it; delay, barrier, filters, source model and EQ off, all sections open (the delay folded). The limiter stays on as a protection (snapshots are kept)");
@@ -355,7 +355,7 @@ void Gen::initStrings() {
   setLiteral(10350, "s");
   setLiteral(10351, "Undo (Ctrl/Cmd+Z) \342\200\223 %d step%s back");
   setLiteral(10352, "Redo (Ctrl/Cmd+Shift+Z or Ctrl+Y) \342\200\223 %d step%s forward");
-  setLiteral(10353, "Help: how Roomservice works \342\200\223 with every key and mouse shortcut (key ?)");
+  setLiteral(10353, "Help: how Ahh works \342\200\223 with every key and mouse shortcut (key ?)");
   setLiteral(10354, "Keys and mouse: every shortcut on one page (key ?)");
   setLiteral(10355, "Fit all");
   setLiteral(10356, "Fit all: the whole page in the window \342\200\223 smaller on a low window. Click: the standard size (the page scrolls with the mouse wheel when the window is low)");
@@ -537,7 +537,7 @@ void Gen::initStrings() {
   setLiteral(10532, "best with playback stopped");
   setLiteral(10533, "Stop listening");
   setLiteral(10534, "Listen to the song");
-  setLiteral(10535, "Click, then play the selected clip or the time selection \342\200\223 Roomservice listens for 10 s (a JSFX cannot read files directly)");
+  setLiteral(10535, "Click, then play the selected clip or the time selection \342\200\223 Ahh listens for 10 s (a JSFX cannot read files directly)");
   setLiteral(10536, "listening %.1f s of 10 s");
   setLiteral(10537, "waiting \342\200\223 start playback");
   setLiteral(10538, "done \302\267 %d onsets");
@@ -803,7 +803,7 @@ void Gen::initStrings() {
   setLiteral(10798, "Delay");
   setLiteral(10799, "Delay on / off \342\200\223 it works before the room, so every echo is reverberated too. Off: the room gets exactly the source");
   setLiteral(10800, "Amount of the delay (module mix): the share of the echoes \342\200\223 100 % = as set, 0 % = no echoes (double-click = type a value, Alt+click = 100 %, automatable)");
-  setLiteral(10801, "Tempo tools: tap the tempo or let Roomservice listen to the song \342\200\223 then send a note value to the delay");
+  setLiteral(10801, "Tempo tools: tap the tempo or let Ahh listen to the song \342\200\223 then send a note value to the delay");
   setLiteral(10802, "Delay times at the source in the 3D view: shown (while the delay is on) \342\200\223 click to hide");
   setLiteral(10803, "Delay times at the source in the 3D view: hidden \342\200\223 click to show");
   setLiteral(10804, "L ");
@@ -1047,7 +1047,7 @@ void Gen::initStrings() {
   setLiteral(11042, "%.0f BPM \302\267 %d taps");
   setLiteral(11043, "click in time");
   setLiteral(11044, "Tap in time (8 taps or more = more exact), then Use tap \342\200\223 best with playback stopped");
-  setLiteral(11045, "Click, then play the selected clip or the time selection \342\200\223 Roomservice listens for 10 s and finds the tempo");
+  setLiteral(11045, "Click, then play the selected clip or the time selection \342\200\223 Ahh listens for 10 s and finds the tempo");
   setLiteral(11046, "found %.1f BPM (%s)");
   setLiteral(11047, "\302\275 %.0f");
   setLiteral(11048, "2\303\227 %.0f");
@@ -1137,7 +1137,7 @@ void Gen::initStrings() {
   setLiteral(11132, "Ground");
   setLiteral(11133, "Hard");
   setLiteral(11134, "Ground reflection outdoors: the sound also arrives via the ground \342\200\223 Hard (asphalt, concrete) reflects almost everything, Grass and Snow absorb much. With a moving source it gives the typical sweeping color of a pass-by");
-  setLiteral(11135, "Roomservice \342\200\223 how it works");
+  setLiteral(11135, "Ahh! \342\200\223 how it works");
   setLiteral(11136, "Signal flow");
   setLiteral(11137, "In \342\206\222 Filter \342\206\222 Source \342\206\222 Delay \342\206\222 Room \342\206\222 Barrier \342\206\222 Out. The strip under the top bar shows the chain: click a module = on / off, Shift+click = solo, hear it alone.");
   setLiteral(11138, "Three views");
@@ -1829,7 +1829,7 @@ void Gen::initStrings() {
   setLiteral(11824, "1/16 dotted");
   setLiteral(11825, "1.50 m");
   setLiteral(11826, "Update %s");
-  setLiteral(11827, "Roomservice %s is out. Click to open the download page.");
+  setLiteral(11827, "Ahh %s is out. Click to open the download page.");
   setLiteral(11828, "Other");
   setLiteral(11829, "View");
   setLiteral(11830, "View: switch tips and waves on or off at once");
@@ -1878,7 +1878,7 @@ void Gen::initStrings() {
   setLiteral(11873, "Input gain");
   setLiteral(11874, "Snapshot morph");
   setLiteral(11875, "Module mix");
-  setLiteral(11876, "V 1.0.4 - developed with AI assistance");
+  setLiteral(11876, "V 1.0.5 - developed with AI assistance");
   setLiteral(11877, "00000000000000000000000000000000000000000000000000000000000000000000016adddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddbb98653100000000000000000000000000000000000000000");
   setLiteral(11878, "000000000000000000000000000000000000000000000000000000000000000000002dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb863000000000000000000000000000000000000");
   setLiteral(11879, "00000000000000000000000000000000000000000000000000000000000000000000cfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb7300000000000000000000000000000000");

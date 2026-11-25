@@ -1,5 +1,5 @@
 #!/bin/bash
-# Roomservice: build on the Mac and install into the plug-in folders.
+# Ahh (formerly Roomservice): build on the Mac and install into the plug-in folders.
 # Usage (Terminal):  bash build_mac.sh
 set -e
 cd "$(dirname "$0")"
@@ -37,17 +37,17 @@ echo "== 4/5 Bauen (dauert beim ersten Mal 5-15 Minuten)"
 "$CMAKE" --build "$HERE/build" --config Release --target Roomservice_VST3 Roomservice_AU --parallel "$(sysctl -n hw.ncpu)"
 
 echo "== 5/5 Installieren"
-VST3="$HERE/build/Roomservice_artefacts/Release/VST3/Roomservice.vst3"
-AU="$HERE/build/Roomservice_artefacts/Release/AU/Roomservice.component"
+VST3="$HERE/build/Roomservice_artefacts/Release/VST3/Ahh.vst3"
+AU="$HERE/build/Roomservice_artefacts/Release/AU/Ahh.component"
 mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
-rm -rf ~/Library/Audio/Plug-Ins/VST3/Roomservice.vst3 ~/Library/Audio/Plug-Ins/Components/Roomservice.component
+rm -rf ~/Library/Audio/Plug-Ins/VST3/Ahh.vst3 ~/Library/Audio/Plug-Ins/Components/Ahh.component ~/Library/Audio/Plug-Ins/VST3/Roomservice.vst3 ~/Library/Audio/Plug-Ins/Components/Roomservice.component
 cp -R "$VST3" ~/Library/Audio/Plug-Ins/VST3/
 cp -R "$AU" ~/Library/Audio/Plug-Ins/Components/
-codesign --force --deep -s - ~/Library/Audio/Plug-Ins/VST3/Roomservice.vst3 >/dev/null 2>&1 || true
-codesign --force --deep -s - ~/Library/Audio/Plug-Ins/Components/Roomservice.component >/dev/null 2>&1 || true
+codesign --force --deep -s - ~/Library/Audio/Plug-Ins/VST3/Ahh.vst3 >/dev/null 2>&1 || true
+codesign --force --deep -s - ~/Library/Audio/Plug-Ins/Components/Ahh.component >/dev/null 2>&1 || true
 killall -9 AudioComponentRegistrar >/dev/null 2>&1 || true   # AU list refresh
 echo
 echo "Fertig. Installiert:"
-echo "  ~/Library/Audio/Plug-Ins/VST3/Roomservice.vst3"
-echo "  ~/Library/Audio/Plug-Ins/Components/Roomservice.component"
-echo "In REAPER: Options > Preferences > Plug-ins > VST > 'Re-scan', dann FX 'Roomservice (dmajorsound)'."
+echo "  ~/Library/Audio/Plug-Ins/VST3/Ahh.vst3"
+echo "  ~/Library/Audio/Plug-Ins/Components/Ahh.component"
+echo "In REAPER: Options > Preferences > Plug-ins > VST > 'Re-scan', dann FX 'Ahh (dmajorsound)'."

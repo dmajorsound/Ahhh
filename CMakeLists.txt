@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 # Universal (Apple Silicon + Intel). For a faster Intel-only build: -DCMAKE_OSX_ARCHITECTURES=x86_64
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
-project(Roomservice VERSION 1.0.4 LANGUAGES C CXX)
+project(Roomservice VERSION 1.0.5 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,10 +21,10 @@ juce_add_plugin(Roomservice
   COMPANY_NAME "dmajorsound"
   COMPANY_WEBSITE "https://dmajorsound.com/roomservice"
   PLUGIN_MANUFACTURER_CODE Dmjs
-  PLUGIN_CODE Rmsv
+  PLUGIN_CODE Rmsv              # (the codes and ids are those of Roomservice, the former name: sessions keep loading)
   FORMATS ${RS_FORMATS}
-  PRODUCT_NAME "Roomservice"
-  VERSION 1.0.4
+  PRODUCT_NAME "Ahh"
+  VERSION 1.0.5
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT FALSE
   NEEDS_MIDI_OUTPUT FALSE

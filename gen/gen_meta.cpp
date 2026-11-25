@@ -1,7 +1,7 @@
 // GENERATED
 #include "meta.h"
 namespace rs {
-const char* kDesc = "Roomservice";
+const char* kDesc = "Ahh";
 const SliderInfo kSliders[] = {
   {1, 0.0, 0.0, 1.0, 1.0, "Mode", true, "Room|Free field"},
   {2, 5.5, 0.8, 40.0, 0.001, "Room width W (m)", true, nullptr},

@@ -38,9 +38,9 @@ RoomServiceEditor::RoomServiceEditor(RoomServiceProcessor& p)
         }
         setMouseCursor(t);
     };
-    diagFile = juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("roomservice-debug.txt");
+    diagFile = juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("ahh-debug.txt");
     if (!diagFile.existsAsFile()) diagFile = juce::File();
-    else diagFile.appendText("\n--- Roomservice editor opened " + juce::Time::getCurrentTime().toString(true, true) + "\n");
+    else diagFile.appendText("\n--- Ahh editor opened " + juce::Time::getCurrentTime().toString(true, true) + "\n");
     startTimerHz(30);
 }
 

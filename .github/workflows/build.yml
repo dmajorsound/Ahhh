@@ -1,37 +1,138 @@
-name: build
-# runs only when started by hand (GitHub > Actions > build > Run workflow): macOS minutes are limited on private repos
+# Builds Roomservice on GitHub's own Macs and PCs: macOS VST3 + AU (Universal: Apple Silicon and Intel,
+# ad-hoc signed), Windows VST3, plus installers (Mac .pkg, Windows .exe) with the dmajorsound artwork.
+# The results are under "Actions" -> the run -> "Artifacts".
+# "Run workflow" with a tag (e.g. v1.0.1) also publishes the installers as a GitHub release.
+# Runs only when started by hand: this repository is private, and Mac build minutes are limited there.
+name: Build
+
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a release with this tag, e.g. v1.0.1 (empty = just build)"
+        required: false
+        default: ""
+
+env:
+  VERSION: "1.0.1"            # shown in the installers
+  FILEVER: "1.0.1"            # used in the file names
+  PKGVER: "1.0.1"             # numeric version for the macOS package receipts
+  JUCE_COMMIT: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port is tested with
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-2022]
-    runs-on: ${{ matrix.os }}
+  check-translation:
+    name: Generated code matches the JSFX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Translate jsfx/roomservice.jsfx again and compare
+        run: |
+          python3 tools/transpile.py jsfx/roomservice.jsfx gen
+          git diff --exit-code gen
+
+  macos:
+    name: macOS (Apple Silicon + Intel)
+    # built on an Intel Mac (GitHub's Apple Silicon machines often have long queues); the result is still a
+    # Universal binary for both. auval checks the Intel half here.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
           repository: juce-framework/JUCE
-          ref: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port was built with
+          ref: ${{ env.JUCE_COMMIT }}
           path: juce
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR="${{ github.workspace }}/juce"
-      - name: Build VST3
-        run: cmake --build build --config Release --target Roomservice_VST3 --parallel 4
-      - name: Build AU (macOS)
-        if: runner.os == 'macOS'
-        run: cmake --build build --config Release --target Roomservice_AU --parallel 4
-      - name: Ad-hoc sign (macOS)
-        if: runner.os == 'macOS'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR="$GITHUB_WORKSPACE/juce" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+      - name: Build
+        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_AU -j 4
+      - name: Strip and sign (ad hoc)
         run: |
-          codesign --force --deep -s - build/Roomservice_artefacts/Release/VST3/Roomservice.vst3
-          codesign --force --deep -s - build/Roomservice_artefacts/Release/AU/Roomservice.component
+          A=build/Roomservice_artefacts/Release
+          mkdir -p out
+          cp -R "$A/VST3/Roomservice.vst3" "$A/AU/Roomservice.component" out/
+          for p in out/Roomservice.vst3 out/Roomservice.component; do
+            strip -x "$p/Contents/MacOS/Roomservice"
+            lipo -info "$p/Contents/MacOS/Roomservice"
+            codesign --force --deep -s - "$p"
+          done
+          du -sh out/*
+      - name: Validate the Audio Unit
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R out/Roomservice.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aufx Rmsv Dmjs
+      - name: Installer (.pkg)
+        run: |
+          mk() {  # $1 bundle  $2 id suffix  $3 install folder
+            rm -rf payload && mkdir payload && cp -R "out/$1" payload/
+            pkgbuild --analyze --root payload comp.plist
+            plutil -replace 0.BundleIsRelocatable -bool NO comp.plist
+            pkgbuild --root payload --component-plist comp.plist --install-location "$3" \
+              --identifier "com.dmajorsound.roomservice.$2" --version "$PKGVER" "roomservice-$2.pkg"
+          }
+          mk Roomservice.vst3 vst3 /Library/Audio/Plug-Ins/VST3
+          mk Roomservice.component au /Library/Audio/Plug-Ins/Components
+          mkdir -p ui
+          cp installer/mac_ui/welcome.html ui/
+          tiffutil -cathidpicheck installer/mac_ui/background.png installer/mac_ui/background@2x.png -out ui/background.tiff
+          tiffutil -cathidpicheck installer/mac_ui/background-darkAqua.png installer/mac_ui/background-darkAqua@2x.png -out ui/background-darkAqua.tiff
+          sed "s/VERSION/$PKGVER/g" installer/mac_ui/distribution.xml > distribution.xml
+          productbuild --distribution distribution.xml --resources ui --package-path . "Roomservice_${FILEVER}_installer_mac.pkg"
+          ls -la "Roomservice_${FILEVER}_installer_mac.pkg"
       - uses: actions/upload-artifact@v4
         with:
-          name: Roomservice-1.0.1-${{ runner.os }}
-          path: |
-            build/Roomservice_artefacts/Release/VST3/Roomservice.vst3
-            build/Roomservice_artefacts/Release/AU/Roomservice.component
+          name: Roomservice_mac
+          path: Roomservice_*_installer_mac.pkg
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: juce-framework/JUCE
+          ref: ${{ env.JUCE_COMMIT }}
+          path: juce
+      - name: Configure
+        run: cmake -S . -B build -A x64 -DJUCE_DIR="${{ github.workspace }}/juce"
+      - name: Build
+        run: cmake --build build --config Release --target Roomservice_VST3 -j 4
+      - name: Installer (.exe)
+        shell: pwsh
+        run: |
+          Get-ChildItem build\Roomservice_artefacts\Release\VST3
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVer=$env:VERSION" "/DFileVer=$env:FILEVER" installer\win\roomservice.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Roomservice_windows
+          path: installer/win/Output/Roomservice_*_installer_win64.exe
+
+  # "Run workflow" with a tag (e.g. v1.0.1) publishes the installers as a GitHub release
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.release != ''
+    needs: [ check-translation, macos, windows ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release }}
+        run: |
+          sed "s/FILEVER/$FILEVER/g; s/VERSION/$VERSION/g" installer/release_notes.md > notes.txt
+          # a release with the same tag is replaced, so the page always shows the current build
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          fi
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Roomservice $VERSION" \
+            --latest --notes-file notes.txt dl/Roomservice_mac/*.pkg dl/Roomservice_windows/*.exe

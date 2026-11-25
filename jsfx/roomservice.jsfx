@@ -1,7 +1,7 @@
 desc: Roomservice
 //tags: reverb room acoustics image-source filter education
 //author: Bernd Dormayer
-//version: 1.0.3
+//version: 1.0.4
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -159,7 +159,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.0.3 - developed with AI assistance");
+strcpy(#verstr, "V 1.0.4 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -3333,7 +3333,7 @@ function sn_wrap(b, n, x, y, w, wlh, ml) local(ls, i, i2, sp, fit, e, wln, wlw, 
   );
   snCx = x + tws(#swl); snCy = y + min(wln - 1, ml - 1) * wlh;
 );
-function snslx(k) ( basic ? 346 + TBO + k * 20 : 346 + TBO + (k % 8) * 17; );   // snapshot button k: left edge in the top bar (Basic: one row, larger buttons)
+function snslx(k) ( basic ? 346 + TBOFS + k * 20 : 346 + TBOFS + (k % 8) * 17; );   // snapshot button k: left edge in the top bar (Basic: one row, larger buttons)
 function snsly(k) ( basic ? 14 : 10 + floor(k / 8) * 15; );   // snapshot button k: top edge; larger snapshot buttons (15 x 13) in Expert
 // Opens the snapshot editor for slot k: copies its name (snam) and description (dsc) into the edit buffers and sets snedit=k+1, name field active.
 function sn_open(k) local(i) (
@@ -7651,8 +7651,10 @@ shsec = 0; shclr = click && shpin;          // section help: hover target of thi
 // ---- dropdown menus + help: geometry and click handling (before any other control sees the click) ----
 fzsel = min(12, max(0, floor(slider35 + 0.5))); spcur = -1; k = 0; loop(NSP, spcur < 0 && spmatch(k) ? spcur = k; k += 1; );   /* 0.309: the matching preset, once per frame */ devm = slider85 >= 0.5 && fzsel > 0 && slider89 >= 99.95; rbyp = slider36 >= 0.5;   // devm: a device plays - a mono loudspeaker, the stereo width does nothing (isfree comes from the audio block)
 gT = max(0.5, min(gfx_w / 860, gfx_h / 560));   // the scale of the name and the mark: the window alone (the same in every view)
-TBO = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126));    // the view switches, presets and snapshots move right when the name is larger than the page scale
-roombx = 242 + TBO; roomby = 11; roombw = 98; roombh = 17;
+// (TBOFS = top bar offset. It was called TBO: EEL names ignore case, so it was the same variable as tbo, the base of the
+// tab order list - every frame moved that list to memory slots 0 ... 8.)
+TBOFS = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126));    // the view switches, presets and snapshots move right when the name is larger than the page scale
+roombx = 242 + TBOFS; roomby = 11; roombw = 98; roombh = 17;
 roommx = roombx; roommy = roomby + roombh + 4; roomih = 16; RMCW = 240; RMHH = 16; roommw = 2 * RMCW + 12;
 NOPOS = -99999;
 rmhy = roommy + 6; rsqx = roommx + 8; rsqw = 148; rsvw = 104; rsvx = roommx + roommw - 8 - rsvw;   // header: search field, Save room
@@ -11642,31 +11644,31 @@ col(cBG, 1); gfx_rect(0, 0, gfx_w, gfx_h);
 szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx = (mouse_x - gox) / gs; my = (mouse_y - goy) / gs; );
 // ---------- top bar ----------
 // THE NAME AND THE MARK keep one size in every view (Basic, Expert, Tabs, All, Learn): drawn at gT (window only), not at the page scale;
-// vertically centered on the switch row, the view switches start after them (TBO)
-TBO = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + TBO;   // (again with the scale of this frame's top bar)
+// vertically centered on the switch row, the view switches start after them (TBOFS)
+TBOFS = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + TBOFS;   // (again with the scale of this frame's top bar)
 gsT0 = gs; gs = gT; col(cTEXT, 1); gfx_setfont(5, "Arial", 14.5 * gT, 'b'); txt("Roomservice", 11, 17 * gsT0 / gT, 0); gfx_measurestr("Roomservice", ttw, tth);
 gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
 // Basic | Expert | Learn: one segmented switch, the active segment filled
 // VIEW MODE: a dark switch right after the name (the plugin's own view - not a preset, not a snapshot)
-col(cTEXT, 1); RR(126 + TBO, 8, 106, 18, 9);
+col(cTEXT, 1); RR(126 + TBOFS, 8, 106, 18, 9);
 gk = 0;
 loop(3,
-  mdon = gk == 0 ? basic : (gk == 1 ? !basic && !learn : learn); mdh = inbox(126 + TBO + gk * 34, 8, 34, 18);
-  mdon ? ( col(cACT, 1); RR(128 + TBO + gk * 34, 10, 32, 14, 7); cCTLon ? ( col(cACTO, 1); RRO(128 + TBO + gk * 34, 10, 32, 14, 7); ); col(cACTX, 1); ) : col(mdh ? cSURF : cDIM2, 1);
-  gfx_setfont(6); txt(gk == 0 ? "Basic" : (gk == 1 ? "Expert" : "Learn"), 143 + TBO + gk * 34, 17, 1);
+  mdon = gk == 0 ? basic : (gk == 1 ? !basic && !learn : learn); mdh = inbox(126 + TBOFS + gk * 34, 8, 34, 18);
+  mdon ? ( col(cACT, 1); RR(128 + TBOFS + gk * 34, 10, 32, 14, 7); cCTLon ? ( col(cACTO, 1); RRO(128 + TBOFS + gk * 34, 10, 32, 14, 7); ); col(cACTX, 1); ) : col(mdh ? cSURF : cDIM2, 1);
+  gfx_setfont(6); txt(gk == 0 ? "Basic" : (gk == 1 ? "Expert" : "Learn"), 143 + TBOFS + gk * 34, 17, 1);
   click && mdh ? ( vopt[11] = gk == 0; vopt[43] = gk == 2; szclr = 1; );   // the zoom is cleared at the start of the next frame (clearing it here drew every module on top of each other for one frame = a flash)
   gk += 1;
 );
-tipbox(126 + TBO, 8, 34, 18, "Basic view (B): room, decay, source and barrier at a glance – every other setting stays as it is");
-tipbox(160 + TBO, 8, 34, 18, "Expert view (E): all controls, every module at once");
-tipbox(194 + TBO, 8, 34, 18, "Learn (L): the plugin explains what you hear – labels in the room, the sound in three parts, short tasks and the words in plain language (the sound is the same)");
+tipbox(126 + TBOFS, 8, 34, 18, "Basic view (B): room, decay, source and barrier at a glance – every other setting stays as it is");
+tipbox(160 + TBOFS, 8, 34, 18, "Expert view (E): all controls, every module at once");
+tipbox(194 + TBOFS, 8, 34, 18, "Learn (L): the plugin explains what you hear – labels in the room, the sound in three parts, short tasks and the words in plain language (the sound is the same)");
 // TABS | ALL | FIT (Expert): under the view modes - toggles between the tab view and every module at once. Fit = the module as large as the window allows (Tabs) / every module fitted into the window (All)
 !basic && !learn ? (
   mvfit = tabm ? vopt[48] >= 0.5 : vopt[42] >= 0.5;
-  col(cHAIR, 1); RR(126 + TBO, 31, 106, 12, 6);
+  col(cHAIR, 1); RR(126 + TBOFS, 31, 106, 12, 6);
   gk = 0;
   loop(3,
-    mvx = 126 + TBO + (gk == 0 ? 0 : (gk == 1 ? 36 : 71)); mvw = gk == 0 ? 36 : 35; mvh2 = inbox(mvx, 31, mvw, 12);
+    mvx = 126 + TBOFS + (gk == 0 ? 0 : (gk == 1 ? 36 : 71)); mvw = gk == 0 ? 36 : 35; mvh2 = inbox(mvx, 31, mvw, 12);
     mvon = gk == 0 ? tabm : (gk == 1 ? !tabm : mvfit);
     mvon ? ( col(cACT, 1); RR(mvx + 1, 32, mvw - 2, 10, 5); cCTLon ? ( col(cACTO, 1); RRO(mvx + 1, 32, mvw - 2, 10, 5); ); col(cACTX, 1); ) : col(mvh2 ? cTEXT : cMUTED, 1);
     gfx_setfont(7); txt(gk == 0 ? "Tabs" : (gk == 1 ? "All" : "Fit"), mvx + mvw / 2, 37.5, 1);
@@ -11677,12 +11679,12 @@ tipbox(194 + TBO, 8, 34, 18, "Learn (L): the plugin explains what you hear – l
     );
     gk += 1;
   );
-  tipbox(126 + TBO, 31, 36, 12, "Tabs: the Stage View on top and one module under it – larger, no scrolling (key T · key 0 switches Tabs <-> All · key Z zooms the module)");
-  tipbox(162 + TBO, 31, 35, 12, "All: every module at once in two columns (key A · key 0 switches Tabs <-> All · key Z zooms the module under the mouse)");
-  tipbox(197 + TBO, 31, 35, 12, tabm ? (mvfit ? "Fit on (key F): the module fills the width, the Stage View gets the rest – click: standard" : "Fit (key F): make the module as large as the window allows – text, knobs and graphics grow, the Stage View gets smaller")
+  tipbox(126 + TBOFS, 31, 36, 12, "Tabs: the Stage View on top and one module under it – larger, no scrolling (key T · key 0 switches Tabs <-> All · key Z zooms the module)");
+  tipbox(162 + TBOFS, 31, 35, 12, "All: every module at once in two columns (key A · key 0 switches Tabs <-> All · key Z zooms the module under the mouse)");
+  tipbox(197 + TBOFS, 31, 35, 12, tabm ? (mvfit ? "Fit on (key F): the module fills the width, the Stage View gets the rest – click: standard" : "Fit (key F): make the module as large as the window allows – text, knobs and graphics grow, the Stage View gets smaller")
                                : (mvfit ? "Fit all (key F): every module in the window at once – smaller text. Click: text and knobs as large as in Basic (the page scrolls with the mouse wheel)" : "Fit all: fit every module into the window (smaller) – module heights you dragged go back to standard"));
 );
-col(cBORD, 1); LNW(237 + TBO, 7, 237 + TBO, 27, 1);                                // separator: the plugin's view | what you load
+col(cBORD, 1); LNW(237 + TBOFS, 7, 237 + TBOFS, 27, 1);                                // separator: the plugin's view | what you load
 col(cMUTED, 1); gfx_setfont(11); txt("Presets", roombx, 5, 0);
 // room presets: dropdown (menu drawn at the end, on top)
 rsel = -1; k = 0; loop(NPRE, !isfree && roommatch(k) ? rsel = k; k += 1; );
@@ -11701,7 +11703,7 @@ tipbox(roombx, roomby, roombw, roombh, rmod ? "Presets: room preset, changed (*)
 // a single click loads only when no second click follows (otherwise the double-click would store the loaded settings)
 snPend && time_precise() - snPt >= SNDBL ? ( loadslot(snPend - 1); uslot[(snPend - 1) * USL] ? ( snlast = snPend; ); snPend = 0; );
 snmk = 0;
-col(cMUTED, 1); gfx_setfont(basic ? 7 : 11); txt("Snapshots", 346 + TBO, basic ? 6 : 5, 0);
+col(cMUTED, 1); gfx_setfont(basic ? 7 : 11); txt("Snapshots", 346 + TBOFS, basic ? 6 : 5, 0);
 snWd = basic ? 18 : 15; snHt = basic ? 14 : 13;           // size of one snapshot button
 gk = 0;
 loop(basic ? 8 : NSNAP,
@@ -11731,20 +11733,20 @@ loop(basic ? 8 : NSNAP,
   gk += 1;
 );
 !basic ? (
-col(saveArm ? cIOTT : cMUTED, 1); gfx_setfont(2); txt("Save", 487 + TBO, 17, 0);
-saveArm ? ( LNW(487 + TBO, 24, 487 + TBO + tws("Save"), 24, 1.4); );
-click && inbox(483 + TBO, 7, 28, 20) ? ( saveArm = !saveArm; );
-tipbox(483 + TBO, 7, 28, 20, saveArm ? "Now click a snapshot 1–16 to store the current settings" : "Save: click, then choose snapshot 1–16 (or double-click a snapshot to give it a name)");
+col(saveArm ? cIOTT : cMUTED, 1); gfx_setfont(2); txt("Save", 487 + TBOFS, 17, 0);
+saveArm ? ( LNW(487 + TBOFS, 24, 487 + TBOFS + tws("Save"), 24, 1.4); );
+click && inbox(483 + TBOFS, 7, 28, 20) ? ( saveArm = !saveArm; );
+tipbox(483 + TBOFS, 7, 28, 20, saveArm ? "Now click a snapshot 1–16 to store the current settings" : "Save: click, then choose snapshot 1–16 (or double-click a snapshot to give it a name)");
 ) : (
 // Basic: Save beside the label above the 8 snapshots - click, then a snapshot = store the current settings there
-gfx_setfont(7); sbsx = 346 + TBO + tws("Snapshots") + 10; sbsh = inbox(sbsx - 4, 0, tws("Save") + 8, 12);
+gfx_setfont(7); sbsx = 346 + TBOFS + tws("Snapshots") + 10; sbsh = inbox(sbsx - 4, 0, tws("Save") + 8, 12);
 col(saveArm ? cIOTT : (sbsh ? cTEXT : cMUTED), 1); gfx_setfont(7); txt("Save", sbsx, 6, 0);
 LNW(sbsx, 11, sbsx + tws("Save"), 11, saveArm ? 1.4 : 0.8);                          // underlined: a button
 click && sbsh ? ( saveArm = !saveArm; );
 tipbox(sbsx - 4, 0, tws("Save") + 8, 12, saveArm ? "Now click a snapshot 1–8 to store the current settings" : "Save: click, then choose snapshot 1–8 to store the current settings there");
 );
 // HELP: how the plugin works and the most used keys (a page over the plugin) - where the top bar has room for it
-hlpbx = 516 + TBO;
+hlpbx = 516 + TBOFS;
 !tabm && !basic && WT - 204 - 42 - 6 - hlpbx >= 46 ? (   // Basic - the "?" in the strip opens the help
   hbqh = inbox(hlpbx, 9, 19, 16);   // a "?" like in Expert
   col(hlpon ? cSRC : (hbqh ? cHAIR : cLINE), 1); RR(hlpbx, 9, 19, 16, 8);
@@ -11753,7 +11755,7 @@ hlpbx = 516 + TBO;
   tipbox(hlpbx, 9, 19, 16, "Help: how Roomservice works and the most used keys");
 );
 // RESET: a button next to View (Save belongs to the snapshots)
-vgx = WT - 204; rsx = tabm ? 522 + TBO : vgx - 42;
+vgx = WT - 204; rsx = tabm ? 522 + TBOFS : vgx - 42;
 col(cHAIR, 1); LNW(rsx - 6, 9, rsx - 6, 25, 1);                      // separator: Save belongs to the snapshots
 chip(rsx, 9, 34, 16, "Reset", 0, cTEXT);
 tipbox(rsx, 9, 34, 16, vlock ? "Reset: only the room stays on – living room, listener in the middle, source 2 m in front of it; delay, barrier, filters, source model and EQ off. The limiter stays on as a protection. The layout is locked and stays (snapshots are kept)"

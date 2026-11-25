@@ -219,6 +219,7 @@ double Runtime::sliderchange_mask(double m) {
     return 0.0;
 }
 double Runtime::time_precise() {
+    if (fakeTime >= 0.0) return fakeTime;   // tests: a clock they set themselves (reproducible frames)
     using namespace std::chrono;
     return duration<double>(steady_clock::now().time_since_epoch()).count();
 }

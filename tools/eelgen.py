@@ -44,17 +44,27 @@ class Gen:
         self.scope = None; self.fname = None
         self.warn = collections.Counter()
         self.fmembers = []
+        self.promoted = set()
+        self.cached = set()          # globals held in C++ locals by an enclosing loop
+        self.fglob = function_globals(funcs)
+        self.ncached = 0
+        self.temps = set()           # globals turned into per-body C++ locals
+        self.used_temps = set()
 
     # ---------- names ----------
     def var(self, name):
         if self.scope is not None and name in self.scope:
+            if name in self.promoted: return 'l_' + cident(name)
             return 'L_%s_%s' % (cident(self.fname), cident(name))
         m = re.fullmatch(r'slider(\d+)', name)
         if m and 1 <= int(m.group(1)) <= 256: return 'sl[%s]' % m.group(1)
         m = re.fullmatch(r'spl(\d+)', name)
         if m and int(m.group(1)) < 64: return 'spl[%s]' % m.group(1)
         if name in HOST_SCALARS: return 'v_' + name
+        if name in self.temps:
+            self.used_temps.add(name); return 't_' + cident(name)
         self.globals.add(name)
+        if name in self.cached: return 'c_' + cident(name)
         return 'g_' + cident(name)
 
     def strid(self, name):
@@ -68,6 +78,25 @@ class Gen:
     def litid(self, s):
         if s not in self.lits: self.lits[s] = 10000 + len(self.lits)
         return '%d.0' % self.lits[s]
+
+    # ---------- loops: globals in registers ----------
+    # EEL variables are not part of the memory array, but in C++ both are doubles: after every store through M() the
+    # compiler has to assume that any g_ variable changed and loads it again. Inside a loop the globals that no called
+    # function touches are therefore held in C++ locals (c_name) and written back when the loop is done.
+    def cache_enter(self, nodes):
+        scope = self.scope or set()
+        direct, callees, written = set(), set(), set()
+        for x in nodes: collect(x, scope, direct, callees, written)
+        touched = set()
+        for c in callees: touched |= self.fglob.get(c, set())
+        mine = sorted(direct - touched - self.cached - self.temps)
+        if not mine: return '', '', (lambda: None)
+        self.cached |= set(mine); self.ncached += len(mine)
+        for nm in mine: self.globals.add(nm)
+        pro = 'double ' + ', '.join('c_%s = g_%s' % (cident(nm), cident(nm)) for nm in mine) + '; '
+        epi = ''.join('g_%s = c_%s; ' % (cident(nm), cident(nm)) for nm in mine if nm in written)
+        def undo(): self.cached -= set(mine)
+        return pro, epi, undo
 
     # ---------- expressions: returns (code, kind) kind in L (double&), V (double), B (bool) ----------
     def v(self, n):
@@ -111,8 +140,10 @@ class Gen:
         if t == 'asg': return self.asg(n)
         if t == 'call': return self.call(n)
         if t == 'while2':
-            return ('[&]() -> double { int c_ = 1048576; while (%s) { (void)(%s); if (--c_ <= 0) break; } return 0.0; }()'
-                    % (self.b(n.a[0]), self.v(n.a[1]))), 'V'
+            pro, epi, undo = self.cache_enter([n.a[0], n.a[1]])
+            cond = self.b(n.a[0]); body = self.v(n.a[1]); undo()
+            return ('[&]() -> double { int c_ = 1048576; %swhile (%s) { (void)(%s); if (--c_ <= 0) break; } %sreturn 0.0; }()'
+                    % (pro, cond, body, epi)), 'V'
         # binary
         l, r = n.a
         if t in ('&&', '||'):
@@ -153,6 +184,9 @@ class Gen:
         if op == '=':
             R = self.v(rhs)
             if is_trivial(rhs) and (simple_lhs or pure(lhs)): return '(%s = %s)' % (L, R), 'L'
+            # a value in a C++ local lives for one call only: the flush of denormal / non-finite values (dnf) is left
+            # to the assignment that stores it for good (variable or memory). Same numbers for every finite, normal value.
+            if simple_lhs and (self.scope is not None and lhs.a[0] in self.promoted or L.startswith('t_')): return '(%s = %s)' % (L, R), 'L'
             if simple_lhs or pure(rhs) and pure(lhs):
                 return 'ASG(%s, %s)' % (L, R), 'L'
             return '[&]() -> double& { double& r_ = %s; r_ = dnf(%s); return r_; }()' % (L, R), 'L'
@@ -185,12 +219,17 @@ class Gen:
             return '[&]() -> double { %s return %s(%s); }()' % (' '.join(pre), cname, ', '.join(callargs)), 'V'
         if name == 'loop':
             if len(args) != 2: raise SyntaxError('loop args line %d' % n.line)
-            return ('[&]() -> double { int n_ = rt_i32(%s); if (n_ > 1048576) n_ = 1048576; for (; n_ > 0; --n_) { (void)(%s); } return 0.0; }()'
-                    % (self.v(args[0]), self.v(args[1]))), 'V'
+            cnt = self.v(args[0])
+            pro, epi, undo = self.cache_enter([args[1]])
+            body = self.v(args[1]); undo()
+            return ('[&]() -> double { int n_ = rt_i32(%s); if (n_ > 1048576) n_ = 1048576; %sfor (; n_ > 0; --n_) { (void)(%s); } %sreturn 0.0; }()'
+                    % (cnt, pro, body, epi)), 'V'
         if name == 'while':
             if len(args) != 1: raise SyntaxError('while args line %d' % n.line)
-            return ('[&]() -> double { int c_ = 1048576; while (%s) { if (--c_ <= 0) break; } return 0.0; }()'
-                    % self.b(args[0])), 'V'
+            pro, epi, undo = self.cache_enter([args[0]])
+            cond = self.b(args[0]); undo()
+            return ('[&]() -> double { int c_ = 1048576; %swhile (%s) { if (--c_ <= 0) break; } %sreturn 0.0; }()'
+                    % (pro, cond, epi)), 'V'
         if name not in BUILTIN_ARGC:
             raise SyntaxError('line %d: unknown function %s' % (n.line, name))
         want = BUILTIN_ARGC[name]
@@ -203,7 +242,7 @@ class Gen:
         if imp >= 2: self.warn['builtin multi impure args'] += 1
         vals = [self.v(a) for a in args]
         if name in WRAP1: return '%s(%s)' % (WRAP1[name], vals[0]), 'V'
-        simple = {'abs': 'std::fabs', 'floor': 'std::floor', 'ceil': 'std::ceil', 'sqrt': 'rt_sqrt', 'sqr': 'rt_sqr',
+        simple = {'abs': 'std::fabs', 'floor': 'rt_floor', 'ceil': 'rt_ceil', 'sqrt': 'rt_sqrt', 'sqr': 'rt_sqr',
                   'min': 'rt_min', 'max': 'rt_max', 'atan2': 'rt_atan2', 'pow': 'rt_pow', 'sign': 'rt_sign'}
         if name in simple: return '%s(%s)' % (simple[name], ', '.join(vals)), 'V'
         if name in ('file_var',):
@@ -230,3 +269,128 @@ def slider_automate_fix(n):
         if isinstance(x, N): slider_automate_fix(x)
 
 BUILTIN_ARGC.update({'slider_automate_idx': -1, 'slider_automate_mask': -1, 'sliderchange_idx': 1, 'sliderchange_mask': 1})
+
+
+# ---------- locals that never carry a value from one call to the next ----------
+# An EEL function's parameters and locals are static storage. A name that is assigned on every path before it is read
+# can live in a C++ local instead (a register): nothing can tell the difference, and the optimizer is no longer forced
+# to store and reload it around every memory write. Everything doubtful stays static.
+LV_ARGS = {'gfx_measurestr': (1, 2), 'file_var': (1,)}
+
+def read_before_assigned(body, interesting, start=()):
+    """names (for which interesting(name) holds) that may be read before they are assigned when body runs"""
+    unsafe = set()
+    def rd(name, A):
+        if name not in A and interesting(name): unsafe.add(name)
+    def walk(n, A):
+        """reads of n checked against A; returns the names assigned for certain when n has been evaluated"""
+        if n is None or not isinstance(n, N): return set()
+        t = n.t
+        if t in ('num', 'sid', 'lit'): return set()
+        if t == 'var': rd(n.a[0], A); return set()
+        if t == 'seq':
+            got = set()
+            for x in n.a: got |= walk(x, A | got)
+            return got
+        if t == 'if':
+            c = walk(n.a[0], A)
+            ga = walk(n.a[1], A | c) if n.a[1] is not None else set()
+            gb = walk(n.a[2], A | c) if n.a[2] is not None else set()
+            return c | (ga & gb)
+        if t == 'asg':
+            op, lhs, rhs = n.a
+            if lhs.t == 'var':
+                if op != '=': rd(lhs.a[0], A)
+                got = walk(rhs, A)
+                if op != '=': return got
+                return got | {lhs.a[0]}
+            g1 = walk(lhs, A); g2 = walk(rhs, A)      # (order not relied on)
+            return g1 | g2
+        if t == 'while2':
+            c = walk(n.a[0], A); walk(n.a[1], A | c)
+            return c                                   # the condition runs at least once
+        if t in ('&&', '||'):
+            g1 = walk(n.a[0], A); walk(n.a[1], A | g1)
+            return g1
+        if t == 'call':
+            name = n.a[0]; args = n.a[1:]
+            if name == 'loop':
+                g1 = walk(args[0], A); walk(args[1], A | g1)
+                return g1                              # the body may run zero times
+            if name == 'while':
+                walk(args[0], A); return set()
+            got = set(); lvs = LV_ARGS.get(name, ())
+            for i, x in enumerate(args):
+                if i in lvs and isinstance(x, N) and x.t == 'var': got.add(x.a[0])
+                else: got |= walk(x, A)                # every argument against A: the order is not relied on
+            return got
+        got = set()
+        for x in n.a:
+            if isinstance(x, N): got |= walk(x, A)     # operands against A: the order is not relied on
+        return got
+    walk(body, set(start))
+    return unsafe
+
+def promotable(f):
+    scope = set(f.params) | set(f.locals)
+    return scope - read_before_assigned(f.body, lambda nm: nm in scope, f.params)
+
+# ---------- globals that are temporaries ----------
+# A global that every piece of code assigns before it reads it, and that no called function touches in between, never
+# carries a value from one run to the next: each function / section gets its own C++ local for it (t_name). Variables
+# the C++ side reads or writes by name (HOST_VISIBLE) always stay real.
+HOST_VISIBLE = {'vopt', 'updav', 'updgo', 'gs', 'hlpon', 'kovl', 'helpon'}
+
+def temp_globals(funcs, trees, fglob):
+    bodies = [(f.body, set(f.params) | set(f.locals)) for f in funcs.values()] + [(t, set()) for t in trees.values() if t is not None]
+    bad = set(HOST_VISIBLE); seen = set()
+    for body, scope in bodies:
+        if body is None: continue
+        d, c, w = set(), set(), set()
+        collect(body, scope, d, c, w)
+        seen |= d
+        bad |= read_before_assigned(body, lambda nm: is_global(nm, scope))
+        for callee in c: bad |= d & fglob.get(callee, set())     # a called function uses it too: shared, stays real
+    return seen - bad
+
+
+# ---------- which globals does a piece of code use ----------
+def is_global(name, scope):
+    if name in scope: return False
+    if re.fullmatch(r'slider(\d+)', name) and 1 <= int(name[6:]) <= 256: return False
+    if re.fullmatch(r'spl(\d+)', name) and int(name[3:]) < 64: return False
+    return name not in HOST_SCALARS
+
+def collect(n, scope, direct, callees, written):
+    """globals named in n (direct), user functions called (callees), globals that may be assigned (written)"""
+    if n is None or not isinstance(n, N): return
+    t = n.t
+    if t == 'var':
+        if is_global(n.a[0], scope): direct.add(n.a[0])
+        return
+    if t == 'asg':
+        w = set(); collect(n.a[1], scope, w, set(), set()); written |= w      # every variable on the left side
+    if t == 'call':
+        name = n.a[0]
+        if name in LV_ARGS:
+            for i in LV_ARGS[name]:
+                if i + 1 < len(n.a): collect(n.a[i + 1], scope, written, set(), set())
+        if name not in ('loop', 'while'): callees.add(name)      # (built-ins have no entry in the table: harmless)
+    for x in n.a:
+        if isinstance(x, N): collect(x, scope, direct, callees, written)
+
+def function_globals(funcs):
+    """per user function: every global it or a function it calls may read or write"""
+    own = {}; calls = {}
+    for name, f in funcs.items():
+        d, c, w = set(), set(), set()
+        collect(f.body, set(f.params) | set(f.locals), d, c, w)
+        own[name] = d; calls[name] = c
+    changed = True
+    while changed:
+        changed = False
+        for name in funcs:
+            for c in calls[name]:
+                add = own.get(c, set()) - own[name]
+                if add: own[name] |= add; changed = True
+    return own

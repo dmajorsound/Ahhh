@@ -41,20 +41,31 @@ def main(src, outdir):
     for f in funcs.values(): eelgen.slider_automate_fix(f.body)
     for t in trees.values(): eelgen.slider_automate_fix(t)
     G = eelgen.Gen(funcs)
-    fcode = []
+    fcode = []; npro = 0
+    G.temps = eelgen.temp_globals(funcs, trees, G.fglob)
+    def tdecl():
+        d = ', '.join('t_%s = 0.0' % cident(v) for v in sorted(G.used_temps)); G.used_temps = set()
+        return 'double ' + d + '; ' if d else ''
     for name in sorted(funcs):
         f = funcs[name]
         G.scope = set(f.params) | set(f.locals); G.fname = name
+        G.promoted = eelgen.promotable(f) if f.body is not None else set()
+        npro += len(G.promoted)
         body = G.v(f.body) if f.body is not None else '0.0'
-        params = ', '.join('double p%d' % i for i in range(len(f.params)))
-        assigns = ' '.join('L_%s_%s = p%d;' % (cident(name), cident(p), i) for i, p in enumerate(f.params))
+        params = ', '.join('double %s' % ('l_' + cident(p) if p in G.promoted else 'p%d' % i) for i, p in enumerate(f.params))
+        assigns = ' '.join('L_%s_%s = p%d;' % (cident(name), cident(p), i) for i, p in enumerate(f.params) if p not in G.promoted)
+        decl = ', '.join('l_%s = 0.0' % cident(v) for v in sorted(set(f.locals) & G.promoted - set(f.params)))
+        if decl: assigns = 'double ' + decl + '; ' + assigns
+        assigns = tdecl() + assigns
         fcode.append((name, 'double Gen::F_%s(%s) {\n  %s\n  return %s;\n}\n' % (cident(name), params, assigns, body)))
-        for v in sorted(G.scope): G.fmembers.append('L_%s_%s' % (cident(name), cident(v)))
+        for v in sorted(G.scope - G.promoted): G.fmembers.append('L_%s_%s' % (cident(name), cident(v)))
+        G.promoted = set()
     G.scope = None; G.fname = None
     scode = {}
     for sec in ('init', 'block', 'sample', 'serialize', 'gfx', 'slider'):
         if sec in trees and trees[sec] is not None:
-            scode[sec] = 'void Gen::S_%s() {\n  (void)(%s);\n}\n' % (sec, G.v(trees[sec]))
+            code = G.v(trees[sec])
+            scode[sec] = 'void Gen::S_%s() {\n  %s\n  (void)(%s);\n}\n' % (sec, tdecl(), code)
         else:
             scode[sec] = 'void Gen::S_%s() {}\n' % sec
     # header
@@ -99,6 +110,7 @@ def main(src, outdir):
               open(os.path.join(outdir, 'meta.json'), 'w'), indent=1)
     print('globals %d, locals %d, funcs %d, literals %d, strings %d, files %d' % (
         len(G.globals), len(G.fmembers), len(funcs), len(G.lits), len(G.strs), k))
+    print('locals moved to registers: %d, globals held in registers inside loops: %d, temporary globals: %d' % (npro, G.ncached, len(G.temps)))
     print('warnings', dict(G.warn))
 
 if __name__ == '__main__':

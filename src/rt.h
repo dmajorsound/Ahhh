@@ -33,6 +33,20 @@ inline double dnf(double v) {
     const uint32_t hw = (uint32_t)(u >> 32);
     return (((hw + 0x00100000u) & 0x7ff00000u) <= 0x00200000u) ? 0.0 : v;
 }
+// floor / ceil without a library call (x86-64 without SSE4.1 has no instruction for them). Exact for every input:
+// whole numbers and zeros come back unchanged (sign of zero kept), huge values, infinities and NaN go to the library.
+inline double rt_floor(double x) {
+    if (!(x > -4.0e15 && x < 4.0e15)) return std::floor(x);
+    const double t = (double)(int64_t)x;
+    if (t == x) return x;
+    return t > x ? t - 1.0 : t;
+}
+inline double rt_ceil(double x) {
+    if (!(x > -4.0e15 && x < 4.0e15)) return std::ceil(x);
+    const double t = (double)(int64_t)x;
+    if (t == x) return x;
+    return t < x ? t + 1.0 : (t == 0.0 ? -0.0 : t);   // ceil(-0.3) = -0.0
+}
 inline double& ASG(double& d, double v) { d = dnf(v); return d; }
 inline double& CASG(double& d, double v) { d = v; return d; }
 inline int64_t rt_i64(double x) {   // cvttsd2si semantics
@@ -111,6 +125,7 @@ struct Runtime {
     virtual ~Runtime() = default;
 
     Mem mem;
+    double fakeTime = -1.0;
     double memLimit = 0.0;      // MEMSIZE, or 0 when the memory could not be reserved (every access then hits memfail)
     double memfail = 0.0;
     double sl[257] = {};

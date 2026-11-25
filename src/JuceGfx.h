@@ -70,6 +70,12 @@ private:
     std::map<int, juce::Image> images;
     int gDest = -2;               // which image the cached Graphics draws into
     std::unique_ptr<juce::Graphics> g;
+    std::unique_ptr<juce::Image::BitmapData> raw;   // the pixels of the image g draws into
+    bool* rawOpaque = nullptr;
+    std::map<int, bool> opaque;                     // images known to hold no transparent pixel
+    bool screenOpaque = false;
+    void dropG();
+    bool rawFill(int x, int y, int w, int h, juce::Colour c);
 };
 
 } // namespace rs

@@ -48,7 +48,8 @@ void JuceGfx::beginFrame(int w, int h) {
         juce::Image n(juce::Image::ARGB, juce::jmax(1, w), juce::jmax(1, h), true, juce::SoftwareImageType());
         if (screenImg.isValid()) { juce::Graphics cg(n); cg.drawImageAt(screenImg, 0, 0); }
         screenImg = n;
-        if (gDest == -1) { g.reset(); gDest = -2; }
+        screenOpaque = false;
+        if (gDest == -1) { dropG(); }
     }
     // gfx_clear > -1: clear the screen to that color (packed RGB) before @gfx
     const double c = rt.v_gfx_clear;
@@ -59,7 +60,7 @@ void JuceGfx::beginFrame(int w, int h) {
     }
 }
 
-void JuceGfx::endFrame() { g.reset(); gDest = -2; }
+void JuceGfx::endFrame() { dropG(); }
 
 juce::Image* JuceGfx::destImage() {
     const int d = (int)rt.v_gfx_dest;
@@ -73,15 +74,32 @@ juce::Graphics& JuceGfx::G() {
     int d = (int)rt.v_gfx_dest;
     if (d >= 0 && images.find(d) == images.end()) d = -1000;   // no such image: draw nowhere
     if (!g || d != gDest) {
-        g.reset();
+        dropG();
         static juce::Image dummy(juce::Image::ARGB, 1, 1, true, juce::SoftwareImageType());
         juce::Image* im = d == -1000 ? &dummy : destImage();
         if (!im) im = &dummy;
         g = std::make_unique<juce::Graphics>(*im);
         g->setImageResamplingQuality(juce::Graphics::mediumResamplingQuality);
         gDest = d;
+        // the same pixels, directly: plain opaque fills and copies do not need the renderer (rawFill, blit)
+        raw = std::make_unique<juce::Image::BitmapData>(*im, juce::Image::BitmapData::readWrite);
+        rawOpaque = d == -1 ? &screenOpaque : (d >= 0 ? &opaque[d] : nullptr);
     }
     return *g;
+}
+
+void JuceGfx::dropG() { raw.reset(); rawOpaque = nullptr; g.reset(); gDest = -2; }
+
+// an opaque fill straight into the pixels (same result as the renderer's: an opaque colour replaces what is there).
+// A fill that covers the whole image marks it as opaque: such an image can later be copied instead of blended.
+bool JuceGfx::rawFill(int x, int y, int w, int h, juce::Colour c) {
+    if (!raw || !c.isOpaque() || raw->pixelFormat != juce::Image::ARGB) return false;
+    const int x0 = juce::jmax(0, x), y0 = juce::jmax(0, y), x1 = juce::jmin(raw->width, x + w), y1 = juce::jmin(raw->height, y + h);
+    if (x1 <= x0 || y1 <= y0) return true;
+    const juce::uint32 v = c.getPixelARGB().getNativeARGB();
+    for (int yy = y0; yy < y1; yy++) std::fill_n((juce::uint32*)raw->getLinePointer(yy) + x0, x1 - x0, v);
+    if (rawOpaque && x0 == 0 && y0 == 0 && x1 == raw->width && y1 == raw->height) *rawOpaque = true;
+    return true;
 }
 
 juce::Colour JuceGfx::colour() const {
@@ -94,7 +112,7 @@ void JuceGfx::rect(double x, double y, double w, double h, bool filled) {
     auto& gr = G(); gr.setColour(colour());
     const int ix = ti(x), iy = ti(y), iw = ti(w), ih = ti(h);
     if (iw <= 0 || ih <= 0) return;
-    if (filled) gr.fillRect(ix, iy, iw, ih); else gr.drawRect(ix, iy, iw, ih, 1);
+    if (filled) { if (!rawFill(ix, iy, iw, ih, colour())) gr.fillRect(ix, iy, iw, ih); } else gr.drawRect(ix, iy, iw, ih, 1);
 }
 
 void JuceGfx::line(double x1, double y1, double x2, double y2, bool) {
@@ -333,11 +351,12 @@ void JuceGfx::drawstr(const std::string& s, int flags, double right, double bott
 
 void JuceGfx::setimgdim(int img, int w, int h) {
     if (img < 0 || img > 1023) return;
-    if (gDest == img) { g.reset(); gDest = -2; }
-    if (w <= 0 || h <= 0) { images.erase(img); return; }
+    if (gDest == img) { dropG(); }
+    if (w <= 0 || h <= 0) { images.erase(img); opaque.erase(img); return; }
     { auto it = images.find(img);   // same size: the image stays as it is, like LICE's resize (no allocation per frame)
       if (it != images.end() && it->second.isValid() && it->second.getWidth() == juce::jmin(w, 8192) && it->second.getHeight() == juce::jmin(h, 8192)) return; }
     images[img] = juce::Image(juce::Image::ARGB, juce::jmin(w, 8192), juce::jmin(h, 8192), true, juce::SoftwareImageType());
+    opaque[img] = false;
 }
 
 void JuceGfx::blit(const double* p, int n) {
@@ -355,6 +374,21 @@ void JuceGfx::blit(const double* p, int n) {
     if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
     if ((int)rt.v_gfx_dest == src) return;   // LICE ignores a blit onto itself
     auto& gr = G();
+    // an opaque picture at full opacity and 1:1: blending it gives the picture itself - copy the rows
+    {
+        const int isx = ti(sx), isy = ti(sy), isw = ti(sw), ish = ti(sh), idx = ti(dx), idy = ti(dy);
+        const bool srcOpaque = src == -1 ? screenOpaque : (opaque.count(src) && opaque[src]);
+        if (srcOpaque && raw && rt.v_gfx_a >= 1.0 && isw == ti(dw) && ish == ti(dh) && isx >= 0 && isy >= 0
+            && isx + isw <= si->getWidth() && isy + ish <= si->getHeight() && raw->pixelFormat == juce::Image::ARGB) {
+            const int x0 = juce::jmax(0, idx), y0 = juce::jmax(0, idy), x1 = juce::jmin(raw->width, idx + isw), y1 = juce::jmin(raw->height, idy + ish);
+            if (x1 > x0 && y1 > y0) {
+                juce::Image::BitmapData sb(*si, juce::Image::BitmapData::readOnly);
+                for (int yy = y0; yy < y1; yy++)
+                    std::memcpy((juce::uint32*)raw->getLinePointer(yy) + x0, (const juce::uint32*)sb.getLinePointer(isy + yy - idy) + (isx + x0 - idx), (size_t)(x1 - x0) * 4);
+            }
+            return;
+        }
+    }
     gr.setOpacity((float)juce::jlimit(0.0, 1.0, rt.v_gfx_a));
     gr.drawImage(*si, ti(dx), ti(dy), ti(dw), ti(dh), ti(sx), ti(sy), ti(sw), ti(sh), false);
     gr.setOpacity(1.0f);

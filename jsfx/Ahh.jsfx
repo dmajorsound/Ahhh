@@ -1,7 +1,7 @@
 desc: Ahh
 //tags: reverb room acoustics image-source filter education surround
 //author: Bernd Dormayer
-//version: 1.1.2
+//version: 1.2.0
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -183,7 +183,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.1.2 - developed with AI assistance");
+strcpy(#verstr, "V 1.2.0 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;

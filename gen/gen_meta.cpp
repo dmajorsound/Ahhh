@@ -154,8 +154,9 @@ const SliderInfo kSliders[] = {
   {149, 0.0, (-24.0), 6.0, 0.1, "5.1 level C (dB)", true, nullptr},
   {150, 0.0, (-24.0), 6.0, 0.1, "5.1 level Ls (dB)", true, nullptr},
   {151, 0.0, (-24.0), 6.0, 0.1, "5.1 level Rs (dB)", true, nullptr},
+  {152, 0.0, 0.0, 2.0, 1.0, "5.1: delay echoes (left / right) on", true, "Front|Rear|Around"},
 };
-const int kNumSliders = 151;
+const int kNumSliders = 152;
 const int kNumInPins = 6;
 const int kNumOutPins = 6;
 }

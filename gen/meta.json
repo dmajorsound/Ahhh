@@ -1762,6 +1762,20 @@
    "label": "5.1 level Rs (dB)",
    "hidden": true,
    "enums": null
+  },
+  {
+   "idx": 152,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 2.0,
+   "step": 1.0,
+   "label": "5.1: delay echoes (left / right) on",
+   "hidden": true,
+   "enums": [
+    "Front",
+    "Rear",
+    "Around"
+   ]
   }
  ],
  "in_pins": 6,

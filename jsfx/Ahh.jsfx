@@ -163,6 +163,7 @@ slider148:0<-24,6,0.1>-5.1 level R (dB)
 slider149:0<-24,6,0.1>-5.1 level C (dB)
 slider150:0<-24,6,0.1>-5.1 level Ls (dB)
 slider151:0<-24,6,0.1>-5.1 level Rs (dB)
+slider152:0<0,2,1{Front,Rear,Around}>-5.1: delay echoes (left / right) on
 
 in_pin:left input
 in_pin:right input
@@ -210,11 +211,11 @@ function srlayout() (
   apbase  = fdnbase + 8 * LINEMAX;
   fdn2base = apbase + 4 * APMAX;           // 2nd network (neighbor room behind the barrier): 4 lines
   DLMAX = ceil(srate * (srate > 192000 ? 1.02 : 4.05)) + 8;   // delay lines: 4 s (above 192 kHz 1 s)
-  DLMAX = min(DLMAX, floor((4194304 - 64 - (fdn2base + 4 * LINEMAX) - MAXIN) / 2));   // never into the fixed area above
-  dlL = fdn2base + 4 * LINEMAX; dlR = dlL + DLMAX; sbuf = dlR + DLMAX;
+  DLMAX = min(DLMAX, floor((4194304 - 64 - (fdn2base + 4 * LINEMAX) - 2 * MAXIN) / 2));   // never into the fixed area above
+  dlL = fdn2base + 4 * LINEMAX; dlR = dlL + DLMAX; sbuf = dlR + DLMAX; esbuf = sbuf + MAXIN;   // esbuf: the echoes' own left / right difference (5.1: it can sit on the rear pair)
   // RoomservicePro: the REAR network (8 lines, 5.1 only) sits after the rings of the 1.0 - their layout is untouched. Its lines
   // get the full length where the memory allows it (below 192 kHz always); above, they are shortened (never the 1.0 rings)
-  fdnBbase = sbuf + MAXIN; LINEMAXB = max(64, min(LINEMAX, floor((4194304 - 64 - fdnBbase) / 8)));
+  fdnBbase = esbuf + MAXIN; LINEMAXB = max(64, min(LINEMAX, floor((4194304 - 64 - fdnBbase) / 8)));
 );
 srlayout();
 arr     = 4194304 + 12000;              // fixed: per-tap arrays, tables, coefficients, filter states (… about + 20000)
@@ -516,7 +517,7 @@ cdir = dtab + 72; cufr = cdir + 80;
 // DELAY (before the room): two lines of 4 s, the side signal for the direct sound (as long as the input line), filter
 // coefficients and states; TEMPO ANALYSIS: onset strength in 10 ms frames (10 s)
 dlC = cufr + 32; dlSt = dlC + 32; anaNv = dlSt + 16; ANAMAX = 1000;   // (the delay lines themselves: see srlayout)
-memset(dlL, 0, 2 * DLMAX + MAXIN); memset(dlC, 0, 48 + ANAMAX + 80);
+memset(dlL, 0, 2 * DLMAX + 2 * MAXIN); memset(dlC, 0, 48 + ANAMAX + 80);
 dwi = 0; dlhold = 0; shold = 0; sideIn = 0; cDON = 0; dllkey = -1; anaOn = 0; anaN = 0; anaDone = 0; anaSc = anaNv + ANAMAX + 8;
 osC = anaSc + 80; osU = osC + 32; osD = osU + 16; memset(osU, 0, 32);   // 4x oversampling of the source-model distortion
 mdM = osD + 16; mdT = mdM + 128 * 6 + 8; mdX = mdT + 300 * 4 + 8; mdXS = mdX + 64; mdP = mdXS + 32; mdPf = mdP + 300; mdF = mdPf + 100;
@@ -936,6 +937,7 @@ dlsm = 1 - exp(-1 / (0.08 * srate));   // delay time: 80 ms glide (like tape - n
 dwr1 = 2 * $pi * 0.53 / srate; dwr2 = 2 * $pi * 0.61 / srate; dwr3 = 2 * $pi * 6.1 / srate; dwr4 = 2 * $pi * 6.7 / srate;   // tape: wow / flutter rates L, R
 dwA = 0.001 * srate; dfA = 0.00008 * srate; dwp2 = 1.9; dwp4 = 0.7;     // tape: wow depth 1 ms (dwA) and flutter depth 0.08 ms (dfA), in samples; dwp2 / dwp4 = start phases of the R oscillators (L start at 0)
 gwarn = 0;
+eFc = eFx = 1; eRc = eRx = 0; lpSe = 0;
 trsL = trsR = trsC = trsLs = trsRs = 1; trgL = trgR = trgC = trgLs = trgRs = 1;
 pkIL = pkIR = pkOL = pkOR = 0; hIL = hIR = hOL = hOR = -150; hO5 = -150; tO5 = 0; VSN = 24; vsB = alloc(2 * VSN); memset(vsB, 0, 2 * VSN); vsP = 0; tIL = tIR = tOL = tOR = 0; hTl = 0;
 pmdec = exp(-1 / (0.15 * srate));      // level meters: ~58 dB/s fall (time constant 150 ms)
@@ -4651,6 +4653,14 @@ function srcpill(x, y) local(on, nf, hit, dpw)
       chip(x + 314 + dpw, y + 2, 64, 16, "Snap spk", slider146 >= 0.5, cSRTT) ? ( slider146 = slider146 >= 0.5 ? 0 : 1; slider_automate(slider146); click = 0; );
       tipbox(x + 314 + dpw, y + 2, 64, 16, "Snap to loudspeaker: the direct sound sits on the one loudspeaker nearest to the source's direction - a hard channel assignment. Reflections and reverb still come from the room");
     );
+    // DELAY ECHOES: their left / right difference in front (L / R), behind (Ls / Rs) or all around
+    x + 384 + dpw + 150 <= VX + VW - 8 ? (
+      segtrack(x + 384 + dpw, y + 2, 150, 16);
+      segp(x + 384 + dpw, y + 2, 150, 16, 3, 0, "Echo front", slider152 < 0.5, cDLTT) ? ( slider152 = 0; slider_automate(slider152); click = 0; );
+      segp(x + 384 + dpw, y + 2, 150, 16, 3, 1, "rear", slider152 >= 0.5 && slider152 < 1.5, cDLTT) ? ( slider152 = 1; slider_automate(slider152); click = 0; );
+      segp(x + 384 + dpw, y + 2, 150, 16, 3, 2, "around", slider152 >= 1.5, cDLTT) ? ( slider152 = 2; slider_automate(slider152); click = 0; );
+      tipbox(x + 384 + dpw, y + 2, 150, 16, "Delay in 5.1: where the left / right width of the echoes (Stereo or Ping-pong) plays – in front on L / R, behind on Ls / Rs, or around on all four. The echoes themselves still come from the source's place in the room");
+    );
   );
   kchg && !(on || devm) ? setp(98, nf * 200); kchg = 0;
   hit && mouse_wheel != 0 ? mouse_wheel = 0;   // (not the floor zoom)
@@ -5614,7 +5624,7 @@ function srsetup() local(k)
 (
   srini = srate;
   srlayout();
-  memset(ibuf, 0, dlL - ibuf); memset(dlL, 0, 2 * DLMAX + MAXIN); qBclear();
+  memset(ibuf, 0, dlL - ibuf); memset(dlL, 0, 2 * DLMAX + 2 * MAXIN); qBclear();
   // reverb modulation (Hz -> radians per sample), depth
   moddep = 0.00015 * srate;   // (see @init)
   edL0 = min(EDN - 1, floor(0.0043 * srate)); edL1 = min(EDN - 1, floor(0.0067 * srate)); edL2 = min(EDN - 1, floor(0.0049 * srate)); edL3 = min(EDN - 1, floor(0.0079 * srate)); memset(edB0, 0, 4 * EDN); q5edset(); memset(qED, 0, 10 * EDN);
@@ -5764,7 +5774,7 @@ fpanic ? (
   memset(fzS, 0, 40); memset(fzSs, 0, 40); memset(FZA, 0, 120); memset(FAP, 0, 80); memset(FZO, 0, 44); memset(odS, 0, 160); fzU1 = fzU2 = 0; fzL1 = odS[33] = odS[73] = lcosh(0); fzhold = 0; fzDx = fzDy = 0; fzenv = 0; fzgate = 0; memset(stS, 0, 16);
   lpLt = lpLt2 = 0; lpSd = 0; memset(bpkS, 0, 8); bndS = 0; dirS = dirB = 0; tkn = 0; last_pkey = -1; fpanic = 0; memset(scRat, 0, 120); q5clear();
   memset(lmDL, 0, 2 * LMLA); k0 = 0; loop(LMN, lmW[k0] = 1; k0 += 1; ); lmsum = LMN; lmqh = lmqn = 0; lmr = 1;
-  memset(dlL, 0, 2 * DLMAX + MAXIN); memset(dlSt, 0, 8); memset(osU, 0, 32); su0 = su1 = su2 = su3 = su4 = su5 = su6 = su7 = su8 = su9 = 0; sd0 = sd1 = sd2 = sd3 = sd4 = sd5 = sd6 = sd7 = sd8 = sd9 = 0;
+  memset(dlL, 0, 2 * DLMAX + 2 * MAXIN); memset(dlSt, 0, 8); memset(osU, 0, 32); su0 = su1 = su2 = su3 = su4 = su5 = su6 = su7 = su8 = su9 = 0; sd0 = sd1 = sd2 = sd3 = sd4 = sd5 = sd6 = sd7 = sd8 = sd9 = 0;
   // the rest of the running state: modulation phases, pointers, noise generator, modes, tape, limiter clock - and every
   // smoothed parameter jumps to its value (snap)
   modreset();
@@ -6162,6 +6172,7 @@ qRD = min(QRBN - 4, floor(0.010 * srate));   // the rear offset: the rear networ
 // the LFE: crossover 80 / 120 Hz (two equal Butterworth sections = Linkwitz-Riley 4th order), level in dB, Off = gain 0 (glides)
 k0 = slider142 >= 0.5 ? 120 : 80; k0 != qLFfc ? ( qLFfc = k0; fdesignbl(qLFC, qLFW, 0, k0, 2); memcpy(qLFC + 5, qLFC, 5); memset(qLFS, 0, 4); );
 xLFG = slider141 >= 0.5 ? 10 ^ (min(10, max(-24, slider143)) / 20) : 0;
+eFx = slider152 < 0.5 ? 1 : (slider152 < 1.5 ? 0 : 0.70710678); eRx = slider152 < 0.5 ? 0 : (slider152 < 1.5 ? 1 : 0.70710678);   // 5.1: where the echoes' left / right difference plays
 trgL = 10 ^ (min(6, max(-24, slider147)) / 20); trgR = 10 ^ (min(6, max(-24, slider148)) / 20); trgC = 10 ^ (min(6, max(-24, slider149)) / 20); trgLs = 10 ^ (min(6, max(-24, slider150)) / 20); trgRs = 10 ^ (min(6, max(-24, slider151)) / 20);   // 5.1: the level of each loudspeaker channel (the LFE has its own level)
 mdcmov = 0; k0 = 0; loop(mdN, abs(mdM[k0 * 6] - mdC0[k0]) > 0.000000001 || abs(mdM[k0 * 6 + 1] - mdC1[k0]) > 0.000000001 ? ( mdcmov = 1; mdD0[k0] = (mdM[k0 * 6] - mdC0[k0]) / samplesblock; mdD1[k0] = (mdM[k0 * 6 + 1] - mdC1[k0]) / samplesblock; ) : ( mdD0[k0] = mdD1[k0] = 0; ); k0 += 1; );
 // SLEEP: the input has been silent and the output below -140 dB for longer than every delay in the plugin (taps, reverb
@@ -6340,8 +6351,8 @@ cDON > 0.00001 || dlhold > 0 ? (
   ) : (
   dyL = drL * cDGL * cDON * cDMX * cDML; dyR = drR * cDGR * cDON * cDMX * cDMR;
   );
-  xroom = xsrc * cSOX + (dyL + dyR) * 0.5; sbuf[wi] = (dyL - dyR) * 0.5 + sideIn * cSOX * cSWD;
-) : ( dlL[dwi] = 0; dlR[dwi] = 0; sbuf[wi] = sideIn * cSOX * cSWD; );
+  xroom = xsrc * cSOX + (dyL + dyR) * 0.5; sbuf[wi] = (dyL - dyR) * 0.5 + sideIn * cSOX * cSWD; esbuf[wi] = (dyL - dyR) * 0.5;
+) : ( dlL[dwi] = 0; dlR[dwi] = 0; sbuf[wi] = sideIn * cSOX * cSWD; esbuf[wi] = 0; );
 dwi += 1; dwi >= DLMAX ? dwi = 0;
 bpM1 = bpM; bpS1 = bpS; bpM = xroom; bpS = sbuf[wi];   // Room off plays bpM1 / bpS1 (one sample, as the direct sound) // the room input as it is (mid incl. echoes, side) - for Room off
 BPDM[bpdW] = bpM1; BPDS[bpdW] = bpS1; bpMo = bpM1; bpSo = bpS1;
@@ -6472,8 +6483,18 @@ edi += 1; edi >= EDN ? edi = 0;
 dlhold > 0 || shold > 0 ? (                   // (also the input's stereo width, see STEREO WIDTH)
   dsv = dlyreadhq(sbuf, MAXIN, wi, cDL[0]);
   lpSd = dsv + (lpSd - dsv) * cA[0]; dsv = lpSd + (dsv - lpSd) * cSM[0];
-  dsv *= (cGL[0] + cGR[0]) * 0.5; dirL += dsv; dirR -= dsv; pro_on ? ( qDR[0] += dsv; qDR[1] -= dsv; );   // (5.1: the input's side on L / R)
-) : ( lpSd = 0; );
+  dsv *= (cGL[0] + cGR[0]) * 0.5; dirL += dsv; dirR -= dsv;
+  pro_on ? (
+    // 5.1: the input's own side stays on L / R; the ECHOES' side sits in front (L / R), behind (Ls / Rs) or on all four (slider152)
+    eFc += (eFx - eFc) * sm; eRc += (eRx - eRc) * sm;
+    eRc > 0.00001 || eFc < 0.99999 ? (
+      dse = dlyreadhq(esbuf, MAXIN, wi, cDL[0]);
+      lpSe = dse + (lpSe - dse) * cA[0]; dse = lpSe + (dse - lpSe) * cSM[0];
+      dse *= (cGL[0] + cGR[0]) * 0.5;
+      qDR[0] += dsv - dse * (1 - eFc); qDR[1] -= dsv - dse * (1 - eFc); qDR[3] += dse * eRc; qDR[4] -= dse * eRc;
+    ) : ( qDR[0] += dsv; qDR[1] -= dsv; lpSe = 0; );
+  );
+) : ( lpSd = 0; lpSe = 0; );
 // LISTEN (teaching): direct, early reflections and reverb tail can be muted one by one (smoothed: no clicks)
 cMuD += (tMuD - cMuD) * sm; cMuE += (tMuE - cMuE) * sm; cMuL += (tMuL - cMuL) * sm;
 dirL *= cMuD; dirR *= cMuD; erL *= cMuE; erR *= cMuE;
@@ -6782,7 +6803,7 @@ nanB ? (
   // below: the FDN loop filters, the source model's biquads, the oversampler, the room modes (a partial reset left a NaN
   // sitting in one of those, and it came straight back on the next sample - the plugin stayed silent until playback restarted)
   fpanic = 1;
-  memset(ibuf, 0, dlL - ibuf); memset(arr, 0, stb + 64 - arr); memset(dlL, 0, 2 * DLMAX + MAXIN); qBclear(); memset(dlC, 0, 48 + ANAMAX + 80);
+  memset(ibuf, 0, dlL - ibuf); memset(arr, 0, stb + 64 - arr); memset(dlL, 0, 2 * DLMAX + 2 * MAXIN); qBclear(); memset(dlC, 0, 48 + ANAMAX + 80);
   memset(lmDL, 0, 2 * LMLA); lmsum = LMN; lmr = 1; lmga = 1; k0 = 0; loop(LMN, lmW[k0] = 1; k0 += 1; );
   pro_on ? ( memset(qO, 0, 8); q5clear(); );
 );
@@ -8789,7 +8810,7 @@ actcol = cTEXT; kcol = cTEXT;
 
 // ---- redraw decision: full frame only when something besides the meters can have changed ----
 ukey = 0; i = 1; loop(NSL, ukey += slider(i) * (i * 7919 + 1); i += 1; );
-ukey += (slider136 >= 0.5 ? mOC * 7.1 + mOLf * 7.3 + mOLs * 7.7 + mORs * 7.9 + hO5 * 8.3 : 0) + slider136 * 5003 + slider137 * 5009 + slider138 * 17.3 + slider139 * 19.7 + slider140 * 23.1 + slider141 * 29 + slider142 * 31 + slider143 * 37.7 + slider144 * 41.3 + slider145 * 43.7 + slider146 * 47.9 + slider147 * 59.1 + slider148 * 61.3 + slider149 * 67.7 + slider150 * 71.9 + slider151 * 73.1 + qSnapK * 53.3 + pro_on * 3.3;   // RoomservicePro: the output format, the speaker layout and the 5.1 settings redraw the view (host automation, too)
+ukey += (slider136 >= 0.5 ? mOC * 7.1 + mOLf * 7.3 + mOLs * 7.7 + mORs * 7.9 + hO5 * 8.3 : 0) + slider136 * 5003 + slider137 * 5009 + slider138 * 17.3 + slider139 * 19.7 + slider140 * 23.1 + slider141 * 29 + slider142 * 31 + slider143 * 37.7 + slider144 * 41.3 + slider145 * 43.7 + slider146 * 47.9 + slider147 * 59.1 + slider148 * 61.3 + slider149 * 67.7 + slider150 * 71.9 + slider151 * 73.1 + slider152 * 79.3 + qSnapK * 53.3 + pro_on * 3.3;   // RoomservicePro: the output format, the speaker layout and the 5.1 settings redraw the view (host automation, too)
 soloT = time_precise();                  // heartbeat: a solo lasts only while this window is drawn
 ukey += soloM * 4201 + selw * 53.3 + mouse_x * 3.1 + mouse_y * 5.3 + mouse_cap * 1000.7 + gfx_w * 7.7 + gfx_h * 11.3 + zoomv * 31 + saveArm * 37;
 i = 1; loop(7, ukey += vopt[i] * (101 + i * 13); i += 1; ); ukey += vopt[14] * 7717 + vopt[15] * 1229 + snlast * 17 + vopt[9] * 977 + vopt[10] * 1039 + vopt[11] * 1103 + vopt[12] * 1171 + vopt[13] * 1187 + scy * 3.7 + szoom * 1213;

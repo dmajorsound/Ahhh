@@ -517,6 +517,8 @@ struct Gen : Runtime {
   double g_edl2 = 0;
   double g_edl3 = 0;
   double g_edn = 0;
+  double g_efc = 0;
+  double g_efx = 0;
   double g_eh = 0;
   double g_eidx = 0;
   double g_eih = 0;
@@ -537,8 +539,11 @@ struct Gen : Runtime {
   double g_eqmx0 = 0;
   double g_eqmy0 = 0;
   double g_eqv0 = 0;
+  double g_erc = 0;
   double g_ere = 0;
   double g_erg = 0;
+  double g_erx = 0;
+  double g_esbuf = 0;
   double g_eslh = 0;
   double g_eslw = 0;
   double g_eslx1 = 0;
@@ -1039,6 +1044,7 @@ struct Gen : Runtime {
   double g_lplt2 = 0;
   double g_lpr = 0;
   double g_lpsd = 0;
+  double g_lpse = 0;
   double g_lpx = 0;
   double g_lq1 = 0;
   double g_lq2 = 0;

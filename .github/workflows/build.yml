@@ -143,7 +143,9 @@ jobs:
           end tell
           OSA
           sync
-          hdiutil detach "$DEV" || hdiutil detach -force "$DEV"
+          # Finder or Spotlight can hold the volume for a moment: try a few times before forcing it
+          for n in 1 2 3 4 5 6 7 8 9 10; do hdiutil detach "$DEV" && break; sleep 3; done
+          if hdiutil info | grep -q "^$DEV"; then hdiutil detach -force "$DEV"; fi
           hdiutil convert rw.dmg -format UDZO -imagekey zlib-level=9 -o "Ahh_${FILEVER}_installer_mac.dmg"
           ls -la Ahh_*_mac.pkg Ahh_*_mac.dmg
       - uses: actions/upload-artifact@v4

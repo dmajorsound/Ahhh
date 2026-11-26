@@ -2553,6 +2553,7 @@ struct Gen : Runtime {
   double F_mtype(double);
   double F_mzc(double);
   double F_nearmth();
+  double F_o5field(double, double, double);
   double F_odlin(double, double);
   double F_odsat(double, double);
   double F_oncol(double);

@@ -6921,6 +6921,22 @@ function foldall() local(vi, allm) (
   vi = basic ? 13 : 12; allm = basic ? 682 : 4094 + 16384;                 // all section bits + 512 (3D view) (+ 1024 Delay, 2048 Decay by band, 16384 Motion)
   vopt[vi] = (vopt[vi] & allm) != allm ? allm : 0;
 );
+// 5.1 OUTPUT LEVEL of one channel, typed in: a small field under its meter (k: 0 L, 1 R, 2 C, 3 LFE, 4 Ls, 5 Rs).
+// Click = type the level in dB, Alt+click = 0 dB. L R C Ls Rs: -24 … +6 dB (sliders 147 … 151), LFE: its level (143, -24 … +10)
+function o5field(k, cx, cy) local(si, v, lo, hi, id, hit)
+(
+  si = k == 3 ? 143 : (k < 3 ? 147 + k : 146 + k); lo = -24; hi = k == 3 ? 10 : 6;
+  v = slider(si); id = 93 + k;
+  sprintf(#o5f, abs(v) < 0.05 ? "0.0" : (abs(v) >= 9.95 ? (v > 0 ? "+%.0f" : "%.0f") : (v > 0 ? "+%.1f" : "%.1f")), v);
+  hit = inbox(cx - 8, cy - 6, 16, 12);
+  col(hit ? cBORD : cLINE, 1); RR(cx - 8, cy - 6, 16, 12, 3);
+  col(abs(v) < 0.05 ? cMUTED : cTEXT, 1); gfx_setfont(7); txt(#o5f, cx, cy, 1);
+  click && hit ? ( (mouse_cap & 16) ? setp(si, 0) : vedopen(id, #o5f); click = 0; );
+  vedPend && vedId == id ? ( setp(si, min(hi, max(lo, vedVal))); vedPend = 0; );
+  vedit == id ? vedplace(cx, cy, 44);
+  hit ? ( tipon = 1; tipforce = 0; tipx = cx; tipy = cy + 18;
+    tipstr = k == 3 ? "LFE level: click = type it in dB (-24 … +10), Alt+click = 0 dB – the LFE knob below does the same" : "Level of this loudspeaker channel: click = type it in dB (-24 … +6), Alt+click = 0 dB – e.g. to match the speakers of your room"; );
+);
 // SMALL IN / OUT METER in a module header: input left (gray), output right (the Output color), L and R each, -48 … 0 dB.
 // Every module shows the level going in and coming out while you work on it. Its place is kept, so the meter-only frames
 // repaint it alone (see the partial frame at the end).
@@ -7549,10 +7565,11 @@ secopen(7) ? (
     // Input | Dry / wet | Output; bottom row: correlation and the limiter's gain reduction
 // BASIC: the same look, compact - spectrum | output meters, faders Dry / wet | Output
     q51 = !basic && slider136 >= 0.5;   // RoomservicePro: the 5.1 output - six meters, the vectorscope, the LFE / Center controls
-    omw = 64; omw2 = q51 ? 128 : 64; omy = IOY + (basic ? 44 : 54); omh = IOH - (basic ? 44 + 46 : 54 + 80); omx1 = IOX + 14; omx2 = IOX + IOW - 14 - omw2;   // 8 px more under the meters - L / R sat on the fader names
+    om51 = slider136 >= 0.5;   // 5.1: six output meters in every view (Basic too); the 5.1 controls only in Expert (q51)
+    omw = 64; omw2 = om51 ? 128 : 64; omy = IOY + (basic ? 44 : 54); omh = IOH - (basic ? 44 + 46 : 54 + 80); omx1 = IOX + 14; omx2 = IOX + IOW - 14 - omw2;   // 8 px more under the meters - L / R sat on the fader names
     gj = basic ? 1 : 0;
     loop(basic ? 1 : 2,
-      omx = gj == 0 ? omx1 : omx2; omwj = gj == 0 ? omw : omw2; om6 = q51 && gj == 1;
+      omx = gj == 0 ? omx1 : omx2; omwj = gj == 0 ? omw : omw2; om6 = om51 && gj == 1;
       !basic ? ( col(cMUTED, 1); gfx_setfont(4); txt(gj == 0 ? "Input" : (om6 ? "Output 5.1" : "Output"), omx + omwj / 2, IOY + 30, 1); );
       gk = 0;
       loop(om6 ? 6 : 2,
@@ -7561,6 +7578,7 @@ secopen(7) ? (
         mbarV(bx + 2, omy, 12, omh, mdb);   // a smooth bar
         gk == 0 ? ( col(cDIM2, 1); i = 0; loop(5, sdb = i == 0 ? -3 : (i == 1 ? -6 : (i == 2 ? -12 : (i == 3 ? -24 : -48))); sy0 = omy + omh * (1 - lin2f(sdb, -60, 0)); R(bx - 2, sy0 - 0.4, 3, 0.8); i += 1; ); );
         col(cMUTED, 1); gfx_setfont(7); txt(om6 ? (gk == 0 ? "L" : (gk == 1 ? "R" : (gk == 2 ? "C" : (gk == 3 ? "LFE" : (gk == 4 ? "Ls" : "Rs"))))) : (gk == 0 ? "L" : "R"), bx + 8, omy + omh + 8, 1);
+        om6 && !basic ? o5field(gk == 0 ? 0 : (gk == 1 ? 1 : (gk == 2 ? 2 : (gk == 3 ? 3 : (gk == 4 ? 4 : 5)))), bx + 8, omy + omh + 21);   // 5.1: the channel's level, typed in
         !om6 ? (
           mdh = gj == 0 ? (gk == 0 ? hIL : hIR) : (gk == 0 ? hOL : hOR);   // the held peak (3 s), not the moving level
           col(mdh > -0.05 ? cIOTT : cTEXT, 1); gfx_setfont(6); mdh < -59.9 ? strcpy(#w1, "-inf") : sprintf(#w1, "%.1f", mdh); txt(#w1, bx + 8, omy - 8, 1);
@@ -7605,18 +7623,18 @@ secopen(7) ? (
     );
     // bottom row: correlation (middle), gain reduction (right) - not in Basic
     q51 ? (
-    // 5.1: ONE ROW OF KNOBS instead of the faders - Input, Dry / wet, Output | LFE (on, crossover, level) | Center |
-    // the levels of L R C Ls Rs. Knobs are easier to set than short faders, and all ten fit next to each other
+    // 5.1: ONE ROW OF KNOBS instead of the faders - Input, Dry / wet, Output, LFE, Center; Mute LFE and the crossover at
+    // the left. The level of each channel is typed in under its meter (o5field)
     kscale(1); kcol = cIOTT; o5y = IOY + IOH - 36;
     lfon = slider141 >= 0.5;
-    chip(IOX + 14, o5y - 17, 46, 14, "LFE", lfon, cIOTT) ? ( slider141 = lfon ? 0 : 1; slider_automate(slider141); click = 0; );
-    tipbox(IOX + 14, o5y - 17, 46, 14, "LFE on / off: the subwoofer channel carries the direct sound alone (no reflections, no reverb), low-passed at the crossover");
-    segtrack(IOX + 14, o5y + 3, 46, 14);
-    segp(IOX + 14, o5y + 3, 46, 14, 2, 0, "80", slider142 < 0.5, cIOTT) ? ( slider142 = 0; slider_automate(slider142); click = 0; );
-    segp(IOX + 14, o5y + 3, 46, 14, 2, 1, "120", slider142 >= 0.5, cIOTT) ? ( slider142 = 1; slider_automate(slider142); click = 0; );
-    tipbox(IOX + 14, o5y + 3, 46, 14, "LFE crossover: the subwoofer gets everything below 80 or 120 Hz (24 dB per octave)");
-    o5x0 = IOX + 70; o5sp = (IOX + IOW - 14 - o5x0) / 10; gk = 0;
-    loop(10,
+    chip(IOX + 14, o5y - 17, 54, 14, "Mute LFE", !lfon, cWARN) ? ( slider141 = lfon ? 0 : 1; slider_automate(slider141); click = 0; );
+    tipbox(IOX + 14, o5y - 17, 54, 14, lfon ? "Mute LFE: silence the subwoofer channel (the five other channels stay as they are)" : "LFE muted – click: the subwoofer channel plays again (the direct sound alone, low-passed at the crossover)");
+    segtrack(IOX + 14, o5y + 3, 54, 14);
+    segp(IOX + 14, o5y + 3, 54, 14, 2, 0, "80", slider142 < 0.5, cIOTT) ? ( slider142 = 0; slider_automate(slider142); click = 0; );
+    segp(IOX + 14, o5y + 3, 54, 14, 2, 1, "120", slider142 >= 0.5, cIOTT) ? ( slider142 = 1; slider_automate(slider142); click = 0; );
+    tipbox(IOX + 14, o5y + 3, 54, 14, "LFE crossover: the subwoofer gets everything below 80 or 120 Hz (24 dB per octave)");
+    o5x0 = IOX + 78; o5sp = min(90, (IOX + IOW - 14 - o5x0) / 5); gk = 0;
+    loop(5,
       o5cx = o5x0 + o5sp * (gk + 0.5);
       gk == 0 ? (
         sprintf(#fv, slider40 <= -71.9 ? "-inf" : (slider40 > 0.05 ? "+%.1f" : "%.1f"), slider40);
@@ -7634,16 +7652,10 @@ secopen(7) ? (
         sprintf(#fv, slider143 > 0.05 ? "+%.1f" : "%.1f", slider143); kdim = !lfon;
         kmap(0, -24, 10, 1); nf = knob(60, o5cx, o5y, "LFE", #fv, (slider143 + 24) / 34, 24 / 34); kdim = 0; kchg ? setp(143, min(10, max(-24, nf * 34 - 24)));
         knobtip(o5cx, o5y, "LFE level: -24 … +10 dB (double-click = type a value, Alt+click = 0 dB)");
-      ) : gk == 4 ? (
+      ) : (
         sprintf(#fv, slider144 <= 0.5 ? "ph." : (slider144 >= 99.5 ? "disc." : "%.0f%%"), slider144);
         kmap(0, 0, 100, 1); nf = knob(61, o5cx, o5y, "Center", #fv, slider144 / 100, 1); kchg ? setp(144, nf * 100);
         knobtip(o5cx, o5y, "Center: 0 % = phantom (the front sits on L / R only), 100 % = discrete (hard C). Power stays the same (double-click = type a value, Alt+click = discrete)");
-      ) : (
-        o5k = gk - 5; o5v = slider(147 + o5k);
-        sprintf(#fv, o5v > 0.05 ? "+%.1f" : "%.1f", o5v);
-        kmap(0, -24, 6, 1); nf = knob(93 + o5k, o5cx, o5y, o5k == 0 ? "L" : (o5k == 1 ? "R" : (o5k == 2 ? "C" : (o5k == 3 ? "Ls" : "Rs"))), #fv, (o5v + 24) / 30, 24 / 30);
-        kchg ? setp(147 + o5k, min(6, max(-24, nf * 30 - 24)));
-        knobtip(o5cx, o5y, "Level of this loudspeaker channel: -24 … +6 dB, e.g. to match the speakers of your room (double-click = type a value, Alt+click = 0 dB)");
       );
       gk += 1;
     );
@@ -7674,14 +7686,18 @@ secopen(7) ? (
     myy = my0 + gj * 13;
     gj == 0 ? ( ml = mIL; mr = mIR; mh = hIn; ms1 = "In"; ) : ( ml = mOL; mr = mOR; mh = hOut; ms1 = "Out"; );
     col(cMUTED, 1); gfx_setfont(4); txt(ms1, IOX + (basic ? 8 : 12), myy, 0);
+    gj == 1 && slider136 >= 0.5 ? (   // 5.1: six thin bars, L R C LFE Ls Rs from the top
+      gk = 0; loop(6, mbarH(mx0, myy - 7 + gk * 2.6, mbw, 2, dbs(gk == 0 ? mOL : (gk == 1 ? mOR : (gk == 2 ? mOC : (gk == 3 ? mOLf : (gk == 4 ? mOLs : mORs)))))); gk += 1; );
+    ) : (
     mbarH(mx0, myy - 3, mbw, 2.5, dbs(ml)); mbarH(mx0, myy + 0.7, mbw, 2.5, dbs(mr));   // green / amber / red zones
+    );
     mh > -60 ? ( col(mh > -1 ? cIOTT : cTEXT, 1); R(mx0 + mbw * lin2f(mh, -60, 0) - 0.6, myy - 4, 1.2, 8); );
     col(cTEXT, 1); gfx_setfont(2);
     mh < -59.9 ? strcpy(#w1, "-inf") : sprintf(#w1, "%.1f", mh); txt(#w1, IOX + mtw - 8, myy, 2);
     gj += 1;
   );
   grdb = -dbs(mGV);                                  // limiter gain reduction: a thin bar from the right (output color), 0 … 12 dB
-  clipon && grdb > 0.05 ? ( col(cIOTT, 1); gw = mbw * min(1, grdb / 12); R(mx0 + mbw - gw, my0 + 18, gw, 1.5); );
+  clipon && grdb > 0.05 ? ( col(cIOTT, 1); gw = mbw * min(1, grdb / 12); R(mx0 + mbw - gw, my0 + (slider136 >= 0.5 ? 24 : 18), gw, 1.5); );
   !basic ? (
     cyy = my0 + 31; col(cMUTED, 1); gfx_setfont(4); txt("Corr", IOX + 12, cyy, 0);
     crv = crvS;
@@ -7690,7 +7706,7 @@ secopen(7) ? (
     tipbox(IOX + 4, cyy - 6, mtw - 8, 12, "Correlation of the output, left against right: +1 = mono, 0 = wide, below 0 = parts cancel in a mono or TV downmix");
   );
   !basic ? tipbox(IOX + 4, my0 - 7, mtw - 8, 13, "Input level (peak, dBFS) – upper bar = left, lower bar = right, marker = peak hold");
-  tipbox(IOX + 4, my0 + 6, mtw - 8, 16, "Output level (peak, dBFS) after the limiter – the thin blue bar from the right = gain reduction of the limiter (0 … 12 dB)");
+  tipbox(IOX + 4, my0 + 6, mtw - 8, 16, slider136 >= 0.5 ? "Output level 5.1 (peak, dBFS) after the limiter – six bars: L R C LFE Ls Rs from the top; the thin blue bar from the right = gain reduction" : "Output level (peak, dBFS) after the limiter – the thin blue bar from the right = gain reduction of the limiter (0 … 12 dB)");
   // SPECTRUM between the meters and the knobs
   iorow ? (
     iostk ? ( iosx = IOX + 12; iosw = mtw - 12; spy = IOY + 72; sph = max(30, IOH - 80); gonS > 0 ? gondraw(IOX + mtw + 14 + gonS / 2, IOY + 34 + gonS / 2, gonS / 2 - 6); )

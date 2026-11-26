@@ -1,13 +1,13 @@
 ; Roomservice installer for Windows (Inno Setup 6). The version comes from the build: ISCC /DAppVer=1.0.1 /DFileVer=1.0.1
 #ifndef AppVer
-  #define AppVer "1.0.6"
+  #define AppVer "1.1.0"
 #endif
 #ifndef FileVer
-  #define FileVer "1.0.6"
+  #define FileVer "1.1.0"
 #endif
 
 [Setup]
-AppId={{6F1C2B7E-4A3D-4E8B-9C21-7D5E0A1B2C33}
+AppId={{A44B0D5E-51C0-4B7A-9E0D-5A11C0DE0100}
 AppName=Ahh
 AppVersion={#AppVer}
 AppPublisher=dmajorsound
@@ -22,7 +22,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 Uninstallable=yes
 UninstallDisplayName=Ahh
-UninstallFilesDir={commonappdata}\dmajorsound\Roomservice
+UninstallFilesDir={commonappdata}\dmajorsound\Ahh
 WizardStyle=modern
 WizardImageFile=wizard-100.bmp,wizard-200.bmp
 WizardSmallImageFile=small-100.bmp,small-200.bmp
@@ -37,6 +37,8 @@ Source: "..\..\build\Roomservice_artefacts\Release\CLAP\Ahh.clap"; DestDir: "{co
 [InstallDelete]
 Type: filesandordirs; Name: "{commoncf64}\VST3\Roomservice.vst3"
 Type: files; Name: "{commoncf64}\CLAP\Roomservice.clap"
+Type: filesandordirs; Name: "{commoncf64}\VST3\RoomservicePro.vst3"
+Type: files; Name: "{commoncf64}\CLAP\RoomservicePro.clap"
 
 [Types]
 Name: "full"; Description: "VST3 and CLAP"

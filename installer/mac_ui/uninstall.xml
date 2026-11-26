@@ -11,7 +11,7 @@
         <line choice="default"/>
     </choices-outline>
     <choice id="default" title="Uninstall Ahh!">
-        <pkg-ref id="com.dmajorsound.roomservice.uninstall"/>
+        <pkg-ref id="com.dmajorsound.ahh.uninstall"/>
     </choice>
-    <pkg-ref id="com.dmajorsound.roomservice.uninstall" version="VERSION" onConclusion="none">ahh-uninstall-component.pkg</pkg-ref>
+    <pkg-ref id="com.dmajorsound.ahh.uninstall" version="VERSION" onConclusion="none">ahh-uninstall-component.pkg</pkg-ref>
 </installer-gui-script>

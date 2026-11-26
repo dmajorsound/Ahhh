@@ -1,7 +1,7 @@
-desc: Ahh
+desc: roomservice
 //tags: reverb room acoustics image-source filter education
 //author: Bernd Dormayer
-//version: 1.0.6
+//version: 1.0
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -159,7 +159,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.0.6 - developed with AI assistance");
+strcpy(#verstr, "1.0 – developed with AI assistance by dmajorsound");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -558,7 +558,7 @@ fzrel = exp(-1 / (0.05 * srate)); lastfz = -1; fzon = 0; shpin = 0; shsec = 0; s
 // (these were lost inside the comment above and did not run - fzrs = 1 above all: it is the seed of the source model's own
 //  noise generator, and a seed of 0 is a fixed point, so the hiss became a DC offset until the transport was started once)
 eqdrag = 0; lasteqn = -1; lasteqt = 0; eqhov = -1; lasteqk = -1; wmenu = 0; emenu = 0; fzPush = 1; fzrespok = 0; fzacc = 0; fzhold = 0; fzenv = 0; fzgate = 0; fzrs = 1;
-rmenu = smenu = helpon = 0; rpmenu = 0; bmenu = 0; kmenu = 0; icOL = 0; zoomv = 0; fmenu = 0;
+rmenu = smenu = helpon = 0; rpmenu = 0; bmenu = 0; kmenu = 0; icOL = 0; zoomv = 0; segfont = 2; fmenu = 0;
 pXs = 1; rflSel = 0; rflHov = 0; rflHx0 = rflHy0 = rflHx1 = rflHy1 = 0; rflHv0 = rflHv1 = 0; lrnTp = -1; lrnB = 0; lrnW = 0; lrnShow = 0; lrnTL = 0; tpon = 0; tmbOn = 0; xpon = 0; tptg = 2; tnsel = 1; dmenu = 0; tapN = 0; tapLast = 0; anaSel = 0; anaCmd = 0; anaStp = 0;   // Tempo tools (Expert), Expert-settings list (Basic), tap, analysis requests
 // GUI: keep the framebuffer between frames (partial redraw of the meters when nothing else changed)
 gfx_clear = -1; lastukey = -1; fullcnt = 0; lasttip = 0; crvZ = 2; vzcX0 = vzcX1 = 99999;   // (vzcX1: the left edge of the Fit / 1:1 chips, see rflTop)
@@ -871,58 +871,7 @@ function g_dnote(n) ( n = floor(n + 0.5); n == 0 ? 4 : (n == 1 ? 3 : (n == 2 ? 2
 // Returns the note-value name (1/1 ... 1/32, dotted, triplet) for delay index n, rounded to the nearest integer.
 function dnname(n) ( n = floor(n + 0.5); n == 0 ? "1/1" : (n == 1 ? "1/2 dot." : (n == 2 ? "1/2" : (n == 3 ? "1/4 dot." : (n == 4 ? "1/2 trip." : (n == 5 ? "1/4" : (n == 6 ? "1/8 dot." : (n == 7 ? "1/4 trip." : (n == 8 ? "1/8" : (n == 9 ? "1/16 dot." : (n == 10 ? "1/8 trip." : (n == 11 ? "1/16" : "1/32"))))))))))); );
 // Designs a Butterworth chain of order nord at f (high-pass if ishp, else low-pass): nord / 2 biquads into cb (5 coefficients each), plus a first-order section into fb for odd orders.
-// ---- MAGNITUDE-MATCHED BIQUADS (VST3 / AU / CLAP; since 1.0.6) --------------------------------------------------------
-// The bilinear ("cookbook") designs squeeze everything above ~10 kHz towards Nyquist: a 12 kHz high cut fell 10 dB at
-// 16 kHz instead of 6, a bell at 12 kHz was half as wide. These designs follow the analog curve up to ~20 kHz:
-// poles by impulse invariance, the numerator fitted to the analog magnitude at DC, at the corner and at Nyquist
-// (M. Vicanek, "Matched Second Order Digital Filters", 2016). Analog H(s) = (n2 u^2 + n1 u + n0) / (v^2 + v / q + 1),
-// u = s / w0, v = s / wp (wp = pole frequency; = w0 except for shelves). Coefficients: cb[0..2] = b0 b1 b2, cb[3..4] = a1 a2.
-function mbq(cb, w0, wp, q, n0, n1, n2) local(z, r, a1, a2, D0, D1, D2, p0, p1, p2, B0, B1, B2, u, v, wm, W)
-(
-  z = 1 / (2 * q);
-  z < 1 ? ( r = cos(wp * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * wp; r = (exp(r) + exp(-r)) / 2; );
-  a1 = -2 * exp(-z * wp) * r; a2 = exp(-2 * z * wp);
-  D0 = sqr(1 + a1 + a2); D1 = sqr(1 - a1 + a2); D2 = -4 * a2;
-  B0 = n0 * n0 * D0;
-  u = $pi / w0; v = $pi / wp; B1 = (sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * D1;
-  wm = min(w0, 0.98 * $pi); p1 = sqr(sin(wm / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
-  u = wm / w0; v = wm / wp;
-  B2 = ((sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * (D0 * p0 + D1 * p1 + D2 * p2) - B0 * p0 - B1 * p1) / p2;
-  W = 0.5 * (sqrt(B0) + sqrt(B1));
-  cb[0] = 0.5 * (W + sqrt(max(0, W * W + B2))); cb[1] = 0.5 * (sqrt(B0) - sqrt(B1)); cb[2] = -B2 / (4 * cb[0]);
-  cb[3] = a1; cb[4] = a2;
-);
-// matched high-pass: the double zero at DC kept exactly (12 dB/oct below the corner), the level at the corner matched (= q)
-function mhp(cb, w0, q) local(z, r, a1, a2, p0, p1, p2)
-(
-  z = 1 / (2 * q);
-  z < 1 ? ( r = cos(w0 * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * w0; r = (exp(r) + exp(-r)) / 2; );
-  a1 = -2 * exp(-z * w0) * r; a2 = exp(-2 * z * w0);
-  p1 = sqr(sin(w0 / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
-  cb[0] = q * sqrt(sqr(1 + a1 + a2) * p0 + sqr(1 - a1 + a2) * p1 - 4 * a2 * p2) / (4 * p1);
-  cb[1] = -2 * cb[0]; cb[2] = cb[0]; cb[3] = a1; cb[4] = a2;
-);
-// matched first-order section (odd slopes): fb[0..1] = b0 b1, fb[2] = a1; level matched at DC and Nyquist
-function mfo(fb, w0, hp) local(a1, h2, B0, B1)
-(
-  a1 = -exp(-w0); h2 = sqr($pi / w0); h2 = hp ? h2 / (1 + h2) : 1 / (1 + h2);
-  B0 = hp ? 0 : sqr(1 + a1); B1 = h2 * sqr(1 - a1);
-  fb[0] = (sqrt(B0) + sqrt(B1)) / 2; fb[1] = (sqrt(B0) - sqrt(B1)) / 2; fb[2] = a1;
-);
-// Butterworth low-pass (ishp 0) / high-pass (ishp 1) of order nord at f: biquads into cb, an odd order's first-order
-// section into fb. Matched (see above); the Linkwitz-Riley crossovers keep fdesignbl (their two halves must sum flat).
-function fdesign(cb, fb, ishp, f, nord) local(k, q, w0)
-(
-  f = min(f, 0.45 * srate); w0 = 2 * $pi * f / srate;
-  k = 0;
-  loop(floor(nord / 2),
-    q = (nord % 2) ? 1 / (2 * cos((k + 1) * $pi / nord)) : 1 / (2 * cos((2 * k + 1) * $pi / (2 * nord)));
-    ishp ? mhp(cb + k * 5, w0, q) : mbq(cb + k * 5, w0, w0, q, 1, 0, 0);
-    k += 1;
-  );
-  (nord % 2) ? mfo(fb, w0, ishp);
-);
-function fdesignbl(cb, fb, ishp, f, nord) local(k, q, w0, cw, al, a0, tk)
+function fdesign(cb, fb, ishp, f, nord) local(k, q, w0, cw, al, a0, tk)
 (
   f = min(f, 0.45 * srate);
   k = 0;
@@ -956,11 +905,16 @@ function bqrun(x, cb, st, n) local(i, y, c, z)
 // Runs x through one first-order section (coefficients c[0..2], state z[0..1]) and returns the output.
 function forun(x, c, z) local(y) ( y = c[0] * x + c[1] * z[0] - c[2] * z[1]; z[0] = x; z[1] = y; y; );
 // Writes high-shelf biquad coefficients into cb[0..4] for corner f (Hz) and gain gdb (dB) at the current sample rate.
-function shelfdesign(cb, f, gdb) local(shA, sq)
+function shelfdesign(cb, f, gdb) local(shA, w0, cw, sw, al, a0, sa)
 (
-  // matched high shelf (the analog shelf with the slope of the old design, S = 0.707)
-  shA = 10 ^ (gdb / 40); sq = 1 / sqrt((shA + 1 / shA) * (1 / 0.707 - 1) + 2);
-  mbq(cb, 2 * $pi * min(f, 0.45 * srate) / srate, 2 * $pi * min(f, 0.45 * srate) / srate * sqrt(shA), sq, 1, sqrt(shA) / sq, shA);
+  shA = 10 ^ (gdb / 40); w0 = 2 * $pi * f / srate; cw = cos(w0); sw = sin(w0);
+  al = sw / 2 * sqrt((shA + 1 / shA) * (1 / 0.707 - 1) + 2); sa = 2 * sqrt(shA) * al;
+  a0 = (shA + 1) - (shA - 1) * cw + sa;
+  cb[0] = shA * ((shA + 1) + (shA - 1) * cw + sa) / a0;
+  cb[1] = -2 * shA * ((shA - 1) + (shA + 1) * cw) / a0;
+  cb[2] = shA * ((shA + 1) + (shA - 1) * cw - sa) / a0;
+  cb[3] = 2 * ((shA - 1) - (shA + 1) * cw) / a0;
+  cb[4] = ((shA + 1) - (shA - 1) * cw - sa) / a0;
 );
 // Runs x through the enabled low-cut then high-cut filter chains (biquads plus optional first-order) with the given states; returns it.
 function fchain(x, ls, lf, hs, hf)
@@ -991,13 +945,7 @@ function fzparams(m, pb)
   m == 12 ? ( pb[0] = 450; pb[1] = 6; pb[2] = 4000; pb[3] = 6; pb[4] = 2; pb[5] = 1300; pb[6] = 9; pb[7] = 2; pb[8] = 2600; pb[9] = 5; pb[10] = 3; pb[11] = 0; pb[12] = 0; pb[13] = 1; pb[14] = 0; pb[15] = 10; pb[16] = 0; pb[17] = 0; pb[18] = 0; pb[19] = 1; pb[20] = 0; );
 );
 // Writes peaking-EQ biquad coefficients into cb[0..4] for center f (Hz, capped at 0.45 fs), gain gdb (dB) and Q.
-function pkdesign(cb, f, gdb, q) local(pA, w0)
-(
-  // matched bell (analog: (u^2 + u pA / q + 1) / (u^2 + u / (pA q) + 1))
-  pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate;
-  mbq(cb, w0, w0, q * pA, 1, pA / q, 1);
-);
-function pkbl(cb, f, gdb, q) local(pA, w0, cw, al, a0)
+function pkdesign(cb, f, gdb, q) local(pA, w0, cw, al, a0)
 (
   pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate; cw = cos(w0); al = sin(w0) / (2 * q);
   a0 = 1 + al / pA;
@@ -1050,49 +998,23 @@ function fzdesign(cb, pb, m, ed)
 );
 // GUI-thread copies of the design functions: EEL2 functions keep their parameters and locals in static storage, so the
 // audio thread and the GUI must never run the same function at the same time (a shared copy corrupts the coefficients)
-// GUI-thread copies of the matched designs
-function g_mbq(cb, w0, wp, q, n0, n1, n2) local(z, r, a1, a2, D0, D1, D2, p0, p1, p2, B0, B1, B2, u, v, wm, W)
+function g_fdesign(cb, fb, ishp, f, nord) local(k, q, w0, cw, al, a0, tk)
 (
-  z = 1 / (2 * q);
-  z < 1 ? ( r = cos(wp * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * wp; r = (exp(r) + exp(-r)) / 2; );
-  a1 = -2 * exp(-z * wp) * r; a2 = exp(-2 * z * wp);
-  D0 = sqr(1 + a1 + a2); D1 = sqr(1 - a1 + a2); D2 = -4 * a2;
-  B0 = n0 * n0 * D0;
-  u = $pi / w0; v = $pi / wp; B1 = (sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * D1;
-  wm = min(w0, 0.98 * $pi); p1 = sqr(sin(wm / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
-  u = wm / w0; v = wm / wp;
-  B2 = ((sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * (D0 * p0 + D1 * p1 + D2 * p2) - B0 * p0 - B1 * p1) / p2;
-  W = 0.5 * (sqrt(B0) + sqrt(B1));
-  cb[0] = 0.5 * (W + sqrt(max(0, W * W + B2))); cb[1] = 0.5 * (sqrt(B0) - sqrt(B1)); cb[2] = -B2 / (4 * cb[0]);
-  cb[3] = a1; cb[4] = a2;
-);
-// matched high-pass: the double zero at DC kept exactly (12 dB/oct below the corner), the level at the corner matched (= q)
-function g_mhp(cb, w0, q) local(z, r, a1, a2, p0, p1, p2)
-(
-  z = 1 / (2 * q);
-  z < 1 ? ( r = cos(w0 * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * w0; r = (exp(r) + exp(-r)) / 2; );
-  a1 = -2 * exp(-z * w0) * r; a2 = exp(-2 * z * w0);
-  p1 = sqr(sin(w0 / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
-  cb[0] = q * sqrt(sqr(1 + a1 + a2) * p0 + sqr(1 - a1 + a2) * p1 - 4 * a2 * p2) / (4 * p1);
-  cb[1] = -2 * cb[0]; cb[2] = cb[0]; cb[3] = a1; cb[4] = a2;
-);
-// matched first-order section (odd slopes): fb[0..1] = b0 b1, fb[2] = a1; level matched at DC and Nyquist
-function g_mfo(fb, w0, hp) local(a1, h2, B0, B1)
-(
-  a1 = -exp(-w0); h2 = sqr($pi / w0); h2 = hp ? h2 / (1 + h2) : 1 / (1 + h2);
-  B0 = hp ? 0 : sqr(1 + a1); B1 = h2 * sqr(1 - a1);
-  fb[0] = (sqrt(B0) + sqrt(B1)) / 2; fb[1] = (sqrt(B0) - sqrt(B1)) / 2; fb[2] = a1;
-);
-function g_fdesign(cb, fb, ishp, f, nord) local(k, q, w0)
-(
-  f = min(f, 0.45 * srate); w0 = 2 * $pi * f / srate;
+  f = min(f, 0.45 * srate);
   k = 0;
   loop(floor(nord / 2),
     q = (nord % 2) ? 1 / (2 * cos((k + 1) * $pi / nord)) : 1 / (2 * cos((2 * k + 1) * $pi / (2 * nord)));
-    ishp ? g_mhp(cb + k * 5, w0, q) : g_mbq(cb + k * 5, w0, w0, q, 1, 0, 0);
+    w0 = 2 * $pi * f / srate; cw = cos(w0); al = sin(w0) / (2 * q); a0 = 1 + al;
+    ishp ? ( cb[k * 5] = (1 + cw) / 2 / a0; cb[k * 5 + 1] = -(1 + cw) / a0; cb[k * 5 + 2] = (1 + cw) / 2 / a0; )
+         : ( cb[k * 5] = (1 - cw) / 2 / a0; cb[k * 5 + 1] = (1 - cw) / a0;  cb[k * 5 + 2] = (1 - cw) / 2 / a0; );
+    cb[k * 5 + 3] = -2 * cw / a0; cb[k * 5 + 4] = (1 - al) / a0;
     k += 1;
   );
-  (nord % 2) ? g_mfo(fb, w0, ishp);
+  (nord % 2) ? (
+    tk = tan($pi * f / srate);
+    ishp ? ( fb[0] = 1 / (1 + tk); fb[1] = -1 / (1 + tk); ) : ( fb[0] = tk / (1 + tk); fb[1] = tk / (1 + tk); );
+    fb[2] = (tk - 1) / (tk + 1);
+  );
 );
 // GUI-thread copy: fills parameter block pb with the filter/distortion/gain settings of source model m (0-12).
 function g_fzparams(m, pb)
@@ -1112,10 +1034,11 @@ function g_fzparams(m, pb)
   m == 12 ? ( pb[0] = 450; pb[1] = 6; pb[2] = 4000; pb[3] = 6; pb[4] = 2; pb[5] = 1300; pb[6] = 9; pb[7] = 2; pb[8] = 2600; pb[9] = 5; pb[10] = 3; pb[11] = 0; pb[12] = 0; pb[13] = 1; pb[14] = 0; pb[15] = 10; pb[16] = 0; pb[17] = 0; pb[18] = 0; pb[19] = 1; pb[20] = 0; );
 );
 // GUI-thread copy of pkdesign: peaking-EQ biquad coefficients into cb[0..4] for f (Hz), gdb (dB), q.
-function g_pkdesign(cb, f, gdb, q) local(pA, w0)
+function g_pkdesign(cb, f, gdb, q) local(pA, w0, cw, al, a0)
 (
-  pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate;
-  g_mbq(cb, w0, w0, q * pA, 1, pA / q, 1);
+  pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate; cw = cos(w0); al = sin(w0) / (2 * q);
+  a0 = 1 + al / pA;
+  cb[0] = (1 + al * pA) / a0; cb[1] = -2 * cw / a0; cb[2] = (1 - al * pA) / a0; cb[3] = -2 * cw / a0; cb[4] = (1 - al / pA) / a0;
 );
 function g_fzfill(pb, m) local(j, b)                    // model parameters + neutral defaults for unused bands
 (
@@ -1323,8 +1246,8 @@ function mdapply() local(k, j, n, id, fd, nm, ok)
     );
     memcpy(mdM, mdQ, n * 6); memcpy(mdF, mdQf, n); memcpy(mdI, mdQi, n); mdN = n; memcpy(mdC0, mdQc0, n); memcpy(mdC1, mdQc1, n);
     // crossovers of the mode band follow (coefficients only - the filter states run on)
-    abs(mdPc - mdFc) > 0.002 * mdFc ? ( fdesignbl(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5); fdesignbl(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5); mdFc = mdPc; );
-    abs(mdPa - mdFa) > 0.002 * mdFa ? ( fdesignbl(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5); fdesignbl(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5); mdFa = mdPa; );
+    abs(mdPc - mdFc) > 0.002 * mdFc ? ( fdesign(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5); fdesign(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5); mdFc = mdPc; );
+    abs(mdPa - mdFa) > 0.002 * mdFa ? ( fdesign(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5); fdesign(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5); mdFa = mdPa; );
     mdPend = 0;
   ) : ( mdPN > 0 || mdN > 0 ? mdPend = 1; );
 );
@@ -1334,10 +1257,10 @@ function mdswap() local(k)
 (
   k = 0; loop(mdPN, mdM[k * 6] = mdP[k * 3]; mdM[k * 6 + 1] = mdP[k * 3 + 1]; mdM[k * 6 + 2] = mdM[k * 6 + 5] = mdP[k * 3 + 2]; mdM[k * 6 + 3] = mdM[k * 6 + 4] = 0; mdF[k] = mdPf[k]; mdI[k] = mdPi[k]; k += 1; );
   mdPN > 0 ? (
-    fdesignbl(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5);           // LR4 low-pass fc
-    fdesignbl(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5);  // LR4 high-pass fc
-    fdesignbl(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5);  // LR4 low-pass fA
-    fdesignbl(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5);  // LR4 high-pass fA
+    fdesign(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5);           // LR4 low-pass fc
+    fdesign(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5);  // LR4 high-pass fc
+    fdesign(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5);  // LR4 low-pass fA
+    fdesign(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5);  // LR4 high-pass fA
     memset(mdXS, 0, 24); mdx1 = mdx2 = 0;
   );
   mdN = mdPN; mdFc = mdPc; mdFa = mdPa; mdPend = 0;
@@ -1448,7 +1371,7 @@ function qlframe() local(i, j, k, re, im, m2, mx, thr, sq, g, rp, L, b, ph, kh, 
     k = 0; loop(24, qlRs = (qlRs * 16807) % 2147483647; qlBM[k] = qlRs / 2147483647 >= fzCA * (0.15 + 0.5 * k / 15); k += 1; );
   );
   qlBad ? (
-    tg = qlLN <= 1 ? 1 : (qlLN == 2 ? 0.5 : (qlLN == 3 ? 0.15 : 0)); qlPG += (tg - qlPG) * 0.4;
+    tg = qlLN <= 1 ? 1 : (qlLN == 2 ? 0.5 : (qlLN == 3 ? 0.15 : 0)); qlPG += (tg - qlPG) * 0.4; qlLost += 1 / qlPF;
     k = 0;
     loop(QLN / 2 + 1,
       qlRs = (qlRs * 16807) % 2147483647;
@@ -1759,6 +1682,14 @@ function fqshelf(cb, f, gdb, hi) local(fqa, w0, cw, sw, al, sa, a0)
     cb[3] = -2 * ((fqa - 1) + (fqa + 1) * cw) / a0; cb[4] = ((fqa + 1) + (fqa - 1) * cw - sa) / a0;
   );
 );
+// level of a biquad at f in dB
+function bqdb(cb, f) local(w, c1, s1, c2, s2, nr, ni, dr, di)
+(
+  w = 2 * $pi * f / srate; c1 = cos(w); s1 = sin(w); c2 = cos(2 * w); s2 = sin(2 * w);
+  nr = cb[0] + cb[1] * c1 + cb[2] * c2; ni = -(cb[1] * s1 + cb[2] * s2);
+  dr = 1 + cb[3] * c1 + cb[4] * c2; di = -(cb[3] * s1 + cb[4] * s2);
+  10 * log10(max(0.0000000001, (nr * nr + ni * ni) / max(0.0000000001, dr * dr + di * di)));
+);
 // Returns the center frequency in Hz of loop-filter fit point i (125 Hz ... 8 kHz, octave steps).
 function fqfreq(i) ( i == 0 ? 125 : (i == 1 ? 250 : (i == 2 ? 500 : (i == 3 ? 1000 : (i == 4 ? 2000 : (i == 5 ? 4000 : 8000))))); );
 // the same at a frequency of the table fqT (cos / sin of w and 2w, made once per sample rate): 0-6 = the fit points, 7-22 = check grid
@@ -1774,8 +1705,8 @@ function fqrespI(cb, g0, i) ( g0 + bqdbI(cb, i) + bqdbI(cb + 5, i) + bqdbI(cb + 
 // the 6 filters of one line from the gains x[1..6] (x[0] = broadband gain, not a filter)
 function fqset(cb, x)
 (
-  fqshelf(cb, 177, x[1], 0); pkbl(cb + 5, 250, x[2], 1.41); pkbl(cb + 10, 500, x[3], 1.41);
-  pkbl(cb + 15, 2000, x[4], 1.41); pkbl(cb + 20, 4000, x[5], 1.41); fqshelf(cb + 25, 5657, x[6], 1);
+  fqshelf(cb, 177, x[1], 0); pkdesign(cb + 5, 250, x[2], 1.41); pkdesign(cb + 10, 500, x[3], 1.41);
+  pkdesign(cb + 15, 2000, x[4], 1.41); pkdesign(cb + 20, 4000, x[5], 1.41); fqshelf(cb + 25, 5657, x[6], 1);
 );
 // once per sample rate: response matrix for 1 dB in each of the 7 gains, inverted (Gauss-Jordan, partial pivot)
 function fqinit() local(i, j, k, rq, piv, t, x, cb, f, w)
@@ -3410,7 +3341,7 @@ function sn_wrap(b, n, x, y, w, wlh, ml) local(ls, i, i2, sp, fit, e, wln, wlw, 
   );
   snCx = x + tws(#swl); snCy = y + min(wln - 1, ml - 1) * wlh;
 );
-function snslx(k) ( basic ? 346 + TBOFS + k * 20 : 346 + TBOFS + (k % 8) * 17; );   // snapshot button k: left edge in the top bar (Basic: one row, larger buttons)
+function snslx(k) ( basic ? 346 + k * 20 : 346 + (k % 8) * 17; );   // snapshot button k: left edge in the top bar (Basic: one row, larger buttons)
 function snsly(k) ( basic ? 14 : 10 + floor(k / 8) * 15; );   // snapshot button k: top edge; larger snapshot buttons (15 x 13) in Expert
 // Opens the snapshot editor for slot k: copies its name (snam) and description (dsc) into the edit buffers and sets snedit=k+1, name field active.
 function sn_open(k) local(i) (
@@ -3752,13 +3683,9 @@ function krow(x, y, k, d, ovkw, ovdw) local(w)
 );
 // ---- a PAGE over everything (help, keys) - the title row stays, the body is drawn into image 2 and shown through
 // a window of the page's height; the wheel or the bar at its right edge scrolls it, the round × on its corner, Esc or a
-// click beside it close it. pgopen(id, width, height, body height, title, dyn) ? ( body ); pgclose() ----
-// THE BODY IS DRAWN ONCE and kept in image 2: pgopen returns 1 only when it has to be drawn again (page just opened,
-// another size, scale or theme, or dyn - the page's own changing state, e.g. a hovered button - is different). Scrolling
-// only moves the window over the kept image. (Drawing all the text again in every frame made large windows slow.)
-function pgopen(id, cw, ch, bodyh, tt, dyn) local(ih, iw, re)
+// click beside it close it. pgopen(id, width, height, body height, title) ... body ... pgclose() ----
+function pgopen(id, cw, ch, bodyh, tt) local(ih, iw)
 (
-  re = pgWho != id;
   pgWho != id ? ( pgSc = 0; pgWho = id; );
   pgCW = cw; pgCH = ch; pgCX = (WT - cw) / 2; pgCY = max(12, (HT - ch) / 2) + scy;
   pgBY = pgCY + 44; pgBH = ch - 54; pgMax = max(0, bodyh - pgBH); pgSc = min(max(pgSc, 0), pgMax);
@@ -3769,13 +3696,10 @@ function pgopen(id, cw, ch, bodyh, tt, dyn) local(ih, iw, re)
   col(cHAIR, 1); LN(pgCX + 12, pgBY - 1, pgCX + cw - 12, pgBY - 1);
   // the body into image 2: page coordinates, its top left = (pgCX, pgBY); the mouse moves with the scroll
   pgGX = gox; pgGY = goy; iw = ceil(cw * gs) + 1; ih = ceil(max(bodyh, pgBH) * gs) + 1;
-  re = re || iw != pgKw || ih != pgKh || gs != pgKs || cSURF != pgK1 || cTEXT != pgK2 || cMUTED != pgK3 || cHAIR != pgK4 || cLINE != pgK5 || monoOn != pgK6 || cfade != pgKf || dyn != pgKd;
-  pgKw = iw; pgKh = ih; pgKs = gs; pgK1 = cSURF; pgK2 = cTEXT; pgK3 = cMUTED; pgK4 = cHAIR; pgK5 = cLINE; pgK6 = monoOn; pgKf = cfade; pgKd = dyn;
-  gfx_setimgdim(2, iw, ih);
-  re ? ( gfx_dest = 2; col(cSURF, 1); gfx_a = 1; gfx_mode = 0; gfx_rect(0, 0, iw, ih); );
+  gfx_setimgdim(2, iw, ih); gfx_dest = 2;
+  col(cSURF, 1); gfx_a = 1; gfx_mode = 0; gfx_rect(0, 0, iw, ih);
   gox = -pgCX * gs; goy = -pgBY * gs;
   pgMY = my; my += pgSc;
-  re;
 );
 // Ends a page body: restores drawing offsets, blits the scrolled body image to the screen, draws scroll bar and close button, stores click rects.
 function pgclose() local(bx, th, by, xx, xy, k)
@@ -3783,11 +3707,11 @@ function pgclose() local(bx, th, by, xx, xy, k)
   gox = pgGX; goy = pgGY; my = pgMY; gfx_dest = 1; gfx_a = 1; gfx_mode = 0;
   gfx_blit(2, 1, 0, 0, pgSc * gs, pgCW * gs, pgBH * gs, gox + pgCX * gs, goy + pgBY * gs, pgCW * gs, pgBH * gs);
   pgMax > 0 ? (                                                       // the scroll bar at the right edge of the body
-    bx = pgCX + pgCW - 9; pbX0 = gox + (bx - 4) * gs; pbX1 = pbX0 + 12 * gs; th = max(16, pgBH * pgBH / (pgBH + pgMax)); by = pgBY + (pgBH - th) * pgSc / pgMax;
+    bx = pgCX + pgCW - 9; th = max(16, pgBH * pgBH / (pgBH + pgMax)); by = pgBY + (pgBH - th) * pgSc / pgMax;
     col(cTEXT, pgDrag || inbox(bx - 4, pgBY, 12, pgBH) ? 0.45 : 0.22); RR(bx, by, 4, th, 2);
     pgClk && inbox(bx - 4, pgBY, 12, pgBH) ? ( pgDrag = 1; pgDmy = my; pgDs0 = pgSc; );
     pgDrag && (mouse_cap & 1) ? ( pgSc = min(max(pgDs0 + (my - pgDmy) * (pgBH + pgMax) / pgBH, 0), pgMax); ) : ( pgDrag = 0; );
-  ) : ( pgDrag = 0; pbX0 = pbX1 = -1; );
+  ) : ( pgDrag = 0; );
   // the round × on the top right corner (as on the zoom windows)
   xx = pgCX + pgCW - 16; xy = pgCY + 16; pgXh = sqr(mx - xx) + sqr(my - xy) <= 110;
   closex(xx, xy);
@@ -3802,7 +3726,7 @@ function kovldraw() local(cw, ovch, cx, cy, c1, c2, y, ovkw, ovdw)
 (
 // page and body heights are fixed values that must fit the rows below (25 px per row): two columns 577 / 523, one column 1006 / 952 (+ 4 mouse rows)
   cw = min(WT - 24, 720); c2 = cw >= 560; ovch = min(c2 ? 577 : 1006, HT - 24);
-  pgopen(2, cw, ovch, c2 ? 523 : 952, "Keys and mouse", 0) ? (
+  pgopen(2, cw, ovch, c2 ? 523 : 952, "Keys and mouse");
   cx = pgCX; cy = pgBY - 44;
   ovdw = c2 ? cw / 2 - 30 : cw - 40; ovkw = c2 ? 108 : 120;
   c1 = cx + 20; y = cy + 58;
@@ -3843,7 +3767,6 @@ function kovldraw() local(cw, ovch, cx, cy, c1, c2, y, ovkw, ovdw)
   krow(c1, y, "Bar over tabs", "Drag = Stage View height, double-click = auto", ovkw, ovdw); y += 25;
   krow(c1, y, "Shift + click", "Module in the strip: solo it", ovkw, ovdw); y += 25;
   krow(c1, y, "Alt + click", "Section heading: fold / open all", ovkw, ovdw); y += 25;
-  );
   pgclose();
 );
 // Draws a rotary knob (0 = up, 270 deg) with value text vs and name nm, handles hover, wheel and value entry; returns new position 0..1, sets kchg.
@@ -4468,7 +4391,7 @@ function drawspan() local(h, px, py, x1, y1, x2, y2, ok)
     h = 0.5 * slider98 / 100; px = -srAy; py = srAx;
     PJ(sx + px * h, sy + py * h, sz); x1 = qx; y1 = qy; PJ(sx - px * h, sy - py * h, sz); x2 = qx; y2 = qy;
 // in a large area (free field) 1 m is only a few pixels - the span is drawn at least 2 x 18 px long so the handles can be seen and grabbed (display only)
-    spHL = sqrt(sqr(x2 - x1) + sqr(y2 - y1)) / 2; spPx = slider98 > 2 ? spHL / slider98 : max(0.01, abs(pXs)) / 200;   // spPx: px per % (below 2 % from the scale of the view, so the step does not jump)   // spTr: the true half length (the drag measures against it - the drawn one can be longer)
+    spHL = sqrt(sqr(x2 - x1) + sqr(y2 - y1)) / 2; spTr = max(0.01, spHL); spPx = slider98 > 2 ? spHL / slider98 : max(0.01, abs(pXs)) / 200;   // spPx: px per % (below 2 % from the scale of the view, so the step does not jump)   // spTr: the true half length (the drag measures against it - the drawn one can be longer)
 // the drawn minimum shrinks a little with the width (0 % = 16 px, 100 % = 18 px); at 0 % the capsule is gone and a thin
 // ring hugs the ball (one channel) - so a small room still shows mono against stereo
     spMn = 16 + 2 * min(1, slider98 / 100);
@@ -4863,183 +4786,6 @@ function ffpapply(k) local(b, sz1, i)
 );
 // REFLECTOR SETUPS (Reflectors module, free field): typical placements around the listener and the source as they stand now -
 // the area, the ground and the positions stay; only the two reflectors are set (inside the area). NRP setups, rpLast = the last one
-// THE dmajorsound MARK: a 256 x 173 coverage map (16 levels) taken from the logo file; resampled once per size into lgT
-// (area-weighted), so the mark stays sharp and anti-aliased at every scale
-LGW = 256; LGH = 173; lgS = alloc(LGW * LGH); lgT = alloc(96 * 64); lgTH = -1; lgTW = 0;
-function lgrow(r, s) local(i, c) ( i = 0; loop(LGW, c = str_getchar(s, i); lgS[r * LGW + i] = (c >= 'a' ? c - 'a' + 10 : c - '0') / 15; i += 1; ); );
-lgrow(0, "00000000000000000000000000000000000000000000000000000000000000000000016adddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddbb98653100000000000000000000000000000000000000000");
-lgrow(1, "000000000000000000000000000000000000000000000000000000000000000000002dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb863000000000000000000000000000000000000");
-lgrow(2, "00000000000000000000000000000000000000000000000000000000000000000000cfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb7300000000000000000000000000000000");
-lgrow(3, "00000000000000000000000000000000000000000000000000000000000000000004ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb5000000000000000000000000000000");
-lgrow(4, "00000000000000000000000000000000000000000000000000000000000000000008ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd83000000000000000000000000000");
-lgrow(5, "0000000000000000000000000000000000000000000000000000000000000000000afffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc60000000000000000000000000");
-lgrow(6, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe940000000000000000000000");
-lgrow(7, "0000000000000000000000000000000000000000000000000000000000000000000bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb400000000000000000000");
-lgrow(8, "0000000000000000000000000000000000000000000000000000000000000000000bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb2000000000000000000");
-lgrow(9, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffb4444bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc64448efffffffffffffffffffffffffffffffffffffff300000000000000000");
-lgrow(10, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffffffa20000002afffffffffffffffffffffffffffffffffffffffffffffffffffffffffd300000006efffffffffffffffffffffffffffffffffffffe82000000000000000");
-lgrow(11, "0000000000000000000000000000000000000000000000000000000000000000000bffffffffffffffffffffffffffffffffffffffffffffffffffffff900000000009fffffffffffffffffffffffffffffffffffffffffffffffffffffffd10000000004fffffffffffffffffffffffffffffffffffffffe500000000000000");
-lgrow(12, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffffd000000000000dffffffffffffffffffffffffffffffffffffffffffffffffffffff4000000000008ffffffffffffffffffffffffffffffffffffffff91000000000000");
-lgrow(13, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000008fffffffffffffffffffffffffffffffffffffffffffffffffffffd0000000000002fffffffffffffffffffffffffffffffffffffffffc200000000000");
-lgrow(14, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffe50000000000");
-lgrow(15, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffa000000000");
-lgrow(16, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffff700000000");
-lgrow(17, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffe30000000");
-lgrow(18, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffe2000000");
-lgrow(19, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffc000000");
-lgrow(20, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffff900000");
-lgrow(21, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffff40000");
-lgrow(22, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffd1000");
-lgrow(23, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffa000");
-lgrow(24, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffff400");
-lgrow(25, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffb00");
-lgrow(26, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffff30");
-lgrow(27, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffff90");
-lgrow(28, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffe0");
-lgrow(29, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffff2");
-lgrow(30, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffff6");
-lgrow(31, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffff9");
-lgrow(32, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffffc");
-lgrow(33, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffffe");
-lgrow(34, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(35, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(36, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(37, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(38, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(39, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(40, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(41, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(42, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(43, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(44, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(45, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(46, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(47, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(48, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(49, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(50, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(51, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(52, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(53, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(54, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(55, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(56, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(57, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(58, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(59, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(60, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(61, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(62, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(63, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(64, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(65, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(66, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(67, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(68, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(69, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(70, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(71, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(72, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(73, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(74, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(75, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000006fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000efffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(76, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000005fffffffffffffffffffffffffffffffffffffffffffffffffffffb0000000000000dfffffffffffffffffffffffffffffffffffffffffffffffffffff");
-lgrow(77, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffb00000000000009ffffffffffffffffffffffffffffffffffffffffffffffffffffe");
-lgrow(78, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff60000000000000dffffffffffffffffffffffffffffffffffffffffffffffffffff800000000000003ffffffffffffffffffffffffffffffffffffffffffffffffffff9");
-lgrow(79, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000005ffffffffffffffffffffffffffffffffffffffffffffffffffff3000000000000007ffffffffffffffffffffffffffffffffffffffffffffffffffe2");
-lgrow(80, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff6000000000000006ffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000006efffffffffffffffffffffffffffffffffffffffffffffffd30");
-lgrow(81, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff6000000000000000179bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbba83000000000000000000049bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb85000");
-lgrow(82, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(83, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(84, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(85, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(86, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(87, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(88, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(89, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(90, "0000000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(91, "0000000000000000000000000000000000000000014679abb961000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(92, "000000000000000000000000000000000000368beffffffffffd300000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(93, "0000000000000000000000000000000026aeffffffffffffffffe10000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(94, "0000000000000000000000000000048cfffffffffffffffffffff80000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(95, "0000000000000000000000000028dffffffffffffffffffffffffd0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(96, "00000000000000000000000006ffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(97, "000000000000000000000016bfffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(98, "0000000000000000000008efffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(99, "00000000000000000005efffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(100, "000000000000000002cfffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(101, "00000000000000029fffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(102, "000000000000006effffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(103, "00000000000005ffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(104, "0000000000004effffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(105, "000000000006ffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(106, "0000000001afffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(107, "000000001dffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(108, "00000001cfffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(109, "00000008ffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(110, "0000003effffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(111, "000001dfffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(112, "000009ffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(113, "00004fffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(114, "0000dfffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(115, "000cffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(116, "005fffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(117, "00afffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(118, "01ffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(119, "07ffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(120, "0cffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(121, "2fffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(122, "6fffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(123, "8fffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(124, "afffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(125, "cfffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(126, "efffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(127, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(128, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(129, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(130, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(131, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(132, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(133, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(134, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(135, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(136, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(137, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(138, "ffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(139, "dfffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(140, "bfffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(141, "8fffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(142, "4fffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(143, "1fffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(144, "0dffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(145, "07ffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(146, "01ffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(147, "009fffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(148, "002effffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(149, "0006ffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(150, "0000bfffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(151, "00002effffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(152, "000005ffffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(153, "0000009fffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(154, "0000000bffffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(155, "00000001cfffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(156, "000000002fffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(157, "0000000005ffffffffffffffffffffffffffffffffffffffffffff0000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(158, "00000000001bffffffffffffffffffffffffffffffffffffffffff0000000000000cfffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(159, "0000000000008fffffffffffffffffffffffffffffffffffffffff4000000000000efffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(160, "00000000000005efffffffffffffffffffffffffffffffffffffffb000000000007ffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(161, "000000000000002bfffffffffffffffffffffffffffffffffffffff70000000004fffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(162, "00000000000000004bffffffffffffffffffffffffffffffffffffffa5100004affffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(163, "000000000000000000affffffffffffffffffffffffffffffffffffffffbbbeffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(164, "00000000000000000006effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(165, "0000000000000000000018effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(166, "000000000000000000000005affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(167, "000000000000000000000000018dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(168, "000000000000000000000000000049dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(169, "00000000000000000000000000000002bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(170, "00000000000000000000000000000000026aefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(171, "00000000000000000000000000000000000001469cefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe50000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-lgrow(172, "0000000000000000000000000000000000000000000024568899999999999999999999999999999999999999999999999999999999999999999985100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
 NRP = 12; rpLast = -1; rpSnap = alloc(15);
 function rpname(k) ( k == 0 ? "Facade behind the listener" : k == 1 ? "Facade behind the source" : k == 2 ? "House wall beside you" : k == 3 ? "Street canyon (both sides)" :
   k == 4 ? "Narrow alley" : k == 5 ? "Building corner" : k == 6 ? "Shop window" : k == 7 ? "Garden fence" : k == 8 ? "Hedge behind you" :
@@ -5429,8 +5175,8 @@ function srsetup() local(k)
   lmrel = 1 - exp(-1 / (0.15 * srate)); pdc_delay = LMLA + 1; crk = exp(-1 / (0.3 * srate)); smQ = 1 - exp(-1 / (0.005 * srate)); xfRI = 1 / (0.003 * srate);   // (pdc +1: see the direct sound,)
   smab = 1 - exp(-1 / (0.25 * srate));                               // A / B trim: 250 ms glide
   // bass steering crossover: 4th-order Linkwitz-Riley = two equal 2nd-order Butterworth sections (low and high stay in phase)
-  fdesignbl(stC, stC + 40, 0, 250, 2); memcpy(stC + 5, stC, 5);
-  fdesignbl(stC + 10, stC + 40, 1, 250, 2); memcpy(stC + 15, stC + 10, 5);
+  fdesign(stC, stC + 40, 0, 250, 2); memcpy(stC + 5, stC, 5);
+  fdesign(stC + 10, stC + 40, 1, 250, 2); memcpy(stC + 15, stC + 10, 5);
   // every cached design is made again for the new rate (geometry, reverb lines, modes, source model, tone, filters, delay)
   last_pkey = -1; last_mdkey = -1; last_mfp = -1; last_gkey = -1; last_gkey2 = -1; lastfz = -1; lastfzo = -1; lastfzn = -1;
   lastbr = lastdk = -1000; lastlc = lasthc = -1; dllkey = -1;
@@ -5630,6 +5376,7 @@ mtKill ? ( mtE = 0; mtOn = 0; mtWas = 0; mtKill = 0; );                         
 mtBeats = mtTq == 1 ? 8 * ts_num : (mtTq == 2 ? 4 * ts_num : (mtTq == 3 ? 2 * ts_num : (mtTq == 4 ? ts_num : (mtTq == 5 ? 2 : (mtTq == 6 ? 1 : (mtTq == 7 ? 0.5 : 0.25))))));
 mtTq > 0 ? ( mtBeats *= 4 / max(1, ts_denom); );
 mtRate = mtTq > 0 ? max(20, min(300, slider74 > 0.5 ? slider74 : tempo)) / 60 / max(0.0625, mtBeats) : max(0.02, min(10, slider103));
+mtBlk += 1;
 mtOn && !mtWas ? ( mtC0x = slider10; mtC0y = slider11; mtC0z = slider12; mtC1x = slider13; mtC1y = slider14; mtC1z = slider15; mtT0 = play_position; mtU = 0;   // switched on: remember the centers (+ the start of a pass-by)
   mtPh = 0; mtOne = 0; mtHold = 0; dopRq = 1;   // every pattern starts at its beginning (at Start) the moment it is switched on
 );
@@ -5654,7 +5401,7 @@ mtRun ? (
     mtPP = play_position; mtPB = samplesblock / srate; mtPlay = 1;
   ) : ( mtPlay = 0; mtU += mtRate * samplesblock / srate; );
   mtOn && mtE < 0.999 ? ( mtT0 = play_position; mtU = 0; );   // the pass starts once the glide has brought the ball to A
-  mtU = min(1, max(0, mtU));
+  mtU = min(1, max(0, mtU)); mtUs = (2 * mtU - 1) * (slider106 >= 0.5 ? -1 : 1); mtUo = mtUs + (slider106 >= 0.5 ? -1 : 1);   // the pass-by starts at the ball (mtUo 0 … ±2)
   mtDx = cos(slider105 * $pi / 180); mtDy = sin(slider105 * $pi / 180);
   mtP = floor(slider102 + 0.5); mtM = floor(slider101 + 0.5); mtC = floor(slider107 + 0.5);
   mtRs = min(4, max(0.25, slider31)); mtR = slider104;   // the size in slider units - it scales with the room (SIZE) like the positions; shown in meters = x SIZE
@@ -5681,7 +5428,7 @@ mtRun ? (
     mtPu0 = 0.5 - 0.5 * mtPRh / max(0.000001, mtR); mtPv = min(1, max(0, (mtU - mtPu0) / max(0.000001, 1 - 2 * mtPu0)));
     mtPe = 0.08; mtPvm = 1 / (1 - mtPe);
     mtPq = mtPv < mtPe ? mtPvm * mtPv * mtPv / (2 * mtPe) : (mtPv > 1 - mtPe ? 1 - mtPvm * sqr(1 - mtPv) / (2 * mtPe) : mtPvm * (mtPv - mtPe / 2));
-    mtPU = mtPRh * (2 * mtPq - 1) * (slider106 >= 0.5 ? -1 : 1); );
+    mtPU = mtPRh * (2 * mtPq - 1) * (slider106 >= 0.5 ? -1 : 1); mtMSX = mtPX; mtMSY = mtPY; );
   mtP >= 5 ? ( amtpt(mtP, mtTh / (2 * $pi)); mtSX = mtCX + mtR * amU; mtSY = mtCY + mtR * amV; mtSZ = mtCZ + mtR * mtRs * amW; ) : (   // Square, Wave, Drawn
   mtP == 0 ? ( mtSX = mtCX + mtR * cos(mtTh); mtSY = mtCY + mtR * sin(mtTh); mtSZ = mtC0z; ) : (
   mtP == 1 ? ( mtSX = mtCX + mtR * sin(mtTh); mtSY = mtC0y; mtSZ = mtC0z; ) : (
@@ -5698,7 +5445,7 @@ mtRun ? (
   mtP != 4 ? ( amtext(mtP); mtCX = amfit(mtCX, mtR * amX0, mtR * amX1, mtRW, 0.1 / mtRs); mtCY = amfit(mtCY, mtR * amY0, mtR * amY1, mtRD, 0.1 / mtRs);
     mtCZ = amfit(mtC1z, mtR * mtRs * amZ0, mtR * mtRs * amZ1, mtRH, 0.1); );
   mtP == 4 ? ( mtQg = mtM == 2 ? -1 : 1; mtQd = mtR * (slider106 >= 0.5 ? -1 : 1) * mtQg;
-    mtPX = amfit(mtC1x + mtQd * mtDx, -mtPRh * abs(mtDx), mtPRh * abs(mtDx), mtRW, 0.1 / mtRs); mtPY = amfit(mtC1y + mtQd * mtDy, -mtPRh * abs(mtDy), mtPRh * abs(mtDy), mtRD, 0.1 / mtRs); );
+    mtPX = amfit(mtC1x + mtQd * mtDx, -mtPRh * abs(mtDx), mtPRh * abs(mtDx), mtRW, 0.1 / mtRs); mtPY = amfit(mtC1y + mtQd * mtDy, -mtPRh * abs(mtDy), mtPRh * abs(mtDy), mtRD, 0.1 / mtRs); mtMLX = mtPX; mtMLY = mtPY; );
   mtP >= 5 ? ( amtpt(mtP, mtTh2 / (2 * $pi)); mtLX = mtCX + mtR * amU; mtLY = mtCY + mtR * amV; mtLZ = mtCZ + mtR * mtRs * amW; ) : (
   mtP == 0 ? ( mtLX = mtCX + mtR * cos(mtTh2); mtLY = mtCY + mtR * sin(mtTh2); mtLZ = mtC1z; ) : (
   mtP == 1 ? ( mtLX = mtCX + mtR * sin(mtTh2); mtLY = mtC1y; mtLZ = mtC1z; ) : (
@@ -6072,8 +5819,8 @@ cDON > 0.00001 || dlhold > 0 ? (
     dwp3 += dwr3; dwp3 > 6.2831853 ? dwp3 -= 6.2831853; dwp4 += dwr4; dwp4 > 6.2831853 ? dwp4 -= 6.2831853;
     dmL = cDTP * (dwA * (1 + sin(dwp1)) + dfA * (1 + sin(dwp3))); dmR = cDTP * (dwA * (1 + sin(dwp2)) + dfA * (1 + sin(dwp4)));
   ) : ( dmL = dmR = 0; );
-  drL = bqrun(bqrun(dlyread(dlL, DLMAX, dwi, cDTL + dmL), dlC, dlSt, 1), dlC + 5, dlSt + 2, 1);
-  drR = bqrun(bqrun(dlyread(dlR, DLMAX, dwi, cDTR + dmR), dlC + 10, dlSt + 4, 1), dlC + 15, dlSt + 6, 1);
+  drL = bqrun(bqrun(rdh(dlL, DLMAX, dwi - cDTL - dmL), dlC, dlSt, 1), dlC + 5, dlSt + 2, 1);
+  drR = bqrun(bqrun(rdh(dlR, DLMAX, dwi - cDTR - dmR), dlC + 10, dlSt + 4, 1), dlC + 15, dlSt + 6, 1);
 // DELAY TYPE: what every pass through the loop does to the repeat (it adds up: each echo is a copy of the one before)
   xDTY == 1 ? ( dtL1 = drL + (dtL1 - drL) * dtyA; dtR1 = drR + (dtR1 - drR) * dtyA; drL = tnr(1.4 * dtL1) / 1.4; drR = tnr(1.4 * dtR1) / 1.4; ) : (   // tape: darker, round
   xDTY == 2 ? ( dtL1 = drL + (dtL1 - drL) * dtyA; dtL2 = dtL1 + (dtL2 - dtL1) * dtyA; dtR1 = drR + (dtR1 - drR) * dtyA; dtR2 = dtR1 + (dtR2 - dtR1) * dtyA;
@@ -6126,8 +5873,8 @@ rmskip ? ( rmwas = 1; dirL = dirR = erL = erR = 0; lateL = lateR = 0;
   gnx = cGL[0] + (xGL[0] - cGL[0]) * gsm; gnx > cGL[0] * gRK + 0.00001 ? gnx = cGL[0] * gRK + 0.00001; cGL[0] = min(gnx, max(xGL[0], cGL[0]));
   gnx = cGR[0] + (xGR[0] - cGR[0]) * gsm; gnx > cGR[0] * gRK + 0.00001 ? gnx = cGR[0] * gRK + 0.00001; cGR[0] = min(gnx, max(xGR[0], cGR[0]));
   cA[0] += (xA[0] - cA[0]) * sm; cSM[0] = xSM[0];
-  bdv = dlyread(ibuf, MAXIN, wiD, cDL[0]); lpL[0] = bdv + (lpL[0] - bdv) * cA[0]; bdv = lpL[0] + (bdv - lpL[0]) * cSM[0]; bdL = bdv * cGL[0];
-  bdv = dlyread(ibuf, MAXIN, wiD, cDR[0]); lpR[0] = bdv + (lpR[0] - bdv) * cA[0]; bdv = lpR[0] + (bdv - lpR[0]) * cSM[0]; bdR = bdv * cGR[0];
+  bdv = rdh(ibuf, MAXIN, wiD - cDL[0]); lpL[0] = bdv + (lpL[0] - bdv) * cA[0]; bdv = lpL[0] + (bdv - lpL[0]) * cSM[0]; bdL = bdv * cGL[0];
+  bdv = rdh(ibuf, MAXIN, wiD - cDR[0]); lpR[0] = bdv + (lpR[0] - bdv) * cA[0]; bdv = lpR[0] + (bdv - lpR[0]) * cSM[0]; bdR = bdv * cGR[0];
   cHL[0] += (xHL[0] - cHL[0]) * sm; cHR[0] += (xHR[0] - cHR[0]) * sm; hdsL[0] = bdL + (hdsL[0] - bdL) * cHL[0]; bdL = hdsL[0]; hdsR[0] = bdR + (hdsR[0] - bdR) * cHR[0]; bdR = hdsR[0];   // head shadow
   cNF += (xNF - cNF) * sm; nfSL = bdL + (nfSL - bdL) * nfA; bdL += cNF * nfSL; nfSR = bdR + (nfSR - bdR) * nfA; bdR += cNF * nfSR;   // near field
 ) : (
@@ -6157,10 +5904,10 @@ loop(NT,
   );
   fmov ? ( cA[ti] += fdA[ti]; cSM[ti] += fdSM[ti]; );   // wall / air filters: a straight line to the end of the block while they move (see @block)
   (cGL[ti] + cGR[ti] > 0.0000001) ? (
-    vR = dlyread(ibuf, MAXIN, wiD, cDL[ti]);   // one read per tap (cubic, every reflection; a linear read for the cluster measured no gain - stays cubic)
+    vR = rdh(ibuf, MAXIN, wiD - cDL[ti]);   // one read per tap (cubic, every reflection; a linear read for the cluster measured no gain - stays cubic)
     lpL[ti] = vR + (lpL[ti] - vR) * cA[ti];                 // air / wall absorption
     vL = lpL[ti] + (vR - lpL[ti]) * cSM[ti];                 // through a wall / door: part of the highs gets through (shelf)
-    ti < itdN ? ( vR0 = dlyread(ibuf, MAXIN, wiD, cDR[ti]); lpR[ti] = vR0 + (lpR[ti] - vR0) * cA[ti]; vR = lpR[ti] + (vR0 - lpR[ti]) * cSM[ti];   // the right ear reads its own time
+    ti < itdN ? ( vR0 = rdh(ibuf, MAXIN, wiD - cDR[ti]); lpR[ti] = vR0 + (lpR[ti] - vR0) * cA[ti]; vR = lpR[ti] + (vR0 - lpR[ti]) * cSM[ti];   // the right ear reads its own time
       cHL[ti] += (xHL[ti] - cHL[ti]) * sm; cHR[ti] += (xHR[ti] - cHR[ti]) * sm;   // the head shadow of the far ear
       hdsL[ti] = vL + (hdsL[ti] - vL) * cHL[ti]; vL = hdsL[ti]; hdsR[ti] = vR + (hdsR[ti] - vR) * cHR[ti]; vR = hdsR[ti];
     ) : ( vR = vL; );
@@ -6175,10 +5922,10 @@ xfade > 0 ? (
   ti = 0;
   loop(NT,
     (oGL[ti] + oGR[ti] > 0.0000001) ? (
-      vR = dlyread(ibuf, MAXIN, wiD, oDL[ti]);
+      vR = rdh(ibuf, MAXIN, wiD - oDL[ti]);
       olpL[ti] = vR + (olpL[ti] - vR) * oA[ti];
       vL = olpL[ti] + (vR - olpL[ti]) * oSM[ti];
-      ti < itdN ? ( vR0 = dlyread(ibuf, MAXIN, wiD, oDR[ti]); olpR[ti] = vR0 + (olpR[ti] - vR0) * oA[ti]; vR = olpR[ti] + (vR0 - olpR[ti]) * oSM[ti];
+      ti < itdN ? ( vR0 = rdh(ibuf, MAXIN, wiD - oDR[ti]); olpR[ti] = vR0 + (olpR[ti] - vR0) * oA[ti]; vR = olpR[ti] + (vR0 - olpR[ti]) * oSM[ti];
         ohdsL[ti] = vL + (ohdsL[ti] - vL) * oHL[ti]; vL = ohdsL[ti]; ohdsR[ti] = vR + (ohdsR[ti] - vR) * oHR[ti]; vR = ohdsR[ti];
       ) : ( vR = vL; );
       ti == 0 ? ( xodL += vL * oGL[ti]; xodR += vR * oGR[ti]; ) : ( xoeL += vL * oGL[ti]; xoeR += vR * oGR[ti]; );
@@ -6209,7 +5956,7 @@ edi += 1; edi >= EDN ? edi = 0;
 // filters on the way: air, and a barrier (wall / window / door) in between. Without those filters the echoes behind a
 // barrier would keep all their highs (a hiss that hangs on with feedback).
 dlhold > 0 || shold > 0 ? (                   // (also the input's stereo width, see STEREO WIDTH)
-  dsv = dlyread(sbuf, MAXIN, wi, cDL[0]);
+  dsv = rdh(sbuf, MAXIN, wi - cDL[0]);
   lpSd = dsv + (lpSd - dsv) * cA[0]; dsv = lpSd + (dsv - lpSd) * cSM[0];
   dsv *= (cGL[0] + cGR[0]) * 0.5; dirL += dsv; dirR -= dsv;
 ) : ( lpSd = 0; );
@@ -6237,8 +5984,8 @@ dirL *= cMuD; dirR *= cMuD; erL *= cMuE; erR *= cMuE;
 // ---- late reverb: pre-delay -> 4 diffusers -> 8-line FDN ----
 cLD += (xLD - cLD) * smd;
 cLG += (xLG - cLG) * (xLG > cLG ? smu : sm);
-dv0 = dlyread(ibuf, MAXIN, wiD, cLD);
-xfade > 0 && !ldS ? dv0 = dv0 * xgN + dlyread(ibuf, MAXIN, wiD, oLD) * xgO;
+dv0 = rdh(ibuf, MAXIN, wiD - cLD);
+xfade > 0 && !ldS ? dv0 = dv0 * xgN + rdh(ibuf, MAXIN, wiD - oLD) * xgO;
 cLLP += (xLLP - cLLP) * sm; cLM += (xLM - cLM) * sm; lpLt = dv0 + (lpLt - dv0) * cLLP; dv0 = lpLt + (dv0 - lpLt) * cLM;   // barrier: tail heard through closed parts is dark
 cBNG += (xBNG - cBNG) * sm; bndS += (dv0 - bndS) * xBNA; dv0 += bndS * cBNG;   // boundary effect: more bass power from a source near a surface
 // directivity of the source: it radiates about Q = 2.2 in the mids (taken out of the reverb level, see barE), nearly round
@@ -6267,9 +6014,9 @@ loop(8,
   fbp = fdnbase + fk * LINEMAX;
   cFL[fk] += (flen[fk] - cFL[fk]) * smfd;
   modstep(fk); mdOf = moddep * mdV2[fk];
-  ov = dlyread(fbp, LINEMAX, fwi, cFL[fk] + mdOf);
+  ov = rdh(fbp, LINEMAX, fwi - cFL[fk] - mdOf);
   xfG && !xfS[fk] ? ov *= min(1, max(0, (xfcnt - (cFL[fk] + 2 * moddep + 4)) * xfRI));   // new room: nothing to read yet - then a 3 ms fade-in (no step)
-  xfade > 0 && !xfS[fk] ? ov = ov * xgN + dlyread(fbp, LINEMAX, fwi, oFL[fk] + mdOf) * xgO * cXR;
+  xfade > 0 && !xfS[fk] ? ov = ov * xgN + rdh(fbp, LINEMAX, fwi - oFL[fk] - mdOf) * xgO * cXR;
   // per line: the loop filter - every octave 125 Hz ... 8 kHz loses what the room's RT60 in that octave asks for
   fqG[fk] > fqGc[fk] * 1.26 ? fqGc[fk] = fqG[fk] : fqGc[fk] += (fqG[fk] - fqGc[fk]) * smQ; fst[fk] = fqGc[fk] * bqrun(ov, fqCc + fk * 30, fqS + fk * 12, 6);   // glides up as well (a jump of more than 2 dB still snaps - the hot-content scaling counts on it) // loop gain glides (5 ms) - a decay change no longer clicks
   fk += 1;
@@ -6314,17 +6061,17 @@ fbp[fwi] = cTH * f7 + sn * s7 - inj;
 cLG2 += (xLG2 - cLG2) * sm;
 cLG2 > 0.0000001 ? (
   cLD2 += (xLD2 - cLD2) * smd; cP2L += (xP2L - cP2L) * sm; cP2R += (xP2R - cP2R) * sm; cLLP2 += (xLLP2 - cLLP2) * sm;
-  dvb = dlyread(ibuf, MAXIN, wiD, cLD2);
-  xfade > 0 && !ld2S ? dvb = dvb * xgN + dlyread(ibuf, MAXIN, wiD, oLD2) * xgO;
+  dvb = rdh(ibuf, MAXIN, wiD - cLD2);
+  xfade > 0 && !ld2S ? dvb = dvb * xgN + rdh(ibuf, MAXIN, wiD - oLD2) * xgO;
   lpLt2 = dvb + (lpLt2 - dvb) * cLLP2; dvb = lpLt2 + (dvb - lpLt2) * cLM;
   fk = 0;
   loop(4,
     fbp = fdn2base + fk * LINEMAX;
     cFL2[fk] += (flen2[fk] - cFL2[fk]) * smfd;
     modstep(8 + fk); mdOf = moddep * mdV2[8 + fk];
-    ov = dlyread(fbp, LINEMAX, fwi, cFL2[fk] + mdOf);
+    ov = rdh(fbp, LINEMAX, fwi - cFL2[fk] - mdOf);
     xfG && !xfS[8 + fk] ? ov *= min(1, max(0, (xfcnt - (cFL2[fk] + 2 * moddep + 4)) * xfRI));
-    xfade > 0 && !xfS[8 + fk] ? ov = ov * xgN + dlyread(fbp, LINEMAX, fwi, oFL2[fk] + mdOf) * xgO;
+    xfade > 0 && !xfS[8 + fk] ? ov = ov * xgN + rdh(fbp, LINEMAX, fwi - oFL2[fk] - mdOf) * xgO;
     fhs2[fk] = (1 - fb2[fk]) * ov + fb2[fk] * fhs2[fk];
     fls2[fk] += (ov - fls2[fk]) * lfc;
     fst2[fk] = fg2[fk] * fhs2[fk] + (fgL2[fk] - fg2[fk]) * fls2[fk];
@@ -6687,7 +6434,7 @@ function ststat(q) local(t, i, e)
 );
 // DECAY BY BAND: reverb time RT60 at frequency f, as the reverb lines play it - averaged over the 8 lines. Per line and pass:
 // gain fg x (one-pole high damping) + (fgL - fg) x (one-pole low shelf), the same filters as in @sample
-// (GUI copies: a JSFX function keeps its locals in one place - the audio thread designs at the same time)
+// (GUI copies: a JSFX function keeps its locals in one place - the audio thread designs with bqdb / fqresp at the same time)
 function bqdbG(cb, f) local(w, c1, s1, c2, s2, nr, ni, dr, di)
 (
   w = 2 * $pi * f / srate; c1 = cos(w); s1 = sin(w); c2 = cos(2 * w); s2 = sin(2 * w);
@@ -7471,18 +7218,18 @@ loop(23,
 );
 HDR = 24; VFH = 96; bfill = 0; LP1 = 206;   // LEARN FLICKER: the panels' height comes from their text, the text wraps by the width, the width follows the scale, the scale follows the height - in some
   // windows (e.g. 2000 x 1300) this flipped every frame. Now the larger of this and the last frame's need counts: a flip between two values settles on the larger one
-  lp2use = lp2need; lp3use = lp3need;   // (1.0.1: the scale no longer follows the text - no loop left, so no smoothing over two frames, which only added a frame of lag)
+  lp2use = max(lp2need, lp2old); lp2old = lp2need; lp3use = max(lp3need, lp3old); lp3old = lp3need;
   LP2 = lp2use > 60 ? min(420, lp2use) : 300; LP3 = lp3use > 60 ? min(320, lp3use) : 196;   // Learn: What you hear, Your turn, Words (the last two: as tall as their text)
 k = 21; loop(12, vopt[k] = min(400, max(0, floor(vopt[k] + 0.5))); k += 1; ); vopt[37] = min(400, max(0, floor(vopt[37] + 0.5)));   // module heights (mouse): extra 0 … 400
 k = 33; loop(2, vopt[k] = vopt[k] < 1 ? 0 : min(1400, max(140, floor(vopt[k] + 0.5))); k += 1; );   // room view: 0 = automatic
 shD = sech(10, 196 + secx(10)); shR = sech(1, 182 + secx(1)); shV = 0; shS = sech(3, (basic ? 136 : 160) + secx(3)); shE = 0; shK = 0;   // Expert: + 24 for the call strip (and the filter next to it) // left: FILTER | SOURCE, DELAY, ROOM + REVERB (+ OUTPUT while the room view is shown)
 shW = sech(4, 118 + secx(4)); shB = sech(5, 170 + secx(5)); shM = sech(14, (mtPW0 < 600 ? 286 : (mtPW0 < 830 ? 260 : 224)) + secx(14)); shF = sech(6, (basic ? 136 : 160) + secx(6)); shO = sech(7, (basic ? 180 : 112) + secx(7));   // right: room view, WALLS, BARRIER, MOTION (+ OUTPUT when the room view is hidden) (narrow column: Direction / Rate on their own row) // shF / shO had slipped into a comment in - Filter and Output cards in All had no height
 learn ? (
-  vop = 1; CH = TOPY + LP1 + LP2 + LP3 + 12 + 22;
+  vop = 1; CH = TOPY + LP1 + LP2 + LP3 + 12 + 18;
 ) : basic ? (
   hbR = sech(1, 206 + secx(1)); hbS = sech(3, 206 + secx(3)); hbB = sech(5, 180 + secx(5)); hbO = sech(7, 180 + secx(7));
   hb1 = max(hbS, hbR); hb2 = max(hbB, hbO); hbM = max(hbS + hbB, hbR + hbO) + 6;   // two columns of two cards (Source over Barrier, Room over Output): a folded card lets the one under it move up
-  vop = secop[21]; CH = TOPY + max(hbM, HDR + vop * ((vopt[34] > 0 ? vopt[34] : hbM) - HDR)) + 22;
+  vop = secop[21]; CH = TOPY + max(hbM, HDR + vop * ((vopt[34] > 0 ? vopt[34] : hbM) - HDR)) + 18;
 ) : (
   vhid = (vopt[12] & 512) > 0; VFH = 96;                                   // room view hidden: a bar with a mini plan, Output goes right
 // FIT ALL FLICKER: the Motion card is taller in a narrow column (mtPW0 < 600), the column width comes from the scale,
@@ -7490,7 +7237,7 @@ learn ? (
   // jumping = the blinking). Fit all now sizes the page for the taller Motion card: one scale, no feedback
   shMc = !basic && vopt[42] >= 0.5 ? sech(14, 286 + secx(14)) : shM;   // the taller Motion card (286, tempo tools and knobs inside) - 236 cut it off at the bottom
   rsum = shW + shB + shMc + 18 + (vhid ? shO + 6 : 0); lsec = max(shF, shS) + shD + shR + 12 + (vhid ? 0 : shO + 6);
-  vop = secop[9]; CH = TOPY + max(lsec, rsum + VFH + vop * ((vopt[33] > 0 ? vopt[33] : max(!basic && vopt[42] >= 0.5 ? 200 : 260, lsec - rsum)) - VFH)) + 22;   // Fit all: the room view may be lower (200)
+  vop = secop[9]; CH = TOPY + max(lsec, rsum + VFH + vop * ((vopt[33] > 0 ? vopt[33] : max(!basic && vopt[42] >= 0.5 ? 200 : 260, lsec - rsum)) - VFH)) + 18;   // Fit all: the room view may be lower (200)
 );
 gsmin = max(1, gfx_ext_retina);
 // EXPERT, standard: exactly the scale Basic has in this window - text and knobs as large as in Basic, the page scrolls
@@ -7504,10 +7251,8 @@ ebig ? (
 // (the one-column layout of earlier versions is gone - the room view, walls and barrier always stay at the right)
   BW0 = max(760, floor(gfx_w / gs));
 ) : (
-  // LEARN FLICKER (1.0.1): the scale comes from the window and a FIXED reference height (panels at their standard 300 / 196), not from
-  // the measured text - text height -> page height -> scale -> text width -> text height made the page shrink and grow for several frames
   // LEARN: larger than "fit the page" - the explanations are read, not scanned; the right column scrolls when the window is low
-  gs = learn ? max(0.25, min(gfx_w / BW0, max(gsmin, gfx_h / max(640, TOPY + LP1 + 300 + 196 + 34)))) : max(0.25, min(gfx_w / BW0, max(basic && vopt[36] >= 0.5 ? 0.25 : (!basic && !learn && vopt[42] >= 0.5 ? 0.6 * gsmin : gsmin), gfx_h / CH)));   // Basic Fit all: no lower limit - the page fits   // Learn: large text, but the whole page in the window (no scrolling)
+  gs = learn ? max(0.25, min(gfx_w / BW0, max(gsmin, gfx_h / max(640, CH)))) : max(0.25, min(gfx_w / BW0, max(basic && vopt[36] >= 0.5 ? 0.25 : (!basic && !learn && vopt[42] >= 0.5 ? 0.6 * gsmin : gsmin), gfx_h / CH)));   // Basic Fit all: no lower limit - the page fits   // Learn: large text, but the whole page in the window (no scrolling)
   !learn && !basic && vopt[14] > 0 ? ( gs = max(0.25, min(gs, gfx_w / (536 / (1 - min(0.6, vopt[14])) + 22))); );
   rzid ? ( gs = rzgs; );
 );
@@ -7516,7 +7261,7 @@ XW = max(0, floor(gfx_w / gs - BW0)); WT = BW0 + XW; HT = gfx_h / gs;  // HT = v
 LH = zoomv || tabm ? HT : max(HT, CH);                                      // height of the page
 scmax = max(0, LH - HT); scy = min(max(scy, 0), scmax);
 gox = 0; goy = -floor(scy * gs + 0.5);
-avail = LH - TOPY - 22;
+avail = LH - TOPY - 18;
 // BASIC: a window taller than the page - the two rows of cards grow (knobs too) to the height of the room view
 basic && !zoomv && !szoom && vopt[34] <= 0 ? (
   bfill = max(0, floor((avail - hbM) / 2));
@@ -7665,7 +7410,7 @@ szoom ? (
   );
   tabm ? (
     // TABS: as large as the area under the tabs allows (at most 1.7 x the page), the module takes the width (at most 1.8 x its own)
-    tzPW = gfx_w - 16 * gsN; tzPH = gfx_h - (TAY + 19) * gsN;
+    tzPW = gfx_w - 16 * gsN; tzPH = gfx_h - (TAY + 11) * gsN;
     gsZ = max(0.25, min((tfit ? 1.8 : (tcus ? tcs : 1.7)) * gsN, min(tzPW / 600, tzPH / tzhA)));   // one scale for every tab (measured on the tallest module) - switching tabs keeps the size
     zwT = floor(tzPW / gsZ);   // every tab's module has the same size - the whole area under the tabs
     szoom == 1 || szoom == 10 ? ( LW = zwT; ); szoom == 10 ? ( shD = max(196, min(300, floor(tzPH / gsZ) - 4)); zh = shD; );   // delay: as tall as the area (the echo display grows)
@@ -7727,11 +7472,7 @@ tipon = 0; tipforce = 0; cfade = 1; wheelused = 0;
 shsec = 0; shclr = click && shpin;          // section help: hover target of this frame; a click anywhere else closes a pinned panel
 // ---- dropdown menus + help: geometry and click handling (before any other control sees the click) ----
 fzsel = min(12, max(0, floor(slider35 + 0.5))); spcur = -1; k = 0; loop(NSP, spcur < 0 && spmatch(k) ? spcur = k; k += 1; );   /* 0.309: the matching preset, once per frame */ devm = slider85 >= 0.5 && fzsel > 0 && slider89 >= 99.95; rbyp = slider36 >= 0.5;   // devm: a device plays - a mono loudspeaker, the stereo width does nothing (isfree comes from the audio block)
-gT = max(0.5, min(gfx_w / 860, gfx_h / 560));   // the scale of the name and the mark: the window alone (the same in every view)
-// (TBOFS = top bar offset. It was called TBO: EEL names ignore case, so it was the same variable as tbo, the base of the
-// tab order list - every frame moved that list to memory slots 0 ... 8.)
-TBOFS = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126));    // the view switches, presets and snapshots move right when the name is larger than the page scale
-roombx = 242 + TBOFS; roomby = 11; roombw = 98; roombh = 17;
+roombx = 224; roomby = 11; roombw = 116; roombh = 17;
 roommx = roombx; roommy = roomby + roombh + 4; roomih = 16; RMCW = 240; RMHH = 16; roommw = 2 * RMCW + 12;
 NOPOS = -99999;
 rmhy = roommy + 6; rsqx = roommx + 8; rsqw = 148; rsvw = 104; rsvx = roommx + roommw - 8 - rsvw;   // header: search field, Save room
@@ -8255,18 +7996,8 @@ gtnow = time_precise(); gfxgap = gtnow - lastgfx; lastgfx = gtnow;   // window r
 // (open menus and panels only redraw when something changes - their state is part of ukey; the tempo panel animates
 // only while it taps or listens)
 ukey += rqlen * 97.3 + rsnlen * 89.1 + rscat * 83.3 + rsave * 4337.1 + urcount() * 79.7 + rmenu * 4201.3 + smenu * 4211.7 + fmenu * 4219.1 + bmenu * 4229.3 + kmenu * 4231.9 + wmenu * 4241.3 + emenu * 4243.7 + helpon * 4253.1 + tpon * 4259.9 + xpon * 4261.3 + dmenu * 4271.7 + tptg * 4273.1 + tnsel * 4283.3 + anaSel * 4289.9 + anaDone * 4297.1 + soloM * 7.7;
-ukey += lpGen * 4099.3;   // Learn: a held frame (gfxpL) forces the next one to be drawn in full
-// A PAGE (help, keys) that stands still: the plug-in under it rests - no frame is drawn until the page itself changes
-// (scrolled, a button under the mouse, closed), a key changes something, or the window does. pgkey = the page's state.
-pgst = (kovl || hlpon) && kovl == kovlw && hlpon == hlpw;
-pgkey = pgSc * 3.7 + pgDrag * 811.3 + hlpH * 1.3
-      + (sqr(mouse_x - pxX) + sqr(mouse_y - pxY) <= sqr(pxR + 1)) * 1013.9
-      + (mouse_x >= pbX0 && mouse_x < pbX1 && mouse_y >= pbY0 && mouse_y < pbY1) * 2027.3
-      + (hlpon && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3049.7;
-pgst ? ( ukey += pgkey; );
-dofull = pgst ? ( ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 3) || (lastcap & 3) || mouse_wheel != 0 )
-              : ( mtRec || (mtE > 0 && time_precise() - lastblk < 0.3) || ((szoom == 7 || szoom == 6) && time_precise() - lastblk < 0.3) || tbdrag || fhdrag || prOn || vedit || vedPend || kovl || kovlw || hlpon || hlpw || snctx || snctxw || (abOn && abCur == 1 && abMatch && (floor(time_precise() * 4) != abfr ? ( abfr = floor(time_precise() * 4); 1; ) : 0)) || time_precise() - wcT < 1 || ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 4) || (lastcap & 4) || mouse_wheel != 0 || (tpon && (anaOn || anaCmd != anaSeen || time_precise() - tapLast < 2.2)) || snedit || snPend || shpin || shlast || kdrag || eqdrag || wbdrag || animing || sbdrag || (mouse_cap & 1) || (wavesOn && (time_precise() - wlast < wlife + 0.2 || dbs(max(pkIL, pkIR)) > -59 && time_precise() - lastblk < 0.3)) );   // waves: animate only while fronts are alive
-dofull ? ( lastukey = ukey; fullcnt = 15; ) : ( !pgst ? ( fullcnt -= 1; ); );
+dofull = mtRec || (mtE > 0 && time_precise() - lastblk < 0.3) || ((szoom == 7 || szoom == 6) && time_precise() - lastblk < 0.3) || tbdrag || fhdrag || prOn || vedit || vedPend || kovl || kovlw || hlpon || hlpw || snctx || snctxw || (abOn && abCur == 1 && abMatch && (floor(time_precise() * 4) != abfr ? ( abfr = floor(time_precise() * 4); 1; ) : 0)) || time_precise() - wcT < 1 || ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 4) || (lastcap & 4) || mouse_wheel != 0 || (tpon && (anaOn || anaCmd != anaSeen || time_precise() - tapLast < 2.2)) || snedit || snPend || shpin || shlast || kdrag || eqdrag || wbdrag || animing || sbdrag || (mouse_cap & 1) || (wavesOn && (time_precise() - wlast < wlife + 0.2 || dbs(max(pkIL, pkIR)) > -59 && time_precise() - lastblk < 0.3));   // waves: animate only while fronts are alive
+dofull ? ( lastukey = ukey; fullcnt = 15; ) : ( fullcnt -= 1; );
 vedSeen = 0;                              // set again by the control that owns an open value box
 // ---- theme: dark (the default) or light, both in the gray design (block below); black & white (Expert) has its own palette ----
 // (only the wall lift of dark mode is set here - the palettes follow below)
@@ -8459,7 +8190,7 @@ function ffmark() local(hit)
   ffHv = 0;
   isfree && !learn ? (
     PJ(0, 0, 0); ffAx = qx; ffAy = qy; PJ(roomW, roomD, 0); ffHx = qx; ffHy = qy; ffHv = 1;
-    hit = sqr(mx - ffHx) + sqr(my - ffHy) < 100;
+    hit = sqr(mx - ffHx) + sqr(my - ffHy) < 100 || drag == 23;
     col(cSURF, 1); R(ffHx - 4, ffHy - 4, 8, 8); col(cTEXT, hit ? 1 : 0.6); LNBOX(ffHx - 4, ffHy - 4, 8, 8, hit ? 1.6 : 1);
     LNW(ffHx - 1.5, ffHy + 1.5, ffHx + 1.5, ffHy - 1.5, 1);
     hit && drag != 23 ? tipbox(ffHx - 8, ffHy - 8, 16, 16, "Scale the free field like a room: drag = wider / deeper (right / down), Ctrl/Cmd = in proportion, Alt = height, Shift = fine – source, listener and reflectors move with it");
@@ -9352,7 +9083,7 @@ time_precise() - lkT < 2.5 ? ( tipon = 1; tipforce = 1; tipstr = lkWho == 2 ? "T
         swClk = 0; (mouse_cap & 16) && !(mouse_cap & 8) ? ( setp(98, 100); swClk = 1; ) : (mouse_cap & 4) ? ( setp(98, 0); swClk = 1; ) : time_precise() - swDT < 0.35 ? ( setp(98, slider98 > 50 ? 0 : 100); swClk = 1; swDT = 0; ) : ( swDT = time_precise(); );
         swClk ? ( swDrag = 0; click = 0; dSrc = dLs = 999; dBh = dBe = 99; inEl = 0; swSet = 1; ); ) : (
       (mouse_cap & 16) && (mouse_cap & 8) && dSrc < 15 ? ( swDrag = 1; swMode = 0; ); );
-      swDrag ? ( swW0 = slider98; swX0 = mx; swD0 = max(4, abs((mx - spCx) * spUx + (my - spCy) * spUy)); dSrc = dLs = 999; dBh = dBe = 99; inEl = 0; );
+      swDrag ? ( swW0 = slider98; swX0 = mx; spHL0 = spTr; swD0 = max(4, abs((mx - spCx) * spUx + (my - spCy) * spUy)); dSrc = dLs = 999; dBh = dBe = 99; inEl = 0; );
     );   // room off = stereo panner - the listener rests (only the source pans) // (room off = 3D panner - the positions count again) // room off - source and listener cannot be moved (it would not change the sound)
     hitw = 0;
     !isfree && !hidew ? (
@@ -9471,6 +9202,7 @@ time_precise() - lkT < 2.5 ? ( tipon = 1; tipforce = 1; tipstr = lkWho == 2 ? "T
     );
     sprintf(#etip, "Reflector %.0f  Angle %.0f°", drag - 29, vopt[rflO2 + 3]); tipon = 1; tipforce = 1; tipstr = #etip; tipx = mx; tipy = my - 20;
   );
+  drag == 23 ? ( setp(31, min(4, max(0.25, ffS0 * sqrt(sqr(mx - ffAx) + sqr(my - ffAy)) / ffD0))); sprintf(#etip, "Size %.2f× · %.1f × %.1f m", slider31, slider2 * slider31, slider3 * slider31); tipon = 1; tipforce = 1; tipstr = #etip; tipx = mx; tipy = my - 20; );
   drag == 22 ? (
     frontv ? ( iy = MTAP[1] * rs; ix = (mx - pX0) / pS; ) : sidevOn ? ( ix = MTAP[0] * rs; iy = (mx - pX0) / pKX; ) : ( iy = (my - pY0) / pKY; ix = (mx - pX0 - iy * pKX) / pS; );   // side view - the spot moves in depth, its left / right stays; front view: left / right, the depth stays
     ix /= rs; iy /= rs;
@@ -9479,7 +9211,7 @@ time_precise() - lkT < 2.5 ? ( tipon = 1; tipforce = 1; tipstr = lkWho == 2 ? "T
   );
   drag == 21 ? ( setp(104, min(20, max(0.1, mtHr0 * sqrt(sqr(mx - mtHax) + sqr(my - mtHay)) / mtHd0))); sprintf(#etip, "Size %.2f m", slider104 * rs); tipon = 1; tipforce = 1; tipstr = #etip; tipx = mx; tipy = my - 20; );
 // DRAW A MOTION PATH: armed (Draw) - a drag in the view records the stroke (at the height of the ball that moves)
-  click && mtRec && !sidevOn && inbox(VX, VY + 24, VW, VH - 24) ? ( drag = 20; swDrag = 0; mtRN = 0; mtRX = -999; mtRY = -999; mtRZ = floor(slider101 + 0.5) == 1 ? lz : sz; mtZm = 0; click = 0; );
+  click && mtRec && !sidevOn && inbox(VX, VY + 24, VW, VH - 24) ? ( drag = 20; swDrag = 0; mtRN = 0; mtRT0 = time_precise(); mtRX = -999; mtRY = -999; mtRZ = floor(slider101 + 0.5) == 1 ? lz : sz; mtZm = 0; click = 0; );
   drag == 20 ? (
 // one point per frame with its time - pauses and fast strokes are kept (up to 1024 frames)
 // 3D view + Shift held = the HEIGHT: the mouse up / down raises and lowers the point where it is
@@ -9811,8 +9543,7 @@ function hlpsec(x, y, w, hd, bd) local(h) (
 function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
 (
   cw = min(WT - 24, 780); two = cw >= 640; hpch = min(HT - 24, max(200, hlpH + 54));
-  // (the only thing that changes on this page: the button at its end under the mouse)
-  pgopen(1, cw, hpch, max(hlpH, 100), "Ahh! – how it works", mx >= (WT - cw) / 2 + cw - 200 && mx < (WT - cw) / 2 + cw - 20 && my + pgSc >= pgBY + hlpYr && my + pgSc < pgBY + hlpYr + 20) ? (
+  pgopen(1, cw, hpch, max(hlpH, 100), "roomservice – how it works");
   cx = pgCX; cy = pgBY - 44;
   w1 = two ? cw / 2 - 34 : cw - 40; x1 = cx + 20; x2 = two ? cx + cw / 2 + 14 : x1;
   y = cy + 54;
@@ -9831,10 +9562,9 @@ function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
   yb = max(ya, y) + 4;
   // the keys page (its screen place is kept for the click test at the start of the next frame)
   col(inbox(cx + cw - 200, yb, 180, 20) ? cHAIR : cLINE, 1); RR(cx + cw - 200, yb, 180, 20, 6); col(cTEXT, 1); gfx_setfont(6); txt("All keys and mouse actions", cx + cw - 110, yb + 10, 1);
-  hlpYr = yb - pgBY; hlpH = hlpYr + 34;                                               // the body as tall as its text (next frame)
-  );
+  hlpH = yb + 34 - pgBY;                                               // the body as tall as its text (next frame)
   pgclose();
-  hkX0 = gox + (pgCX + cw - 200) * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + (pgBY + hlpYr - pgSc) * gs; hkY1 = hkY0 + 20 * gs;   // (screen place, scrolled)
+  hkX0 = gox + (cx + cw - 200) * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + (yb - pgSc) * gs; hkY1 = hkY0 + 20 * gs;   // (screen place, scrolled)
 );
 // a label in the room view: title in its color, one line below; kept inside the view
 LBB = 4194304 + 44200;   // labels already placed in this frame (x, y, w) - a new one moves out of their way
@@ -10134,14 +9864,7 @@ function lpan3() local(k, x, y, w, h, h2)
   lp3need = y + 30 + h + h2 + 10 + 8 - LQ3;                                // (the panel takes what its text needs)
 );
 // Learn mode: draws the three Learn panels (What you hear, Your turn, Words)
-// LEARN without a jump: the two text panels learn their height while they are drawn. When it differs from the height this
-// frame was laid out with, the frame is not shown (lpHold: no blit - the window keeps the last picture) and the next frame is
-// drawn in full with the real heights - the panels never appear at a wrong size for a frame
-function gfxpL()
-(
-  lpan1(); lpan2(); lpan3();
-  (abs(lp2need - lp2use) > 0.5 || abs(lp3need - lp3use) > 0.5) && lpHoldN < 3 ? ( lpHold = 1; lpHoldN += 1; lpGen += 1; ) : ( lpHoldN = 0; );
-);
+function gfxpL() ( lpan1(); lpan2(); lpan3(); );
 // Heading and chrome of the Stage View: fold/zoom/lock/info, morph, hide, view tabs, start positions, snapshot name
 function gfxp4()
 (
@@ -10698,7 +10421,7 @@ tipbox(x0 + w0 - 36, syD + 5, 26, 14, "Delay on / off – it works before the ro
 tpbx = x0 + w0 - (tabm ? 218 : 198);
 hmix(60, x0 + w0 - (tabm ? 132 : 112), syD + 12, 90, cDLTT, "Amount of the delay (module mix): the share of the echoes – 100 % = as set, 0 % = no echoes (double-click = type a value, Alt+click = 100 %, automatable)");
 chip(tpbx, syD + 5, 76, 14, "Tempo tools", tpon && tpctx != 14, cDLTT) ? ( tpon = !tpon; tpctx = 10; tpmv = 0; );   // opens at its place again
-tipbox(tpbx, syD + 5, 76, 14, "Tempo tools: tap the tempo or let Ahh listen to the song – then send a note value to the delay");
+tipbox(tpbx, syD + 5, 76, 14, "Tempo tools: tap the tempo or let roomservice listen to the song – then send a note value to the delay");
 d3on = vopt[20] < 0.5;
 chip(tpbx - 32, syD + 5, 28, 14, "3D", d3on, cTEXT) ? ( vopt[20] = d3on ? 1 : 0; );
 tipbox(tpbx - 32, syD + 5, 28, 14, d3on ? "Delay times at the source in the 3D view: shown (while the delay is on) – click to hide" : "Delay times at the source in the 3D view: hidden – click to show");
@@ -11264,7 +10987,7 @@ function gfxpM() local(x0, w0, y0, mtq, pat, mvs, ctr, k, cx, cy, tw1, bx, bw, n
       anaok = anaDone == 1 && anaRes == 1 && anaRefId == anaSeen;
       anaReq = anaCmd != anaSeen; anaRun = anaOn || anaReq;
       chip(tmbLx, tmbTy, tmbLw, 15, anaRun ? "Stop listening" : "Listen to the song", anaRun, cMOTT) ? ( anaRun ? ( anaStp += 1; ) : ( anaCmd += 1; anaSel = 0; ); click = 0; );
-      tipbox(tmbLx, tmbTy, tmbLw, 15, "Click, then play the selected clip or the time selection – Ahh listens for 10 s and finds the tempo");
+      tipbox(tmbLx, tmbTy, tmbLw, 15, "Click, then play the selected clip or the time selection – roomservice listens for 10 s and finds the tempo");
       col(cHAIR, 1); RR(tmbLx, tmbTy + 19, tmbLw, 3, 1.5); anaN > 0 ? ( col(cMOTT, 1); RR(tmbLx, tmbTy + 19, max(3, tmbLw * anaN / ANAMAX), 3, 1.5); );
       anaRun ? ( (play_state & 1) && anaOn ? sprintf(#w1, "listening %.1f s of 10 s", anaN / 100) : strcpy(#w1, "waiting – start playback") )
              : ( anaok ? ( selb = anaSel == 1 ? anaBf / 2 : (anaSel == 2 ? anaBf * 2 : anaBf); sprintf(#w1, "found %.1f BPM (%s)", selb, anaConf >= 4.5 ? "sure" : (anaConf >= 3 ? "fairly sure" : "unsure")); )
@@ -11320,6 +11043,7 @@ function gfxpM() local(x0, w0, y0, mtq, pat, mvs, ctr, k, cx, cy, tw1, bx, bw, n
     kchg ? setp(109, nf * 5);
     kx += ksp; kcol = cTEXT; kscale(1);
     roomy ? ( stx = kx - KR; sty = by; ) : ( stx = wd ? lx : x0 + 12; sty = by + KR + 38; );
+    mtStyG = sty;   // (for the Motion-card test)
     // status: what the pattern does, in words
     // sec = seconds per cycle: tempo-locked (mtq 1 … 8 = 8, 4, 2, 1 bars, 1/2, 1/4, 1/8, 1/16 note) or 1 / Rate
     sec = mtq > 0 ? 60 / max(20, min(300, slider74 > 0.5 ? slider74 : tempo)) * max(0.0625, (mtq == 1 ? 8 * ts_num : (mtq == 2 ? 4 * ts_num : (mtq == 3 ? 2 * ts_num : (mtq == 4 ? ts_num : (mtq == 5 ? 2 : (mtq == 6 ? 1 : (mtq == 7 ? 0.5 : 0.25))))))) * 4 / max(1, ts_denom)) : 1 / slider103;   // the real time signature, as the audio counts it
@@ -11665,77 +11389,6 @@ rbyp && !szoom ? (
 );
 actlines();
 );
-// resamples the mark to th device pixels high: every target pixel = the exact area average of the source map under it
-function lgsize(th) local(tw, x, y, fx, fy, x0, x1, y0, y1, i, j, wx, wy, acc)
-(
-  th = max(4, min(64, th)); tw = min(96, floor(th * LGW / LGH + 0.5)); lgTH = th; lgTW = tw; fx = LGW / tw; fy = LGH / th;
-  y = 0; loop(th,
-    y0 = y * fy; y1 = y0 + fy;
-    x = 0; loop(tw,
-      x0 = x * fx; x1 = x0 + fx; acc = 0;
-      j = floor(y0); while ( j < y1 && j < LGH ? ( wy = min(j + 1, y1) - max(j, y0);
-        i = floor(x0); while ( i < x1 && i < LGW ? ( wx = min(i + 1, x1) - max(i, x0); acc += lgS[j * LGW + i] * wx * wy; ); i += 1; i < x1; );
-      ); j += 1; j < y1; );
-      lgT[y * 96 + x] = acc / (fx * fy); x += 1; );
-    y += 1; );
-);
-// the dmajorsound mark, hU units high, top left corner at (x, y) in page units
-function dmlogo(x, y, hU) local(th, px0, py0, i, j, c)
-(
-  th = floor(hU * gs + 0.5); th != lgTH ? lgsize(th);
-  px0 = floor(gox + x * gs + 0.5); py0 = floor(goy + y * gs + 0.5);
-  col(cMUTED, 1);
-  j = 0; loop(lgTH, i = 0; loop(lgTW, c = lgT[j * 96 + i]; c > 0.03 ? ( gfx_a = c; gfx_rect(px0 + i, py0 + j, 1, 1); ); i += 1; ); j += 1; );
-  gfx_a = 1;
-);
-// UPDATE NOTE (VST3 / AU / CLAP only): the plug-in asks GitHub once per session whether a newer release is out and
-// then sets updav = 1 and string 1000 = its tag. A small button right after the version text shows it; a click sets
-// updgo = 1 and the plug-in opens the download page. As a JSFX in REAPER nothing sets updav: nothing is drawn.
-function updnote(ty) local(x, w, h)
-(
-  updav ? (
-    gfx_setfont(7); x = 12 + tws(#verstr) + 8;
-    sprintf(#updl, "Update %s", 1000); w = tws(#updl) + 14;
-    h = inbox(x, ty - 6, w, 12);
-    col(cACT, h ? 0.85 : 1); RR(x, ty - 6, w, 12, 6); col(cACTX, 1); gfx_setfont(7); txt(#updl, x + w / 2, ty, 1);
-    h ? ( sprintf(#updt, "Ahh %s is out. Click to open the download page.", 1000); tipbox(x, ty - 6, w, 12, #updt); tipforce = 1; );
-    h && click ? ( updgo = 1; click = 0; );
-  );
-);
-// Footer: hairline, then the dmajorsound mark in the bottom right corner with "dmajorsound.com" to its left
-// (the same in every dmajorsound plugin; the mark stays 8 units clear of the window resize corner)
-function dmfoot(ly, ty) local(tw, th, mh, mw)
-(
-  col(cHAIR, 1); PXR(12, ly, WT - 24, 1); gfx_rect(gpx0, gpy0, gpw, max(1, floor(gs * 0.5 + 0.5)));
-  mh = 10; mw = mh * LGW / LGH;
-  dmlogo(WT - 20 - mw, ty - mh / 2, mh);
-  gfx_setfont(7); strcpy(#dmw, "dmajorsound.com"); gfx_measurestr(#dmw, tw, th);
-  col(cMUTED, 1); txt(#dmw, WT - 20 - mw - mh / 2, ty, 2);
-);
-// THE NAME: the Ahh! wordmark (as the plug-in icon). "Ahh" in the built-in bold font, then an exclamation mark as tall as
-// the letters: the bar from the top of the h, the dot - the sound source - centred on the baseline, two reflections
-// around it, open at the top. Drawn in pixels from the font's own metrics (Arimo Bold: ascent 1854, descent 434,
-// h 1485 units high, ink of "Ahh" from 0.025 to 1.88 em), so the bar lines up with the h at every scale.
-function ahhmark(x, yc) local(fh, px, ty, bl, lh, em, ink, cx, rr, dr, bw, gp, top, k, a1, a2, rw)
-(
-  fh = floor(24 * gT + 0.5); gfx_setfont(5, "Arial", fh, 'b');
-  col(cTEXT, 1); txt("Ahh", x, yc, 0);
-  px = floor(gox + x * gs + 0.5); ty = floor(goy + yc * gs - fh / 2 + 0.5);     // where txt put the text box
-  bl = ty + fh * 1854 / 2288; lh = fh * 1485 / 2288; em = fh * 2048 / 2288;
-  ink = px + 1.88 * em;
-  rr = 0.30 * lh; dr = 0.104 * lh; bw = 0.20 * lh; gp = 0.09 * lh;
-  cx = floor(ink + 0.08 * lh + rr) + 0.5; top = floor(bl - lh + 0.5);   // (the bar on whole pixels, its top on the h's top row)
-  bw = max(2, floor(bw + 0.5)); dr = max(1.6, dr);
-  // reflections: two arcs around the dot, open at the top (62 degrees each side), drawn as rings of 1 px arcs
-  a1 = 62 * $pi / 180; a2 = 2 * $pi - a1;
-  col(cACTO, 0.35); rw = max(1, floor(0.045 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, rr - 0.0225 * lh - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
-  col(cACTO, 0.7);  rw = max(1, floor(0.055 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, 0.62 * rr - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
-  // the bar: a rounded line from the top of the h down to the gap above the dot
-  col(cTEXT, 1);
-  gfx_rect(floor(cx - bw / 2), top + floor(bw / 2), bw, max(1, floor(bl - dr - gp + 0.5) - top - 2 * floor(bw / 2)));
-  gfx_circle(cx - 0.5, top + bw / 2 - 0.5, bw / 2, 1, 1); gfx_circle(cx - 0.5, floor(bl - dr - gp + 0.5) - bw / 2 - 0.5, bw / 2, 1, 1);
-  col(cSRC, 1); gfx_circle(cx - 0.5, bl - 0.5, dr, 1, 1);
-);
 // Top bar: name, Basic/Expert and view mode switches, Tabs/All/Fit, room presets menu button and snapshot slots
 function gfxp11()
 (
@@ -11744,32 +11397,28 @@ col(cBG, 1); gfx_rect(0, 0, gfx_w, gfx_h);
 
 szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx = (mouse_x - gox) / gs; my = (mouse_y - goy) / gs; );
 // ---------- top bar ----------
-// THE NAME AND THE MARK keep one size in every view (Basic, Expert, Tabs, All, Learn): drawn at gT (window only), not at the page scale;
-// vertically centered on the switch row, the view switches start after them (TBOFS)
-TBOFS = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + TBOFS;   // (again with the scale of this frame's top bar)
-gsT0 = gs; gs = gT; ahhmark(11, 17 * gsT0 / gT);
-gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
+col(cTEXT, 1); gfx_setfont(5); txt("roomservice", 12, 17, 0);
 // Basic | Expert | Learn: one segmented switch, the active segment filled
 // VIEW MODE: a dark switch right after the name (the plugin's own view - not a preset, not a snapshot)
-col(cTEXT, 1); RR(126 + TBOFS, 8, 106, 18, 9);
+col(cTEXT, 1); RR(98, 8, 116, 18, 9);
 gk = 0;
 loop(3,
-  mdon = gk == 0 ? basic : (gk == 1 ? !basic && !learn : learn); mdh = inbox(126 + TBOFS + gk * 34, 8, 34, 18);
-  mdon ? ( col(cACT, 1); RR(128 + TBOFS + gk * 34, 10, 32, 14, 7); cCTLon ? ( col(cACTO, 1); RRO(128 + TBOFS + gk * 34, 10, 32, 14, 7); ); col(cACTX, 1); ) : col(mdh ? cSURF : cDIM2, 1);
-  gfx_setfont(6); txt(gk == 0 ? "Basic" : (gk == 1 ? "Expert" : "Learn"), 143 + TBOFS + gk * 34, 17, 1);
+  mdon = gk == 0 ? basic : (gk == 1 ? !basic && !learn : learn); mdh = inbox(98 + gk * 38, 8, 38, 18);
+  mdon ? ( col(cACT, 1); RR(100 + gk * 38, 10, 36, 14, 7); cCTLon ? ( col(cACTO, 1); RRO(100 + gk * 38, 10, 36, 14, 7); ); col(cACTX, 1); ) : col(mdh ? cSURF : cDIM2, 1);
+  gfx_setfont(6); txt(gk == 0 ? "Basic" : (gk == 1 ? "Expert" : "Learn"), 118 + gk * 38, 17, 1);
   click && mdh ? ( vopt[11] = gk == 0; vopt[43] = gk == 2; szclr = 1; );   // the zoom is cleared at the start of the next frame (clearing it here drew every module on top of each other for one frame = a flash)
   gk += 1;
 );
-tipbox(126 + TBOFS, 8, 34, 18, "Basic view (B): room, decay, source and barrier at a glance – every other setting stays as it is");
-tipbox(160 + TBOFS, 8, 34, 18, "Expert view (E): all controls, every module at once");
-tipbox(194 + TBOFS, 8, 34, 18, "Learn (L): the plugin explains what you hear – labels in the room, the sound in three parts, short tasks and the words in plain language (the sound is the same)");
+tipbox(98, 8, 38, 18, "Basic view (B): room, decay, source and barrier at a glance – every other setting stays as it is");
+tipbox(136, 8, 38, 18, "Expert view (E): all controls, every module at once");
+tipbox(174, 8, 38, 18, "Learn (L): the plugin explains what you hear – labels in the room, the sound in three parts, short tasks and the words in plain language (the sound is the same)");
 // TABS | ALL | FIT (Expert): under the view modes - toggles between the tab view and every module at once. Fit = the module as large as the window allows (Tabs) / every module fitted into the window (All)
 !basic && !learn ? (
   mvfit = tabm ? vopt[48] >= 0.5 : vopt[42] >= 0.5;
-  col(cHAIR, 1); RR(126 + TBOFS, 31, 106, 12, 6);
+  col(cHAIR, 1); RR(98, 31, 116, 12, 6);
   gk = 0;
   loop(3,
-    mvx = 126 + TBOFS + (gk == 0 ? 0 : (gk == 1 ? 36 : 71)); mvw = gk == 0 ? 36 : 35; mvh2 = inbox(mvx, 31, mvw, 12);
+    mvx = 98 + (gk == 0 ? 0 : (gk == 1 ? 40 : 78)); mvw = gk == 0 ? 40 : 38; mvh2 = inbox(mvx, 31, mvw, 12);
     mvon = gk == 0 ? tabm : (gk == 1 ? !tabm : mvfit);
     mvon ? ( col(cACT, 1); RR(mvx + 1, 32, mvw - 2, 10, 5); cCTLon ? ( col(cACTO, 1); RRO(mvx + 1, 32, mvw - 2, 10, 5); ); col(cACTX, 1); ) : col(mvh2 ? cTEXT : cMUTED, 1);
     gfx_setfont(7); txt(gk == 0 ? "Tabs" : (gk == 1 ? "All" : "Fit"), mvx + mvw / 2, 37.5, 1);
@@ -11780,12 +11429,12 @@ tipbox(194 + TBOFS, 8, 34, 18, "Learn (L): the plugin explains what you hear –
     );
     gk += 1;
   );
-  tipbox(126 + TBOFS, 31, 36, 12, "Tabs: the Stage View on top and one module under it – larger, no scrolling (key T · key 0 switches Tabs <-> All · key Z zooms the module)");
-  tipbox(162 + TBOFS, 31, 35, 12, "All: every module at once in two columns (key A · key 0 switches Tabs <-> All · key Z zooms the module under the mouse)");
-  tipbox(197 + TBOFS, 31, 35, 12, tabm ? (mvfit ? "Fit on (key F): the module fills the width, the Stage View gets the rest – click: standard" : "Fit (key F): make the module as large as the window allows – text, knobs and graphics grow, the Stage View gets smaller")
+  tipbox(98, 31, 40, 12, "Tabs: the Stage View on top and one module under it – larger, no scrolling (key T · key 0 switches Tabs <-> All · key Z zooms the module)");
+  tipbox(138, 31, 38, 12, "All: every module at once in two columns (key A · key 0 switches Tabs <-> All · key Z zooms the module under the mouse)");
+  tipbox(176, 31, 38, 12, tabm ? (mvfit ? "Fit on (key F): the module fills the width, the Stage View gets the rest – click: standard" : "Fit (key F): make the module as large as the window allows – text, knobs and graphics grow, the Stage View gets smaller")
                                : (mvfit ? "Fit all (key F): every module in the window at once – smaller text. Click: text and knobs as large as in Basic (the page scrolls with the mouse wheel)" : "Fit all: fit every module into the window (smaller) – module heights you dragged go back to standard"));
 );
-col(cBORD, 1); LNW(237 + TBOFS, 7, 237 + TBOFS, 27, 1);                                // separator: the plugin's view | what you load
+col(cBORD, 1); LNW(219, 7, 219, 27, 1);                                // separator: the plugin's view | what you load
 col(cMUTED, 1); gfx_setfont(11); txt("Presets", roombx, 5, 0);
 // room presets: dropdown (menu drawn at the end, on top)
 rsel = -1; k = 0; loop(NPRE, !isfree && roommatch(k) ? rsel = k; k += 1; );
@@ -11804,7 +11453,7 @@ tipbox(roombx, roomby, roombw, roombh, rmod ? "Presets: room preset, changed (*)
 // a single click loads only when no second click follows (otherwise the double-click would store the loaded settings)
 snPend && time_precise() - snPt >= SNDBL ? ( loadslot(snPend - 1); uslot[(snPend - 1) * USL] ? ( snlast = snPend; ); snPend = 0; );
 snmk = 0;
-col(cMUTED, 1); gfx_setfont(basic ? 7 : 11); txt("Snapshots", 346 + TBOFS, basic ? 6 : 5, 0);
+col(cMUTED, 1); gfx_setfont(basic ? 7 : 11); txt("Snapshots", 346, basic ? 6 : 5, 0);
 snWd = basic ? 18 : 15; snHt = basic ? 14 : 13;           // size of one snapshot button
 gk = 0;
 loop(basic ? 8 : NSNAP,
@@ -11834,29 +11483,29 @@ loop(basic ? 8 : NSNAP,
   gk += 1;
 );
 !basic ? (
-col(saveArm ? cIOTT : cMUTED, 1); gfx_setfont(2); txt("Save", 487 + TBOFS, 17, 0);
-saveArm ? ( LNW(487 + TBOFS, 24, 487 + TBOFS + tws("Save"), 24, 1.4); );
-click && inbox(483 + TBOFS, 7, 28, 20) ? ( saveArm = !saveArm; );
-tipbox(483 + TBOFS, 7, 28, 20, saveArm ? "Now click a snapshot 1–16 to store the current settings" : "Save: click, then choose snapshot 1–16 (or double-click a snapshot to give it a name)");
+col(saveArm ? cIOTT : cMUTED, 1); gfx_setfont(2); txt("Save", 487, 17, 0);
+saveArm ? ( LNW(487, 24, 487 + tws("Save"), 24, 1.4); );
+click && inbox(483, 7, 28, 20) ? ( saveArm = !saveArm; );
+tipbox(483, 7, 28, 20, saveArm ? "Now click a snapshot 1–16 to store the current settings" : "Save: click, then choose snapshot 1–16 (or double-click a snapshot to give it a name)");
 ) : (
 // Basic: Save beside the label above the 8 snapshots - click, then a snapshot = store the current settings there
-gfx_setfont(7); sbsx = 346 + TBOFS + tws("Snapshots") + 10; sbsh = inbox(sbsx - 4, 0, tws("Save") + 8, 12);
+gfx_setfont(7); sbsx = 346 + tws("Snapshots") + 10; sbsh = inbox(sbsx - 4, 0, tws("Save") + 8, 12);
 col(saveArm ? cIOTT : (sbsh ? cTEXT : cMUTED), 1); gfx_setfont(7); txt("Save", sbsx, 6, 0);
 LNW(sbsx, 11, sbsx + tws("Save"), 11, saveArm ? 1.4 : 0.8);                          // underlined: a button
 click && sbsh ? ( saveArm = !saveArm; );
 tipbox(sbsx - 4, 0, tws("Save") + 8, 12, saveArm ? "Now click a snapshot 1–8 to store the current settings" : "Save: click, then choose snapshot 1–8 to store the current settings there");
 );
 // HELP: how the plugin works and the most used keys (a page over the plugin) - where the top bar has room for it
-hlpbx = 516 + TBOFS;
+hlpbx = 516;
 !tabm && !basic && WT - 204 - 42 - 6 - hlpbx >= 46 ? (   // Basic - the "?" in the strip opens the help
   hbqh = inbox(hlpbx, 9, 19, 16);   // a "?" like in Expert
   col(hlpon ? cSRC : (hbqh ? cHAIR : cLINE), 1); RR(hlpbx, 9, 19, 16, 8);
   col(hlpon ? 0xFFFFFF : (hbqh ? cTEXT : cMUTED), 1); gfx_setfont(6); txt("?", hlpbx + 9.5, 17, 1);
   click && hbqh ? ( hlpon = !hlpon; click = 0; );
-  tipbox(hlpbx, 9, 19, 16, "Help: how Ahh works and the most used keys");
+  tipbox(hlpbx, 9, 19, 16, "Help: how roomservice works and the most used keys");
 );
 // RESET: a button next to View (Save belongs to the snapshots)
-vgx = WT - 204; rsx = tabm ? 522 + TBOFS : vgx - 42;
+vgx = WT - 204; rsx = tabm ? 522 : vgx - 42;
 col(cHAIR, 1); LNW(rsx - 6, 9, rsx - 6, 25, 1);                      // separator: Save belongs to the snapshots
 chip(rsx, 9, 34, 16, "Reset", 0, cTEXT);
 tipbox(rsx, 9, 34, 16, vlock ? "Reset: only the room stays on – living room, listener in the middle, source 2 m in front of it; delay, barrier, filters, source model and EQ off. The limiter stays on as a protection. The layout is locked and stays (snapshots are kept)"
@@ -11998,7 +11647,7 @@ upx = ux + 46; uhit = inbox(upx, uy, 19, 16);
 col(kovl || ((tabm || basic) && hlpon) ? cSRC : (uhit ? cHAIR : cLINE), 1); RR(upx, uy, 19, 16, 8);
 col(kovl || ((tabm || basic) && hlpon) ? 0xFFFFFF : (uhit ? cTEXT : cMUTED), 1); gfx_setfont(6); txt("?", upx + 9.5, uy + 8, 1);
 click && uhit ? ( tabm || basic ? ( hlpon = !hlpon; ) : ( kovl = !kovl; ); click = 0; );
-tipbox(upx, uy, 19, 16, tabm || basic ? "Help: how Ahh works – with every key and mouse shortcut (key ?)" : "Keys and mouse: every shortcut on one page (key ?)");
+tipbox(upx, uy, 19, 16, tabm || basic ? "Help: how roomservice works – with every key and mouse shortcut (key ?)" : "Keys and mouse: every shortcut on one page (key ?)");
 // the Tabs | All | Fit switch moved under the view modes (modeview) - no Tabs | All switch and no Fit all chip in the strip any more
 basic ? (   // BASIC Fit all - the whole page in the window (no scrolling, smaller on a low window)
   fitx = WT - stRm - lkw - 8 - 44 - (stpw > 0 ? stpw + 10 : 0); fiton = vopt[36] >= 0.5;
@@ -12047,9 +11696,9 @@ gfx_setfont(6); txt(vlock ? "GUI locked" : "Lock GUI", lkx + 21, fsC, 0);
 click && lkhit ? ( vopt[15] = vlock ? 0 : 1; click = 0; );
 lkhit ? ( tipon = 1; tipforce = 0; tipstr = vlock ? "GUI locked: folding, column widths and view options stay (also on Reset) – click to unlock. The sound is not affected" : "Lock the GUI: folding, column widths and view options stay as they are (also on Reset) – saved with the project. The sound is not affected"; tipx = lkx + lkw / 2 - 120; tipy = fsY + fsH + 12; );
 // footer
-!szoom ? ( dmfoot(LH - 15.5, LH - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, LH - 8, 0); updnote(LH - 8); );
+!szoom ? ( col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, LH - 9, 0); );
 tabm && szoom ? ( !vgone ? gfxp4(); !zoomv && !vgone ? viewgrp(VX + VW - 78 - 180, VY + 12 - 17); tabrow();   // tabs: room view and tab row at the page scale, above the module
-  !zoomv ? ( dmfoot(HT - 15.5, HT - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, HT - 8, 0); updnote(HT - 8); ); );   // the footer also in Tabs
+  !zoomv ? ( col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, HT - 6, 0); ); );   // the footer also in Tabs
 szoom ? (                                                    // back to the zoom scale for the section
   tabm && tipon ? ( tipx = (tipx * gsN + goxN - goxZ) / gsZ; tipy = (tipy * gsN + goyN - goyZ) / gsZ; ) : ( tipon = 0; );   // tabs: a tip of the room view stays
   gs = gsZ; gox = goxZ; goy = goyZ; WT = (gfx_w - gox) / gs; HT = (gfx_h - goy) / gs;
@@ -12733,7 +12382,7 @@ tpvis ? (
   anaok = anaDone == 1 && anaRes == 1 && anaRefId == anaSeen;
   anaReq = anaCmd != anaSeen; anaRun = anaOn || anaReq;
   chip(arx, tpy0 + 26, arw, 16, anaRun ? "Stop listening" : "Listen to the song", anaRun, cDLTT) ? ( anaRun ? ( anaStp += 1; ) : ( anaCmd += 1; anaSel = 0; ); );
-  tipbox(arx, tpy0 + 26, arw, 16, "Click, then play the selected clip or the time selection – Ahh listens for 10 s (a JSFX cannot read files directly)");
+  tipbox(arx, tpy0 + 26, arw, 16, "Click, then play the selected clip or the time selection – roomservice listens for 10 s (a JSFX cannot read files directly)");
   col(cHAIR, 1); RR(arx, tpy0 + 46, arw, 3, 1.5); anaN > 0 ? ( col(cDLTT, 1); RR(arx, tpy0 + 46, max(3, arw * anaN / ANAMAX), 3, 1.5); );
   col(cBG, 1); RR(arx, tpy0 + 52, arw, 13, 3);
   anaN > 4 ? (
@@ -12871,7 +12520,7 @@ gfxp15();
   // an open menu, panel or page lies on top: no repaint of the section through it - the next frame is a full one
   ovlon = rsave || rmenu || smenu || fmenu || bmenu || kmenu || wmenu || emenu || helpon || xpon || dmenu || tpvis || snedit || shpin || shcur || hlpon || snctx || mpmenu || ffpmenu || rpmenu || kovl;   // + the Motion, Free field and Reflector menus and the keys page
   iokey != lastiokey ? (
-    !zoomv && !szoom ? ( ovlon ? ( !(hlpon || kovl) ? ( fullcnt = 0; ); ) : ( col(cBG, 1); R(IOX - 1, IOY - 1, IOW + 2, IOH + 2); drawio(); rzon && rzok(basic ? 22 : 7) ? rcdraw(basic ? 44 : 7); ); );   // (its corner grip lies inside: drawn again)
+    !zoomv && !szoom ? ( ovlon ? ( fullcnt = 0; ) : ( col(cBG, 1); R(IOX - 1, IOY - 1, IOW + 2, IOH + 2); drawio(); rzon && rzok(basic ? 22 : 7) ? rcdraw(basic ? 44 : 7); ); );   // (its corner grip lies inside: drawn again)
 // the mini correlation meter in the strip moves too - also in Tabs, where another module is open (szoom)
     mcOn && !ovlon && (tabm || (!zoomv && !szoom)) ? ( mgsS = gs; mgxS = gox; mgyS = goy; gs = mcGS; gox = mcGX; goy = mcGY; setfonts(); col(tabm ? cBG : cSURF, 1); R(mcX - 2, mcCY - 8, mcW + 4, 16); mcorrdraw(mcX, mcCY); gs = mgsS; gox = mgxS; goy = mgyS; setfonts(); );
     lastiokey = iokey; );
@@ -12924,8 +12573,8 @@ mouse_wheel = 0;
 !(mouse_cap & 3) && !vedit && !snedit && !rsave && time_precise() - ulast > 0.4 ? ucommit();
 udone = 0;
 (hlpon || kovl) && tabm && szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx = (mouse_x - gox) / gs; my = (mouse_y - goy) / gs; );   // pages at the page scale
-hlpon && dofull ? ( tipon = 0; hlpdraw(); );   // (a page that stands still is kept in the frame)
-kovl && dofull ? ( tipon = 0; kovldraw(); );
+hlpon ? ( tipon = 0; hlpdraw(); );
+kovl ? ( tipon = 0; kovldraw(); );
 kovlw = kovl; hlpw = hlpon; snctxw = snctx;   // (the frame after closing a page or menu is a full one too)
 // ---- notify REAPER about this frame's gesture changes (one call per frame keeps the touch alive) ----
 // reflectors changed in the GUI (knobs, handles, setups, undo, snapshots, A/B) -> their sliders + automation (touch while the mouse is held)
@@ -12943,4 +12592,4 @@ loop(NSL,
 
 lastcap = mouse_cap;
 // the finished frame to the screen in one piece (see the top of @gfx)
-gfx_dest = -1; gfx_a = 1; gfx_mode = 0; gfx_x = gfx_y = 0; lpHold ? ( lpHold = 0; ) : gfx_blit(1, 1, 0);   // (lpHold: see gfxpL)
+gfx_dest = -1; gfx_a = 1; gfx_mode = 0; gfx_x = gfx_y = 0; gfx_blit(1, 1, 0);

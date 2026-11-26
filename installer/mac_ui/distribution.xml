@@ -13,15 +13,15 @@
         <line choice="clap"/>
     </choices-outline>
     <choice id="vst3" title="VST3" description="Ahh as VST3 plug-in, for REAPER and most other hosts. Goes to /Library/Audio/Plug-Ins/VST3." start_selected="true">
-        <pkg-ref id="com.dmajorsound.roomservice.vst3"/>
+        <pkg-ref id="com.dmajorsound.ahh.vst3"/>
     </choice>
     <choice id="au" title="Audio Unit" description="Ahh as Audio Unit, for Logic Pro, GarageBand and other hosts that use Audio Units. Goes to /Library/Audio/Plug-Ins/Components." start_selected="true">
-        <pkg-ref id="com.dmajorsound.roomservice.au"/>
+        <pkg-ref id="com.dmajorsound.ahh.au"/>
     </choice>
     <choice id="clap" title="CLAP" description="Ahh as CLAP plug-in, for REAPER, Bitwig Studio and other hosts that support CLAP. Goes to /Library/Audio/Plug-Ins/CLAP." start_selected="true">
-        <pkg-ref id="com.dmajorsound.roomservice.clap"/>
+        <pkg-ref id="com.dmajorsound.ahh.clap"/>
     </choice>
-    <pkg-ref id="com.dmajorsound.roomservice.vst3" version="VERSION" onConclusion="none">roomservice-vst3.pkg</pkg-ref>
-    <pkg-ref id="com.dmajorsound.roomservice.au" version="VERSION" onConclusion="none">roomservice-au.pkg</pkg-ref>
-    <pkg-ref id="com.dmajorsound.roomservice.clap" version="VERSION" onConclusion="none">roomservice-clap.pkg</pkg-ref>
+    <pkg-ref id="com.dmajorsound.ahh.vst3" version="VERSION" onConclusion="none">roomservice-vst3.pkg</pkg-ref>
+    <pkg-ref id="com.dmajorsound.ahh.au" version="VERSION" onConclusion="none">roomservice-au.pkg</pkg-ref>
+    <pkg-ref id="com.dmajorsound.ahh.clap" version="VERSION" onConclusion="none">roomservice-clap.pkg</pkg-ref>
 </installer-gui-script>

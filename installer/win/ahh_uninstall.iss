@@ -1,10 +1,10 @@
 ; Ahh uninstaller for Windows (Inno Setup 6): removes Ahh and Roomservice (its name up to 1.0.4), VST3 and CLAP.
 ; Projects and presets stay untouched. ISCC /DAppVer=1.0.5 /DFileVer=1.0.5
 #ifndef AppVer
-  #define AppVer "1.0.6"
+  #define AppVer "1.1.0"
 #endif
 #ifndef FileVer
-  #define FileVer "1.0.6"
+  #define FileVer "1.1.0"
 #endif
 
 [Setup]
@@ -62,15 +62,19 @@ begin
   if CurStep <> ssInstall then exit;
   Failed := False;
   { the uninstaller the installer left behind also clears the Installed apps entry }
-  Unins := ExpandConstant('{commonappdata}\dmajorsound\Roomservice\unins000.exe');
+  Unins := ExpandConstant('{commonappdata}\dmajorsound\Ahh\unins000.exe');
   if FileExists(Unins) then
     Exec(Unins, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Gone(ExpandConstant('{commoncf64}\VST3\Ahh.vst3'), True, Failed);
   Gone(ExpandConstant('{commoncf64}\VST3\Roomservice.vst3'), True, Failed);
   Gone(ExpandConstant('{commoncf64}\CLAP\Ahh.clap'), False, Failed);
   Gone(ExpandConstant('{commoncf64}\CLAP\Roomservice.clap'), False, Failed);
+  Gone(ExpandConstant('{commoncf64}\VST3\RoomservicePro.vst3'), True, Failed);
+  Gone(ExpandConstant('{commoncf64}\CLAP\RoomservicePro.clap'), False, Failed);
   RegDeleteKeyIncludingSubkeys(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{6F1C2B7E-4A3D-4E8B-9C21-7D5E0A1B2C33}_is1');
+  RegDeleteKeyIncludingSubkeys(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A44B0D5E-51C0-4B7A-9E0D-5A11C0DE0100}_is1');
   DelTree(ExpandConstant('{commonappdata}\dmajorsound\Roomservice'), True, True, True);
+  DelTree(ExpandConstant('{commonappdata}\dmajorsound\Ahh'), True, True, True);
   if Failed then
     MsgBox('Ahh could not be removed completely because an audio application is still running.' + #13#10 +
            'Quit it and run this uninstaller again.', mbError, MB_OK);

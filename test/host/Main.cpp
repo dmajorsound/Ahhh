@@ -1,8 +1,14 @@
-// headless test host for the Roomservice VST3: null test through the binary, state round trip, editor snapshot
+// headless test host for the RoomservicePro VST3 (NCH=6 in the environment: a 5.1 bus, six interleaved channels): null test through the binary, state round trip, editor snapshot
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <fstream>
 using namespace juce;
+static int NCH = 2;
+static bool setLayout(AudioPluginInstance& p) {   // the bus layout the test runs with: stereo, or 5.1 in / 5.1 out
+    auto set = NCH == 6 ? AudioChannelSet::create5point1() : AudioChannelSet::stereo();
+    AudioProcessor::BusesLayout l; l.inputBuses.add(set); l.outputBuses.add(set);
+    return p.setBusesLayout(l);
+}
 
 static std::vector<double> readf(const String& p) { MemoryBlock mb; File(p).loadFileAsData(mb); std::vector<double> d(mb.getSize() / 8); memcpy(d.data(), mb.getData(), d.size() * 8); return d; }
 static void writef(const String& p, const std::vector<double>& d) { File(p).replaceWithData(d.data(), d.size() * 8); }
@@ -40,15 +46,16 @@ struct TestPlayHead : AudioPlayHead {
 static TestPlayHead g_ph;
 static std::vector<double> render(AudioPluginInstance& p, const std::vector<double>& in, int bs) {
     p.setPlayHead(&g_ph);
-    const size_t frames = in.size() / 2; std::vector<double> out(in.size());
-    AudioBuffer<double> buf(2, bs); MidiBuffer midi;
+    const int N = NCH;
+    const size_t frames = in.size() / (size_t)N; std::vector<double> out(in.size());
+    AudioBuffer<double> buf(N, bs); MidiBuffer midi;
     for (size_t pos = 0; pos < frames; pos += (size_t)bs) {
         const int nf = (int)std::min<size_t>((size_t)bs, frames - pos);
-        buf.setSize(2, nf, false, false, true);
-        for (int i = 0; i < nf; i++) { buf.setSample(0, i, in[2 * (pos + i)]); buf.setSample(1, i, in[2 * (pos + i) + 1]); }
+        buf.setSize(N, nf, false, false, true);
+        for (int i = 0; i < nf; i++) for (int c = 0; c < N; c++) buf.setSample(c, i, in[(size_t)N * (pos + i) + (size_t)c]);
         g_ph.t = (double)pos / 48000.0;
         p.processBlock(buf, midi);
-        for (int i = 0; i < nf; i++) { out[2 * (pos + i)] = buf.getSample(0, i); out[2 * (pos + i) + 1] = buf.getSample(1, i); }
+        for (int i = 0; i < nf; i++) for (int c = 0; c < N; c++) out[(size_t)N * (pos + i) + (size_t)c] = buf.getSample(c, i);
     }
     return out;
 }
@@ -58,9 +65,11 @@ int main(int argc, char** argv) {
     StringArray a; for (int i = 1; i < argc; i++) a.add(argv[i]);
     const String plug = a[0], mode = a[1];
     const double sr = 48000; const int bs = 256;
+    if (const char* e = getenv("NCH")) NCH = atoi(e) == 6 ? 6 : 2;
     auto p = load(plug, sr, bs);
     if (!p) return 1;
-    p->setPlayConfigDetails(2, 2, sr, bs);
+    if (!setLayout(*p)) { std::cerr << "bus layout refused\n"; return 1; }
+    p->setPlayConfigDetails(NCH, NCH, sr, bs);
     if (!p->supportsDoublePrecisionProcessing()) { std::cerr << "no double precision\n"; return 1; }
     p->setProcessingPrecision(AudioProcessor::doublePrecision);
     std::cout << "loaded: " << p->getName() << ", params " << p->getParameters().size() << ", latency " << p->getLatencySamples() << "\n";
@@ -70,36 +79,38 @@ int main(int argc, char** argv) {
         XmlElement x("VST3PluginState");
         x.createNewChildElement("IComponent")->addTextElement(st.toBase64Encoding());
         MemoryBlock wrapped; AudioProcessor::copyXmlToBinary(x, wrapped);
+        if (getenv("DUMP")) { std::cout << "before state:\n"; for (auto* q : p->getParameters()) std::cout << q->getName(40) << " = " << q->getCurrentValueAsText() << " (" << q->getValue() << ")\n"; }
         p->setStateInformation(wrapped.getData(), (int)wrapped.getSize());
+        if (getenv("DUMP")) for (auto* q : p->getParameters()) { auto* w = dynamic_cast<AudioProcessorParameterWithID*>(q); std::cout << (w ? w->paramID : String("?")) << " " << q->getName(40) << " = " << q->getCurrentValueAsText() << "\n"; }
         p->prepareToPlay(sr, bs);
         writef(a[5], render(*p, readf(a[4]), bs));
         p->releaseResources();
     } else if (mode == "state") {   // state round trip: get -> new instance set -> get, bytes equal
         p->prepareToPlay(sr, bs);
-        std::vector<double> in(2 * 48000, 0.0); in[200] = 1.0;
+        std::vector<double> in((size_t)NCH * 48000, 0.0); in[200] = 1.0;
         render(*p, in, bs);
         MemoryBlock s1; p->getStateInformation(s1);
-        auto q = load(plug, sr, bs); q->setPlayConfigDetails(2, 2, sr, bs);
+        auto q = load(plug, sr, bs); setLayout(*q); q->setPlayConfigDetails(NCH, NCH, sr, bs);
         q->setStateInformation(s1.getData(), (int)s1.getSize());
         MemoryBlock s2; q->getStateInformation(s2);
         std::cout << "state bytes " << s1.getSize() << " / " << s2.getSize() << (s1 == s2 ? "  IDENTISCH" : "  VERSCHIEDEN") << "\n";
     } else if (mode == "gui") {   // gui <plug> gui out.png [w h] [scale]
         p->prepareToPlay(sr, bs);
-        std::vector<double> in(2 * 48000); for (size_t i = 0; i < in.size(); i++) in[i] = 0.2 * std::sin(i * 0.01);
+        std::vector<double> in((size_t)NCH * 48000); for (size_t i = 0; i < in.size(); i++) in[i] = 0.2 * std::sin(i * 0.01);
         render(*p, in, bs);
         std::unique_ptr<AudioProcessorEditor> ed(p->createEditorIfNeeded());
         if (!ed) { std::cerr << "no editor\n"; return 1; }
         const int w = a[3].isNotEmpty() ? a[3].getIntValue() : ed->getWidth(), h = a[4].isNotEmpty() ? a[4].getIntValue() : ed->getHeight();
         ed->setSize(w, h);
         ed->addToDesktop(0); ed->setVisible(true);
-        for (int i = 0; i < 40; i++) { MessageManager::getInstance()->runDispatchLoopUntil(30); render(*p, std::vector<double>(2 * bs, 0.0), bs); }
+        for (int i = 0; i < 40; i++) { MessageManager::getInstance()->runDispatchLoopUntil(30); render(*p, std::vector<double>((size_t)NCH * bs, 0.0), bs); }
         if (a[5].isNotEmpty()) {   // keep the window on screen for N seconds (external screenshots / input)
             const double until = Time::getMillisecondCounterHiRes() + a[5].getDoubleValue() * 1000.0;
-            std::vector<double> blk(2 * bs); double ph = 0;
+            std::vector<double> blk((size_t)NCH * bs); double ph = 0;
             while (Time::getMillisecondCounterHiRes() < until) {
                 MessageManager::getInstance()->runDispatchLoopUntil(5);
                 for (int k = 0; k < 2; k++) {   // ~real time: 2 blocks of 256 per ~10 ms
-                    for (int i = 0; i < bs; i++) { const bool on = std::fmod(ph, 14400.0) < 7200.0; const double v = on ? 0.4 * (Random::getSystemRandom().nextDouble() * 2 - 1) : 0.0; blk[2 * i] = v; blk[2 * i + 1] = v; ph += 1; }
+                    for (int i = 0; i < bs; i++) { const bool on = std::fmod(ph, 14400.0) < 7200.0; const double v = on ? 0.4 * (Random::getSystemRandom().nextDouble() * 2 - 1) : 0.0; for (int c = 0; c < NCH; c++) blk[(size_t)NCH * i + (size_t)c] = c < 2 ? v : 0.0; ph += 1; }
                     render(*p, blk, bs);
                 }
             }

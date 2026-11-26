@@ -2,7 +2,7 @@
 """A JSFX function must be defined above its first call - REAPER refuses the effect otherwise
 ("undefined function"). The C++ translation does not care about the order, so this is checked here.
 
-    python3 tools/check_order.py jsfx/roomservice.jsfx
+    python3 tools/check_order.py jsfx/Ahh.jsfx
 """
 import re, sys
 
@@ -27,4 +27,4 @@ def main(path):
     return 1 if bad else 0
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else 'jsfx/roomservice.jsfx'))
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else 'jsfx/Ahh.jsfx'))

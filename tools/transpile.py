@@ -18,9 +18,11 @@ def cstr(s):
 def parse_header(path):
     """slider lines, desc, in/out pins"""
     sliders = []
-    desc = ''
+    desc = ''; pins = [0, 0]
     for line in open(path, encoding='utf-8'):
         if line.startswith('@'): break
+        if line.startswith('in_pin:'): pins[0] += 1
+        if line.startswith('out_pin:'): pins[1] += 1
         m = re.match(r'slider(\d+):([^<]*)<([^>]*)>(.*)', line)
         if m:
             idx = int(m.group(1)); default = float(m.group(2).split(':')[-1]) if m.group(2).strip() else 0.0
@@ -33,7 +35,7 @@ def parse_header(path):
             if mm.group(5) is not None: enums = mm.group(5).split(',')
             sliders.append(dict(idx=idx, default=default, lo=lo, hi=hi, step=step, label=label, hidden=hidden, enums=enums))
         if line.startswith('desc:'): desc = line[5:].strip()
-    return desc, sliders
+    return desc, sliders, pins
 
 def main(src, outdir):
     os.makedirs(outdir, exist_ok=True)
@@ -98,15 +100,15 @@ def main(src, outdir):
         chunk.append(code); size += len(code)
         if size > 250000: flush()
     flush()
-    desc, sliders = parse_header(src)
+    desc, sliders, pins = parse_header(src)
     m = ['// GENERATED\n#include "meta.h"\nnamespace rs {\nconst char* kDesc = %s;\nconst SliderInfo kSliders[] = {\n' % cstr(desc)]
     for sd in sliders:
         m.append('  {%d, %s, %s, %s, %s, %s, %s, %s},\n' % (sd['idx'], eelgen.cnum(sd['default']), eelgen.cnum(sd['lo']), eelgen.cnum(sd['hi']),
                  eelgen.cnum(sd['step']), cstr(sd['label']), 'true' if sd['hidden'] else 'false',
                  cstr('|'.join(sd['enums'])) if sd['enums'] else 'nullptr'))
-    m.append('};\nconst int kNumSliders = %d;\n}\n' % len(sliders))
+    m.append('};\nconst int kNumSliders = %d;\nconst int kNumInPins = %d;\nconst int kNumOutPins = %d;\n}\n' % (len(sliders), pins[0] or 2, pins[1] or 2))
     open(os.path.join(outdir, 'gen_meta.cpp'), 'w').write(''.join(m))
-    json.dump(dict(desc=desc, sliders=sliders, strings={k: v for k, v in G.strs.items() if not k.startswith('#tmp')}),
+    json.dump(dict(desc=desc, sliders=sliders, in_pins=pins[0] or 2, out_pins=pins[1] or 2, strings={k: v for k, v in G.strs.items() if not k.startswith('#tmp')}),
               open(os.path.join(outdir, 'meta.json'), 'w'), indent=1)
     print('globals %d, locals %d, funcs %d, literals %d, strings %d, files %d' % (
         len(G.globals), len(G.fmembers), len(funcs), len(G.lits), len(G.strs), k))

@@ -10,8 +10,8 @@ static juce::String enumLabel(const rs::SliderInfo& s, double v) {
 }
 
 RoomServiceProcessor::RoomServiceProcessor()
-    : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
-                                      .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+    : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::create5point1(), true)
+                                      .withOutput("Output", juce::AudioChannelSet::create5point1(), true)) {
     paramBySlider.assign(257, nullptr);
     lastPushed.reset(new std::atomic<float>[257]);
     for (int i = 0; i < 257; i++) lastPushed[i] = 0.0f;
@@ -39,9 +39,14 @@ RoomServiceProcessor::RoomServiceProcessor()
 
 RoomServiceProcessor::~RoomServiceProcessor() { stopTimer(); }
 
+// RoomservicePro: stereo in / stereo out (the 1.0 path), or a 5.1 track - 5.1 (or stereo, or mono) in, 5.1 out. The script
+// reads the source from channels 1 / 2 and writes six channels when its Output format says 5.1 and six are there (num_ch).
 bool RoomServiceProcessor::isBusesLayoutSupported(const BusesLayout& l) const {
-    return l.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
-        && (l.getMainInputChannelSet() == juce::AudioChannelSet::stereo() || l.getMainInputChannelSet() == juce::AudioChannelSet::mono());
+    const auto in = l.getMainInputChannelSet(), out = l.getMainOutputChannelSet();
+    const bool inOk = in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::create5point1();
+    if (out == juce::AudioChannelSet::create5point1()) return inOk;
+    if (out == juce::AudioChannelSet::stereo()) return in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono();
+    return false;
 }
 
 // a state that arrived before the host told us the sample rate: read now, after @init at the real rate
@@ -168,10 +173,13 @@ void RoomServiceProcessor::process(juce::AudioBuffer<Real>& buffer) {
         }
     }
     const int nIn = getTotalNumInputChannels(), nOut = getTotalNumOutputChannels(), n = buffer.getNumSamples();
-    // mono input: feed the one channel to both script inputs
-    const Real* ins[2] = {buffer.getReadPointer(0), buffer.getReadPointer(nIn > 1 ? 1 : 0)};
-    Real* outs[2] = {buffer.getWritePointer(0), buffer.getWritePointer(nOut > 1 ? 1 : 0)};
-    engine.processT<Real>(ins, outs, 2, nOut > 1 ? 2 : 1, n, ti);
+    // the script's channel order is REAPER's (L R C LFE Ls Rs) - JUCE's 5.1 set is in the same order.
+    // mono input: feed the one channel to both script inputs; a stereo input on a 5.1 track: channels 3 - 6 silent
+    const Real* ins[6]; Real* outs[6];
+    const int ni = juce::jmin(6, juce::jmax(2, nIn)), no = juce::jmin(6, nOut);
+    for (int c = 0; c < ni; c++) ins[c] = buffer.getReadPointer(c < nIn ? c : 0);
+    for (int c = 0; c < no; c++) outs[c] = buffer.getWritePointer(c);
+    engine.processT<Real>(ins, outs, ni, no, n, ti);
     const int lat = engine.latency();
     if (lat != lastLatency) { lastLatency = lat; setLatencySamples(lat); }
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Checks the split "view options / sound settings" of the script's vopt block that src/engine.cpp relies on when a
 # preset is loaded into a running instance (the view stays, the sound comes from the preset).
-#   python3 tools/check_vopt.py jsfx/roomservice.jsfx        exit code 1 = engine.cpp (isViewOption) needs an update
+#   python3 tools/check_vopt.py jsfx/Ahh.jsfx        exit code 1 = engine.cpp (isViewOption) needs an update
 import sys, os, re
 sys.setrecursionlimit(200000)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

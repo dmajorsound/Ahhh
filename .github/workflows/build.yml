@@ -14,9 +14,9 @@ on:
         default: ""
 
 env:
-  VERSION: "1.0.6"            # shown in the installers
-  FILEVER: "1.0.6"            # used in the file names
-  PKGVER: "1.0.6"             # numeric version for the macOS package receipts
+  VERSION: "1.1.0"            # shown in the installers
+  FILEVER: "1.1.0"            # used in the file names
+  PKGVER: "1.1.0"             # numeric version for the macOS package receipts
   CLAP_JUCE_COMMIT: 3837f4a6ed2ab0ba46aba69ae5b7041c7c64ce74   # clap-juce-extensions (CLAP format)
   JUCE_COMMIT: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port is tested with
 
@@ -26,18 +26,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Translate jsfx/roomservice.jsfx again and compare
+      - name: Translate jsfx/Ahh.jsfx again and compare
         run: |
-          python3 tools/transpile.py jsfx/roomservice.jsfx gen
+          python3 tools/transpile.py jsfx/Ahh.jsfx gen
           git diff --exit-code gen
       - name: The JSFX loads in REAPER (functions defined above their first call)
-        run: python3 tools/check_order.py jsfx/roomservice.jsfx
+        run: python3 tools/check_order.py jsfx/Ahh.jsfx
       - name: A preset keeps the view (view options and sound settings stay apart)
-        run: python3 tools/check_vopt.py jsfx/roomservice.jsfx
+        run: python3 tools/check_vopt.py jsfx/Ahh.jsfx
       - name: Every character is in the built-in font
         run: |
           python3 -m pip install --quiet fonttools
-          python3 tools/check_fonts.py jsfx/roomservice.jsfx
+          python3 tools/check_fonts.py jsfx/Ahh.jsfx
 
   macos:
     name: macOS (Apple Silicon + Intel)
@@ -79,7 +79,7 @@ jobs:
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R out/Ahh.component ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar || true
-          auval -v aufx Rmsv Dmjs
+          auval -v aufx AhhS Dmjs
       - name: Installer (.pkg)
         run: |
           mk() {  # $1 bundle  $2 id suffix  $3 install folder
@@ -88,10 +88,10 @@ jobs:
             plutil -replace 0.BundleIsRelocatable -bool NO comp.plist
             # Ahh was called Roomservice up to 1.0.4 and is the same plug-in (same ids): the old bundle goes first
             rm -rf scripts && mkdir scripts
-            printf '#!/bin/sh\nrm -rf "%s/Roomservice.%s"\nexit 0\n' "$3" "${1##*.}" > scripts/preinstall
+            printf '#!/bin/sh\nrm -rf "%s/Roomservice.%s" "%s/RoomservicePro.%s"\nexit 0\n' "$3" "${1##*.}" "$3" "${1##*.}" > scripts/preinstall
             chmod +x scripts/preinstall
             pkgbuild --root payload --component-plist comp.plist --install-location "$3" --scripts scripts \
-              --identifier "com.dmajorsound.roomservice.$2" --version "$PKGVER" "roomservice-$2.pkg"
+              --identifier "com.dmajorsound.ahh.$2" --version "$PKGVER" "roomservice-$2.pkg"
           }
           mk Ahh.vst3 vst3 /Library/Audio/Plug-Ins/VST3
           mk Ahh.component au /Library/Audio/Plug-Ins/Components
@@ -103,7 +103,7 @@ jobs:
           sed "s/VERSION/$PKGVER/g" installer/mac_ui/distribution.xml > distribution.xml
           productbuild --distribution distribution.xml --resources ui --package-path . "Ahh_${FILEVER}_installer_mac.pkg"
           # uninstaller: an empty package whose script removes Ahh and the former Roomservice
-          pkgbuild --nopayload --scripts installer/mac_uninstall --identifier com.dmajorsound.roomservice.uninstall \
+          pkgbuild --nopayload --scripts installer/mac_uninstall --identifier com.dmajorsound.ahh.uninstall \
             --version "$PKGVER" ahh-uninstall-component.pkg
           cp installer/mac_ui/uninstall.html ui/
           sed "s/VERSION/$PKGVER/g" installer/mac_ui/uninstall.xml > uninstall.xml

@@ -168,7 +168,10 @@ struct Runtime {
     // for any fractional d. 8-point windowed sinc (Kaiser): flat within 0.4 dB up to 16 kHz at 48 kHz for every
     // fraction (the 4-point Hermite lost up to 3.3 dB there - and the loss changed with the position, so moving sources
     // went dull and slightly unsteady). Delays under 5 samples (the sinc would need samples not written yet) keep Hermite.
-    double dlyread(double buf, double len, double w, double d);
+    double dlyreadq(double buf, double len, double w, double d, int hq);
+    double dlyread(double buf, double len, double w, double d) { return dlyreadq(buf, len, w, d, 0); }
+    double dlyreadhq(double buf, double len, double w, double d) { return dlyreadq(buf, len, w, d, 1); }
+    double bqrun(double x, double cb, double st, double n);
     double ifft(double start, double len);
     double fft_permute(double start, double len);
     double fft_ipermute(double start, double len);

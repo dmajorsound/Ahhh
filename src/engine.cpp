@@ -44,15 +44,18 @@ void Engine::processT(const Real* const* in, Real* const* out, int nIn, int nOut
     g.v_ts_num = ti.tsNum; g.v_ts_denom = ti.tsDenom;
 
     if (mustInit) init();
-    const int codeIns = 2, codeOuts = 2;
+    // the script's channels: its pins (RoomservicePro: 6 in, 6 out). num_ch is what REAPER calls the track's channel
+    // count - here the channels the host hands over (the output bus): 2 on a stereo track, 6 on a 5.1 track
+    const int codeIns = kNumInPins < 64 ? kNumInPins : 64, codeOuts = kNumOutPins < 64 ? kNumOutPins : 64;
     const int ni = nIn < codeIns ? nIn : codeIns, no = nOut < codeOuts ? nOut : codeOuts;
     g.v_samplesblock = frames;
-    g.v_num_ch = ni;
+    g.v_num_ch = nOut > nIn ? nOut : nIn;
     if (mustSlider) { g.S_slider(); mustSlider = false; }
     g.S_block();
     for (int i = 0; i < frames; i++) {
         for (int c = 0; c < ni; c++) g.spl[c] = (double)in[c][i];
         for (int c = ni; c < codeIns; c++) g.spl[c] = 0;
+        for (int c = codeIns; c < codeOuts; c++) g.spl[c] = 0;
         g.S_sample();
         for (int c = 0; c < no; c++) out[c][i] = (Real)g.spl[c];
     }

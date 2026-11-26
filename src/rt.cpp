@@ -40,60 +40,84 @@ Runtime::Runtime() {
 // ---------------- memory (nseel-ram.c semantics) ----------------
 // ---- fractional delay read ----
 namespace {
-constexpr int kTaps = 8, kPhases = 256;            // taps -3 ... +4 around the integer position; 256 phases + 1
-struct SincTable {
-    double c[kPhases + 1][kTaps];
-    SincTable() {
-        const double beta = 5.0;
-        auto i0 = [](double x) { double s = 1.0, t = 1.0; for (int k = 1; k < 40; k++) { t *= (x / (2.0 * k)) * (x / (2.0 * k)); s += t; } return s; };
+constexpr int kPhases = 256;
+template <int TAPS> struct SincTable {
+    double c[kPhases + 1][TAPS];
+    explicit SincTable(double beta) {
+        auto i0 = [](double x) { double s = 1.0, t = 1.0; for (int k = 1; k < 60; k++) { t *= (x / (2.0 * k)) * (x / (2.0 * k)); s += t; } return s; };
         const double norm = i0(beta);
         for (int p = 0; p <= kPhases; p++) {
             const double t = (double)p / kPhases;
             double sum = 0.0;
-            for (int k = 0; k < kTaps; k++) {
-                const double x = (k - 3) - t;                                   // distance of tap k from the read point
+            for (int k = 0; k < TAPS; k++) {
+                const double x = (k - (TAPS / 2 - 1)) - t;                      // distance of tap k from the read point
                 const double sn = std::fabs(x) < 1e-12 ? 1.0 : std::sin(3.14159265358979323846 * x) / (3.14159265358979323846 * x);
-                const double r = x / (kTaps / 2.0), wv = r * r < 1.0 ? i0(beta * std::sqrt(1.0 - r * r)) / norm : 0.0;
+                const double r = x / (TAPS / 2.0), wv = r * r < 1.0 ? i0(beta * std::sqrt(1.0 - r * r)) / norm : 0.0;
                 c[p][k] = sn * wv; sum += c[p][k];
             }
-            for (int k = 0; k < kTaps; k++) c[p][k] /= sum;                    // DC exactly 1 at every fraction
+            for (int k = 0; k < TAPS; k++) c[p][k] /= sum;                     // DC exactly 1 at every fraction
         }
     }
 };
-const SincTable& sincTable() { static const SincTable t; return t; }
+const SincTable<8>& sinc8() { static const SincTable<8> t(5.0); return t; }
+const SincTable<16>& sinc16() { static const SincTable<16> t(7.0); return t; }
+
+inline double hermite(const double* b, int64_t n, int64_t i0, double t) {
+    int64_t im = i0 - 1; if (im < 0) im += n;
+    int64_t i1 = i0 + 1; if (i1 >= n) i1 -= n;
+    int64_t i2 = i1 + 1; if (i2 >= n) i2 -= n;
+    const double xm = b[im], x0 = b[i0], x1 = b[i1], x2 = b[i2];
+    return x0 + t * (0.5 * (x1 - xm) + t * ((xm - 2.5 * x0 + 2 * x1 - 0.5 * x2) + t * (0.5 * (x2 - xm) + 1.5 * (x0 - x1))));
+}
+template <int TAPS> inline double sincRead(const SincTable<TAPS>& tb, const double* b, int64_t n, int64_t i0, double t) {
+    const double ph = t * kPhases; const int p = (int)ph; const double f = ph - p;
+    const double* c0 = tb.c[p]; const double* c1 = tb.c[p < kPhases ? p + 1 : p];
+    const int back = TAPS / 2 - 1;
+    double acc = 0.0;
+    if (i0 >= back && i0 + TAPS / 2 < n) {
+        const double* x = b + i0 - back;
+        for (int k = 0; k < TAPS; k++) acc += (c0[k] + (c1[k] - c0[k]) * f) * x[k];
+    } else {
+        for (int k = 0; k < TAPS; k++) {
+            int64_t i = i0 - back + k; if (i < 0) i += n; else if (i >= n) i -= n;
+            acc += (c0[k] + (c1[k] - c0[k]) * f) * b[i];
+        }
+    }
+    return acc;
+}
 }
 
-double Runtime::dlyread(double bufv, double lenv, double w, double d) {
+// hq = 0: 8 taps (reflections, reverb lines); hq = 1: 16 taps (direct sound, first reflections, the delay module):
+// flat within 0.05 dB to 18 kHz at 48 kHz for every fraction. A sinc needs samples after the read point: delays shorter
+// than its half length fall back (16 -> 8 -> 4-point Hermite).
+double Runtime::dlyreadq(double bufv, double lenv, double w, double d, int hq) {
     const int64_t base = (int64_t)(bufv + 0.00001), n = (int64_t)(lenv + 0.00001);
-    if (!mem.ok() || base < 0 || n < 8 || base + n > (int64_t)MEMSIZE || !std::isfinite(w) || !std::isfinite(d)) return 0.0;
+    if (!mem.ok() || base < 0 || n < 32 || base + n > (int64_t)MEMSIZE || !std::isfinite(w) || !std::isfinite(d)) return 0.0;
     const double* b = mem.p + base;
     double rp = w - d;
     if (rp < 0) rp += (double)n;
     if (!(rp >= 0 && rp < 2.0 * (double)n)) return 0.0;
     int64_t i0 = (int64_t)rp; const double t = rp - (double)i0;
     if (i0 >= n) i0 -= n;
-    if (d >= 5.0) {
-        const auto& tb = sincTable();
-        const double ph = t * kPhases; const int p = (int)ph; const double f = ph - p;
-        const double* c0 = tb.c[p]; const double* c1 = tb.c[p < kPhases ? p + 1 : p];
-        double acc = 0.0;
-        if (i0 >= 3 && i0 + 4 < n) {
-            const double* x = b + i0 - 3;
-            for (int k = 0; k < kTaps; k++) acc += (c0[k] + (c1[k] - c0[k]) * f) * x[k];
-        } else {
-            for (int k = 0; k < kTaps; k++) {
-                int64_t i = i0 - 3 + k; if (i < 0) i += n; else if (i >= n) i -= n;
-                acc += (c0[k] + (c1[k] - c0[k]) * f) * b[i];
-            }
-        }
-        return acc;
+    if (hq && d >= 9.0) return sincRead(sinc16(), b, n, i0, t);
+    if (d >= 5.0) return sincRead(sinc8(), b, n, i0, t);
+    return hermite(b, n, i0, t);
+}
+
+// bqrun(x, cb, st, n): x through n cascaded biquads (5 coefficients each at cb, 2 states each at st, transposed direct
+// form II). The same arithmetic, in the same order, as the script function it replaces (states flushed like any EEL store).
+double Runtime::bqrun(double x, double cbv, double stv, double nv) {
+    const int64_t cb = (int64_t)(cbv + 0.00001), st = (int64_t)(stv + 0.00001); int n = rt_i32(nv);
+    if (n < 1) return x;
+    if (!mem.ok() || cb < 0 || st < 0 || n > 64 || cb + 5 * (int64_t)n > (int64_t)MEMSIZE || st + 2 * (int64_t)n > (int64_t)MEMSIZE) return x;
+    const double* c = mem.p + cb; double* z = mem.p + st;
+    for (int i = 0; i < n; i++, c += 5, z += 2) {
+        const double y = c[0] * x + z[0];
+        z[0] = dnf(c[1] * x - c[3] * y + z[1]);
+        z[1] = dnf(c[2] * x - c[4] * y);
+        x = y;
     }
-    // short delays: 4-point Hermite (the reader of 1.0.5 and the JSFX)
-    int64_t im = i0 - 1; if (im < 0) im += n;
-    int64_t i1 = i0 + 1; if (i1 >= n) i1 -= n;
-    int64_t i2 = i1 + 1; if (i2 >= n) i2 -= n;
-    const double xm = b[im], x0 = b[i0], x1 = b[i1], x2 = b[i2];
-    return x0 + t * (0.5 * (x1 - xm) + t * ((xm - 2.5 * x0 + 2 * x1 - 0.5 * x2) + t * (0.5 * (x2 - xm) + 1.5 * (x0 - x1))));
+    return x;
 }
 
 double Runtime::memset(double dest, double v, double lenv) {

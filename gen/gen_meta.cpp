@@ -138,6 +138,19 @@ const SliderInfo kSliders[] = {
   {133, 12.0, (-12.0), 24.0, 1.0, "Reflector 2 level (dB)", true, nullptr},
   {134, 0.0, 0.0, 1.0, 1.0, "Reflectors bypass", true, "On|Off"},
   {135, 0.0, 0.0, 1.0, 1.0, "Doppler when dragging by hand", true, "On|Off"},
+  {136, 0.0, 0.0, 1.0, 1.0, "Output format", true, "Stereo|5.1"},
+  {137, 0.0, 0.0, 1.0, 1.0, "Loudspeaker layout", true, "ITU|Film"},
+  {138, 30.0, 15.0, 45.0, 0.1, "ITU front angle (deg)", true, nullptr},
+  {139, 110.0, 90.0, 150.0, 0.1, "ITU surround angle (deg)", true, nullptr},
+  {140, 1.2, 0.3, 3.0, 0.01, "Loudspeaker height (m)", true, nullptr},
+  {141, 1.0, 0.0, 1.0, 1.0, "LFE", true, "Off|On"},
+  {142, 0.0, 0.0, 1.0, 1.0, "LFE crossover", true, "80 Hz|120 Hz"},
+  {143, 0.0, (-24.0), 10.0, 0.1, "LFE level (dB)", true, nullptr},
+  {144, 100.0, 0.0, 100.0, 0.1, "Phantom ... discrete center (%)", true, nullptr},
+  {145, 0.0, 0.0, 1.0, 1.0, "Loudspeaker ring", true, "Follows the listener|Fixed in the room"},
+  {146, 0.0, 0.0, 1.0, 1.0, "Source snaps to a speaker", true, "Off|On"},
 };
-const int kNumSliders = 135;
+const int kNumSliders = 146;
+const int kNumInPins = 6;
+const int kNumOutPins = 6;
 }

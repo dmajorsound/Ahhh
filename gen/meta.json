@@ -1584,8 +1584,138 @@
     "On",
     "Off"
    ]
+  },
+  {
+   "idx": 136,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Output format",
+   "hidden": true,
+   "enums": [
+    "Stereo",
+    "5.1"
+   ]
+  },
+  {
+   "idx": 137,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Loudspeaker layout",
+   "hidden": true,
+   "enums": [
+    "ITU",
+    "Film"
+   ]
+  },
+  {
+   "idx": 138,
+   "default": 30.0,
+   "lo": 15.0,
+   "hi": 45.0,
+   "step": 0.1,
+   "label": "ITU front angle (deg)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 139,
+   "default": 110.0,
+   "lo": 90.0,
+   "hi": 150.0,
+   "step": 0.1,
+   "label": "ITU surround angle (deg)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 140,
+   "default": 1.2,
+   "lo": 0.3,
+   "hi": 3.0,
+   "step": 0.01,
+   "label": "Loudspeaker height (m)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 141,
+   "default": 1.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "LFE",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
+  },
+  {
+   "idx": 142,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "LFE crossover",
+   "hidden": true,
+   "enums": [
+    "80 Hz",
+    "120 Hz"
+   ]
+  },
+  {
+   "idx": 143,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 10.0,
+   "step": 0.1,
+   "label": "LFE level (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 144,
+   "default": 100.0,
+   "lo": 0.0,
+   "hi": 100.0,
+   "step": 0.1,
+   "label": "Phantom ... discrete center (%)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 145,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Loudspeaker ring",
+   "hidden": true,
+   "enums": [
+    "Follows the listener",
+    "Fixed in the room"
+   ]
+  },
+  {
+   "idx": 146,
+   "default": 0.0,
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 1.0,
+   "label": "Source snaps to a speaker",
+   "hidden": true,
+   "enums": [
+    "Off",
+    "On"
+   ]
   }
  ],
+ "in_pins": 6,
+ "out_pins": 6,
  "strings": {
   "#bi1": 90000,
   "#bi3": 90001,
@@ -1638,23 +1768,24 @@
   "#lw1": 90048,
   "#lw3": 90049,
   "#lw2": 90050,
-  "#snch": 90051,
-  "#swl": 90052,
-  "#swc": 90053,
-  "#ssg": 90054,
-  "#tlat": 90055,
-  "#tfit": 90056,
-  "#tfit2": 90057,
-  "#updl": 90058,
-  "#updt": 90059,
-  "#ved": 90060,
-  "#vch": 90061,
-  "#wsrc": 90062,
-  "#wln": 90063,
-  "#wwd": 90064,
-  "#wtry": 90065,
-  "#wch": 90066,
-  "#wtp": 90067,
-  "#rsn0": 90068
+  "#pskt": 90051,
+  "#snch": 90052,
+  "#swl": 90053,
+  "#swc": 90054,
+  "#ssg": 90055,
+  "#tlat": 90056,
+  "#tfit": 90057,
+  "#tfit2": 90058,
+  "#updl": 90059,
+  "#updt": 90060,
+  "#ved": 90061,
+  "#vch": 90062,
+  "#wsrc": 90063,
+  "#wln": 90064,
+  "#wwd": 90065,
+  "#wtry": 90066,
+  "#wch": 90067,
+  "#wtp": 90068,
+  "#rsn0": 90069
  }
 }

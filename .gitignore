@@ -9,3 +9,6 @@ test/bench/build/
 test/bench/dbg/
 test/*.png
 __pycache__/
+build_cli/
+test/in6.f64
+tools/__pycache__/

@@ -5,7 +5,7 @@ The VST3/AU/CLAP draws all text with the embedded Arimo fonts (resources/fonts) 
 font. This check reads every string literal of the JSFX and fails if one holds a character that neither Arimo
 Regular nor Arimo Bold contains (the check mark U+2713 is drawn by the plug-in itself, src/JuceGfx.cpp).
 
-    python3 tools/check_fonts.py jsfx/roomservice.jsfx        (needs: pip install fonttools)
+    python3 tools/check_fonts.py jsfx/Ahh.jsfx        (needs: pip install fonttools)
 """
 import re, sys
 from fontTools.ttLib import TTFont
@@ -31,4 +31,4 @@ def main(path):
     return 0
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else 'jsfx/roomservice.jsfx'))
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else 'jsfx/Ahh.jsfx'))

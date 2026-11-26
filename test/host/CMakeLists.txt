@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(rshost VERSION 1.0.0)
-add_subdirectory(/home/claude/juce juce EXCLUDE_FROM_ALL)
+set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../juce" CACHE PATH "JUCE source folder")
+add_subdirectory(${JUCE_DIR} juce EXCLUDE_FROM_ALL)
 juce_add_console_app(rshost PRODUCT_NAME "rshost")
 target_sources(rshost PRIVATE Main.cpp)
 target_compile_definitions(rshost PRIVATE JUCE_PLUGINHOST_VST3=1 JUCE_MODAL_LOOPS_PERMITTED=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0

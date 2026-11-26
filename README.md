@@ -1,6 +1,6 @@
-# Ahh! 1.0.6 (formerly Roomservice) – nativer VST3/AU/CLAP-Port (JUCE)
+# Ahh! 1.1.0 – stereo and 5.1 in one (formerly Roomservice) – nativer VST3/AU/CLAP-Port (JUCE)
 
-Nativer C++-Port von `Roomservice.jsfx` (Version 1.0.6, Stereo) als VST3 und CLAP (macOS zusätzlich AU).
+Nativer C++-Port von `Roomservice.jsfx` (Version 1.1.0, Stereo and 5.1) als VST3 und CLAP (macOS zusätzlich AU).
 Audio und Oberfläche sind die der JSFX. Es läuft keine EEL2-Engine mit, der ganze Code ist kompiliertes C++.
 
 ## Wie der Port gebaut ist
@@ -20,7 +20,7 @@ Der JSFX-Code (≈ 1 MB EEL2, 552 Funktionen, 3310 globale Variablen) wird **mas
 (@init / @slider / @block / @sample, Transport, `ext_noinit`). `src/JuceGfx.*` bildet die gfx-/LICE-Befehle auf JUCE ab,
 `src/PluginEditor.*` ruft `@gfx` mit 30 fps auf (Maus, Tastatur, Retina-Skalierung über `gfx_ext_retina`).
 
-Den generierten Code ändert man nicht von Hand: JSFX ändern → `python3 tools/transpile.py jsfx/roomservice.jsfx gen` → bauen.
+Den generierten Code ändert man nicht von Hand: JSFX ändern → `python3 tools/transpile.py jsfx/Ahh.jsfx gen` → bauen.
 
 ## Bauen
 

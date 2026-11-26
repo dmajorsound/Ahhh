@@ -164,6 +164,11 @@ struct Runtime {
     double memset(double dest, double v, double len);
     double memcpy(double dest, double src, double len);
     double fft(double start, double len);
+    // dlyread(buf, len, w, d): the value d samples before write position w of the circular buffer buf (len slots),
+    // for any fractional d. 8-point windowed sinc (Kaiser): flat within 0.4 dB up to 16 kHz at 48 kHz for every
+    // fraction (the 4-point Hermite lost up to 3.3 dB there - and the loss changed with the position, so moving sources
+    // went dull and slightly unsteady). Delays under 5 samples (the sinc would need samples not written yet) keep Hermite.
+    double dlyread(double buf, double len, double w, double d);
     double ifft(double start, double len);
     double fft_permute(double start, double len);
     double fft_ipermute(double start, double len);

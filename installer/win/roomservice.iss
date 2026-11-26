@@ -1,9 +1,9 @@
 ; Roomservice installer for Windows (Inno Setup 6). The version comes from the build: ISCC /DAppVer=1.0.1 /DFileVer=1.0.1
 #ifndef AppVer
-  #define AppVer "1.0.5"
+  #define AppVer "1.0.6"
 #endif
 #ifndef FileVer
-  #define FileVer "1.0.5"
+  #define FileVer "1.0.6"
 #endif
 
 [Setup]

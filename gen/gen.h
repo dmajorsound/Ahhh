@@ -2125,6 +2125,7 @@ struct Gen : Runtime {
   double F_abload(double);
   double F_abstore(double);
   double F_actlines();
+  double F_ahhmark(double, double);
   double F_airdb(double, double, double);
   double F_alloc(double);
   double F_alloca(double);
@@ -2240,6 +2241,7 @@ struct Gen : Runtime {
   double F_fbd(double);
   double F_fchain(double, double, double, double, double);
   double F_fdesign(double, double, double, double, double);
+  double F_fdesignbl(double, double, double, double, double);
   double F_ffmark();
   double F_ffpapply(double);
   double F_ffpdesc(double);
@@ -2284,6 +2286,9 @@ struct Gen : Runtime {
   double F_g_fzfill(double, double);
   double F_g_fzkeyf();
   double F_g_fzparams(double, double);
+  double F_g_mbq(double, double, double, double, double, double, double);
+  double F_g_mfo(double, double, double);
+  double F_g_mhp(double, double, double);
   double F_g_pkdesign(double, double, double, double);
   double F_ganupd();
   double F_geo_if_changed();
@@ -2388,6 +2393,7 @@ struct Gen : Runtime {
   double F_lwtry(double);
   double F_mbarh(double, double, double, double, double);
   double F_mbarv(double, double, double, double, double);
+  double F_mbq(double, double, double, double, double, double, double);
   double F_mcorrdraw(double, double);
   double F_mcorrw();
   double F_mdapply();
@@ -2397,6 +2403,8 @@ struct Gen : Runtime {
   double F_menux(double, double, double);
   double F_menuxhit(double, double, double, double);
   double F_mfit(double, double, double, double, double, double, double);
+  double F_mfo(double, double, double);
+  double F_mhp(double, double, double);
   double F_mixc(double, double, double);
   double F_mloc(double, double, double);
   double F_modeset(double);
@@ -2444,6 +2452,7 @@ struct Gen : Runtime {
   double F_pgclose();
   double F_pgopen(double, double, double, double, double, double);
   double F_pj(double, double, double);
+  double F_pkbl(double, double, double, double);
   double F_pkdesign(double, double, double, double);
   double F_pnl(double, double, double, double, double);
   double F_pnq(double, double, double, double);

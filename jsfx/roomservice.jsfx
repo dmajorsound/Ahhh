@@ -1,7 +1,7 @@
 desc: Ahh
 //tags: reverb room acoustics image-source filter education
 //author: Bernd Dormayer
-//version: 1.0.5
+//version: 1.0.6
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -159,7 +159,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.0.5 - developed with AI assistance");
+strcpy(#verstr, "V 1.0.6 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -871,7 +871,58 @@ function g_dnote(n) ( n = floor(n + 0.5); n == 0 ? 4 : (n == 1 ? 3 : (n == 2 ? 2
 // Returns the note-value name (1/1 ... 1/32, dotted, triplet) for delay index n, rounded to the nearest integer.
 function dnname(n) ( n = floor(n + 0.5); n == 0 ? "1/1" : (n == 1 ? "1/2 dot." : (n == 2 ? "1/2" : (n == 3 ? "1/4 dot." : (n == 4 ? "1/2 trip." : (n == 5 ? "1/4" : (n == 6 ? "1/8 dot." : (n == 7 ? "1/4 trip." : (n == 8 ? "1/8" : (n == 9 ? "1/16 dot." : (n == 10 ? "1/8 trip." : (n == 11 ? "1/16" : "1/32"))))))))))); );
 // Designs a Butterworth chain of order nord at f (high-pass if ishp, else low-pass): nord / 2 biquads into cb (5 coefficients each), plus a first-order section into fb for odd orders.
-function fdesign(cb, fb, ishp, f, nord) local(k, q, w0, cw, al, a0, tk)
+// ---- MAGNITUDE-MATCHED BIQUADS (VST3 / AU / CLAP; since 1.0.6) --------------------------------------------------------
+// The bilinear ("cookbook") designs squeeze everything above ~10 kHz towards Nyquist: a 12 kHz high cut fell 10 dB at
+// 16 kHz instead of 6, a bell at 12 kHz was half as wide. These designs follow the analog curve up to ~20 kHz:
+// poles by impulse invariance, the numerator fitted to the analog magnitude at DC, at the corner and at Nyquist
+// (M. Vicanek, "Matched Second Order Digital Filters", 2016). Analog H(s) = (n2 u^2 + n1 u + n0) / (v^2 + v / q + 1),
+// u = s / w0, v = s / wp (wp = pole frequency; = w0 except for shelves). Coefficients: cb[0..2] = b0 b1 b2, cb[3..4] = a1 a2.
+function mbq(cb, w0, wp, q, n0, n1, n2) local(z, r, a1, a2, D0, D1, D2, p0, p1, p2, B0, B1, B2, u, v, wm, W)
+(
+  z = 1 / (2 * q);
+  z < 1 ? ( r = cos(wp * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * wp; r = (exp(r) + exp(-r)) / 2; );
+  a1 = -2 * exp(-z * wp) * r; a2 = exp(-2 * z * wp);
+  D0 = sqr(1 + a1 + a2); D1 = sqr(1 - a1 + a2); D2 = -4 * a2;
+  B0 = n0 * n0 * D0;
+  u = $pi / w0; v = $pi / wp; B1 = (sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * D1;
+  wm = min(w0, 0.98 * $pi); p1 = sqr(sin(wm / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
+  u = wm / w0; v = wm / wp;
+  B2 = ((sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * (D0 * p0 + D1 * p1 + D2 * p2) - B0 * p0 - B1 * p1) / p2;
+  W = 0.5 * (sqrt(B0) + sqrt(B1));
+  cb[0] = 0.5 * (W + sqrt(max(0, W * W + B2))); cb[1] = 0.5 * (sqrt(B0) - sqrt(B1)); cb[2] = -B2 / (4 * cb[0]);
+  cb[3] = a1; cb[4] = a2;
+);
+// matched high-pass: the double zero at DC kept exactly (12 dB/oct below the corner), the level at the corner matched (= q)
+function mhp(cb, w0, q) local(z, r, a1, a2, p0, p1, p2)
+(
+  z = 1 / (2 * q);
+  z < 1 ? ( r = cos(w0 * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * w0; r = (exp(r) + exp(-r)) / 2; );
+  a1 = -2 * exp(-z * w0) * r; a2 = exp(-2 * z * w0);
+  p1 = sqr(sin(w0 / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
+  cb[0] = q * sqrt(sqr(1 + a1 + a2) * p0 + sqr(1 - a1 + a2) * p1 - 4 * a2 * p2) / (4 * p1);
+  cb[1] = -2 * cb[0]; cb[2] = cb[0]; cb[3] = a1; cb[4] = a2;
+);
+// matched first-order section (odd slopes): fb[0..1] = b0 b1, fb[2] = a1; level matched at DC and Nyquist
+function mfo(fb, w0, hp) local(a1, h2, B0, B1)
+(
+  a1 = -exp(-w0); h2 = sqr($pi / w0); h2 = hp ? h2 / (1 + h2) : 1 / (1 + h2);
+  B0 = hp ? 0 : sqr(1 + a1); B1 = h2 * sqr(1 - a1);
+  fb[0] = (sqrt(B0) + sqrt(B1)) / 2; fb[1] = (sqrt(B0) - sqrt(B1)) / 2; fb[2] = a1;
+);
+// Butterworth low-pass (ishp 0) / high-pass (ishp 1) of order nord at f: biquads into cb, an odd order's first-order
+// section into fb. Matched (see above); the Linkwitz-Riley crossovers keep fdesignbl (their two halves must sum flat).
+function fdesign(cb, fb, ishp, f, nord) local(k, q, w0)
+(
+  f = min(f, 0.45 * srate); w0 = 2 * $pi * f / srate;
+  k = 0;
+  loop(floor(nord / 2),
+    q = (nord % 2) ? 1 / (2 * cos((k + 1) * $pi / nord)) : 1 / (2 * cos((2 * k + 1) * $pi / (2 * nord)));
+    ishp ? mhp(cb + k * 5, w0, q) : mbq(cb + k * 5, w0, w0, q, 1, 0, 0);
+    k += 1;
+  );
+  (nord % 2) ? mfo(fb, w0, ishp);
+);
+function fdesignbl(cb, fb, ishp, f, nord) local(k, q, w0, cw, al, a0, tk)
 (
   f = min(f, 0.45 * srate);
   k = 0;
@@ -905,16 +956,11 @@ function bqrun(x, cb, st, n) local(i, y, c, z)
 // Runs x through one first-order section (coefficients c[0..2], state z[0..1]) and returns the output.
 function forun(x, c, z) local(y) ( y = c[0] * x + c[1] * z[0] - c[2] * z[1]; z[0] = x; z[1] = y; y; );
 // Writes high-shelf biquad coefficients into cb[0..4] for corner f (Hz) and gain gdb (dB) at the current sample rate.
-function shelfdesign(cb, f, gdb) local(shA, w0, cw, sw, al, a0, sa)
+function shelfdesign(cb, f, gdb) local(shA, sq)
 (
-  shA = 10 ^ (gdb / 40); w0 = 2 * $pi * f / srate; cw = cos(w0); sw = sin(w0);
-  al = sw / 2 * sqrt((shA + 1 / shA) * (1 / 0.707 - 1) + 2); sa = 2 * sqrt(shA) * al;
-  a0 = (shA + 1) - (shA - 1) * cw + sa;
-  cb[0] = shA * ((shA + 1) + (shA - 1) * cw + sa) / a0;
-  cb[1] = -2 * shA * ((shA - 1) + (shA + 1) * cw) / a0;
-  cb[2] = shA * ((shA + 1) + (shA - 1) * cw - sa) / a0;
-  cb[3] = 2 * ((shA - 1) - (shA + 1) * cw) / a0;
-  cb[4] = ((shA + 1) - (shA - 1) * cw - sa) / a0;
+  // matched high shelf (the analog shelf with the slope of the old design, S = 0.707)
+  shA = 10 ^ (gdb / 40); sq = 1 / sqrt((shA + 1 / shA) * (1 / 0.707 - 1) + 2);
+  mbq(cb, 2 * $pi * min(f, 0.45 * srate) / srate, 2 * $pi * min(f, 0.45 * srate) / srate * sqrt(shA), sq, 1, sqrt(shA) / sq, shA);
 );
 // Runs x through the enabled low-cut then high-cut filter chains (biquads plus optional first-order) with the given states; returns it.
 function fchain(x, ls, lf, hs, hf)
@@ -945,7 +991,13 @@ function fzparams(m, pb)
   m == 12 ? ( pb[0] = 450; pb[1] = 6; pb[2] = 4000; pb[3] = 6; pb[4] = 2; pb[5] = 1300; pb[6] = 9; pb[7] = 2; pb[8] = 2600; pb[9] = 5; pb[10] = 3; pb[11] = 0; pb[12] = 0; pb[13] = 1; pb[14] = 0; pb[15] = 10; pb[16] = 0; pb[17] = 0; pb[18] = 0; pb[19] = 1; pb[20] = 0; );
 );
 // Writes peaking-EQ biquad coefficients into cb[0..4] for center f (Hz, capped at 0.45 fs), gain gdb (dB) and Q.
-function pkdesign(cb, f, gdb, q) local(pA, w0, cw, al, a0)
+function pkdesign(cb, f, gdb, q) local(pA, w0)
+(
+  // matched bell (analog: (u^2 + u pA / q + 1) / (u^2 + u / (pA q) + 1))
+  pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate;
+  mbq(cb, w0, w0, q * pA, 1, pA / q, 1);
+);
+function pkbl(cb, f, gdb, q) local(pA, w0, cw, al, a0)
 (
   pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate; cw = cos(w0); al = sin(w0) / (2 * q);
   a0 = 1 + al / pA;
@@ -998,23 +1050,49 @@ function fzdesign(cb, pb, m, ed)
 );
 // GUI-thread copies of the design functions: EEL2 functions keep their parameters and locals in static storage, so the
 // audio thread and the GUI must never run the same function at the same time (a shared copy corrupts the coefficients)
-function g_fdesign(cb, fb, ishp, f, nord) local(k, q, w0, cw, al, a0, tk)
+// GUI-thread copies of the matched designs
+function g_mbq(cb, w0, wp, q, n0, n1, n2) local(z, r, a1, a2, D0, D1, D2, p0, p1, p2, B0, B1, B2, u, v, wm, W)
 (
-  f = min(f, 0.45 * srate);
+  z = 1 / (2 * q);
+  z < 1 ? ( r = cos(wp * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * wp; r = (exp(r) + exp(-r)) / 2; );
+  a1 = -2 * exp(-z * wp) * r; a2 = exp(-2 * z * wp);
+  D0 = sqr(1 + a1 + a2); D1 = sqr(1 - a1 + a2); D2 = -4 * a2;
+  B0 = n0 * n0 * D0;
+  u = $pi / w0; v = $pi / wp; B1 = (sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * D1;
+  wm = min(w0, 0.98 * $pi); p1 = sqr(sin(wm / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
+  u = wm / w0; v = wm / wp;
+  B2 = ((sqr(n0 - n2 * u * u) + sqr(n1 * u)) / (sqr(1 - v * v) + sqr(v / q)) * (D0 * p0 + D1 * p1 + D2 * p2) - B0 * p0 - B1 * p1) / p2;
+  W = 0.5 * (sqrt(B0) + sqrt(B1));
+  cb[0] = 0.5 * (W + sqrt(max(0, W * W + B2))); cb[1] = 0.5 * (sqrt(B0) - sqrt(B1)); cb[2] = -B2 / (4 * cb[0]);
+  cb[3] = a1; cb[4] = a2;
+);
+// matched high-pass: the double zero at DC kept exactly (12 dB/oct below the corner), the level at the corner matched (= q)
+function g_mhp(cb, w0, q) local(z, r, a1, a2, p0, p1, p2)
+(
+  z = 1 / (2 * q);
+  z < 1 ? ( r = cos(w0 * sqrt(1 - z * z)); ) : ( r = sqrt(z * z - 1) * w0; r = (exp(r) + exp(-r)) / 2; );
+  a1 = -2 * exp(-z * w0) * r; a2 = exp(-2 * z * w0);
+  p1 = sqr(sin(w0 / 2)); p0 = 1 - p1; p2 = 4 * p0 * p1;
+  cb[0] = q * sqrt(sqr(1 + a1 + a2) * p0 + sqr(1 - a1 + a2) * p1 - 4 * a2 * p2) / (4 * p1);
+  cb[1] = -2 * cb[0]; cb[2] = cb[0]; cb[3] = a1; cb[4] = a2;
+);
+// matched first-order section (odd slopes): fb[0..1] = b0 b1, fb[2] = a1; level matched at DC and Nyquist
+function g_mfo(fb, w0, hp) local(a1, h2, B0, B1)
+(
+  a1 = -exp(-w0); h2 = sqr($pi / w0); h2 = hp ? h2 / (1 + h2) : 1 / (1 + h2);
+  B0 = hp ? 0 : sqr(1 + a1); B1 = h2 * sqr(1 - a1);
+  fb[0] = (sqrt(B0) + sqrt(B1)) / 2; fb[1] = (sqrt(B0) - sqrt(B1)) / 2; fb[2] = a1;
+);
+function g_fdesign(cb, fb, ishp, f, nord) local(k, q, w0)
+(
+  f = min(f, 0.45 * srate); w0 = 2 * $pi * f / srate;
   k = 0;
   loop(floor(nord / 2),
     q = (nord % 2) ? 1 / (2 * cos((k + 1) * $pi / nord)) : 1 / (2 * cos((2 * k + 1) * $pi / (2 * nord)));
-    w0 = 2 * $pi * f / srate; cw = cos(w0); al = sin(w0) / (2 * q); a0 = 1 + al;
-    ishp ? ( cb[k * 5] = (1 + cw) / 2 / a0; cb[k * 5 + 1] = -(1 + cw) / a0; cb[k * 5 + 2] = (1 + cw) / 2 / a0; )
-         : ( cb[k * 5] = (1 - cw) / 2 / a0; cb[k * 5 + 1] = (1 - cw) / a0;  cb[k * 5 + 2] = (1 - cw) / 2 / a0; );
-    cb[k * 5 + 3] = -2 * cw / a0; cb[k * 5 + 4] = (1 - al) / a0;
+    ishp ? g_mhp(cb + k * 5, w0, q) : g_mbq(cb + k * 5, w0, w0, q, 1, 0, 0);
     k += 1;
   );
-  (nord % 2) ? (
-    tk = tan($pi * f / srate);
-    ishp ? ( fb[0] = 1 / (1 + tk); fb[1] = -1 / (1 + tk); ) : ( fb[0] = tk / (1 + tk); fb[1] = tk / (1 + tk); );
-    fb[2] = (tk - 1) / (tk + 1);
-  );
+  (nord % 2) ? g_mfo(fb, w0, ishp);
 );
 // GUI-thread copy: fills parameter block pb with the filter/distortion/gain settings of source model m (0-12).
 function g_fzparams(m, pb)
@@ -1034,11 +1112,10 @@ function g_fzparams(m, pb)
   m == 12 ? ( pb[0] = 450; pb[1] = 6; pb[2] = 4000; pb[3] = 6; pb[4] = 2; pb[5] = 1300; pb[6] = 9; pb[7] = 2; pb[8] = 2600; pb[9] = 5; pb[10] = 3; pb[11] = 0; pb[12] = 0; pb[13] = 1; pb[14] = 0; pb[15] = 10; pb[16] = 0; pb[17] = 0; pb[18] = 0; pb[19] = 1; pb[20] = 0; );
 );
 // GUI-thread copy of pkdesign: peaking-EQ biquad coefficients into cb[0..4] for f (Hz), gdb (dB), q.
-function g_pkdesign(cb, f, gdb, q) local(pA, w0, cw, al, a0)
+function g_pkdesign(cb, f, gdb, q) local(pA, w0)
 (
-  pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate; cw = cos(w0); al = sin(w0) / (2 * q);
-  a0 = 1 + al / pA;
-  cb[0] = (1 + al * pA) / a0; cb[1] = -2 * cw / a0; cb[2] = (1 - al * pA) / a0; cb[3] = -2 * cw / a0; cb[4] = (1 - al / pA) / a0;
+  pA = 10 ^ (gdb / 40); w0 = 2 * $pi * min(f, 0.45 * srate) / srate;
+  g_mbq(cb, w0, w0, q * pA, 1, pA / q, 1);
 );
 function g_fzfill(pb, m) local(j, b)                    // model parameters + neutral defaults for unused bands
 (
@@ -1246,8 +1323,8 @@ function mdapply() local(k, j, n, id, fd, nm, ok)
     );
     memcpy(mdM, mdQ, n * 6); memcpy(mdF, mdQf, n); memcpy(mdI, mdQi, n); mdN = n; memcpy(mdC0, mdQc0, n); memcpy(mdC1, mdQc1, n);
     // crossovers of the mode band follow (coefficients only - the filter states run on)
-    abs(mdPc - mdFc) > 0.002 * mdFc ? ( fdesign(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5); fdesign(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5); mdFc = mdPc; );
-    abs(mdPa - mdFa) > 0.002 * mdFa ? ( fdesign(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5); fdesign(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5); mdFa = mdPa; );
+    abs(mdPc - mdFc) > 0.002 * mdFc ? ( fdesignbl(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5); fdesignbl(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5); mdFc = mdPc; );
+    abs(mdPa - mdFa) > 0.002 * mdFa ? ( fdesignbl(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5); fdesignbl(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5); mdFa = mdPa; );
     mdPend = 0;
   ) : ( mdPN > 0 || mdN > 0 ? mdPend = 1; );
 );
@@ -1257,10 +1334,10 @@ function mdswap() local(k)
 (
   k = 0; loop(mdPN, mdM[k * 6] = mdP[k * 3]; mdM[k * 6 + 1] = mdP[k * 3 + 1]; mdM[k * 6 + 2] = mdM[k * 6 + 5] = mdP[k * 3 + 2]; mdM[k * 6 + 3] = mdM[k * 6 + 4] = 0; mdF[k] = mdPf[k]; mdI[k] = mdPi[k]; k += 1; );
   mdPN > 0 ? (
-    fdesign(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5);           // LR4 low-pass fc
-    fdesign(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5);  // LR4 high-pass fc
-    fdesign(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5);  // LR4 low-pass fA
-    fdesign(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5);  // LR4 high-pass fA
+    fdesignbl(mdX, mdX + 50, 0, mdPc, 2); memcpy(mdX + 5, mdX, 5);           // LR4 low-pass fc
+    fdesignbl(mdX + 30, mdX + 50, 1, mdPc, 2); memcpy(mdX + 35, mdX + 30, 5);  // LR4 high-pass fc
+    fdesignbl(mdX + 10, mdX + 50, 0, mdPa, 2); memcpy(mdX + 15, mdX + 10, 5);  // LR4 low-pass fA
+    fdesignbl(mdX + 40, mdX + 50, 1, mdPa, 2); memcpy(mdX + 45, mdX + 40, 5);  // LR4 high-pass fA
     memset(mdXS, 0, 24); mdx1 = mdx2 = 0;
   );
   mdN = mdPN; mdFc = mdPc; mdFa = mdPa; mdPend = 0;
@@ -1697,8 +1774,8 @@ function fqrespI(cb, g0, i) ( g0 + bqdbI(cb, i) + bqdbI(cb + 5, i) + bqdbI(cb + 
 // the 6 filters of one line from the gains x[1..6] (x[0] = broadband gain, not a filter)
 function fqset(cb, x)
 (
-  fqshelf(cb, 177, x[1], 0); pkdesign(cb + 5, 250, x[2], 1.41); pkdesign(cb + 10, 500, x[3], 1.41);
-  pkdesign(cb + 15, 2000, x[4], 1.41); pkdesign(cb + 20, 4000, x[5], 1.41); fqshelf(cb + 25, 5657, x[6], 1);
+  fqshelf(cb, 177, x[1], 0); pkbl(cb + 5, 250, x[2], 1.41); pkbl(cb + 10, 500, x[3], 1.41);
+  pkbl(cb + 15, 2000, x[4], 1.41); pkbl(cb + 20, 4000, x[5], 1.41); fqshelf(cb + 25, 5657, x[6], 1);
 );
 // once per sample rate: response matrix for 1 dB in each of the 7 gains, inverted (Gauss-Jordan, partial pivot)
 function fqinit() local(i, j, k, rq, piv, t, x, cb, f, w)
@@ -5352,8 +5429,8 @@ function srsetup() local(k)
   lmrel = 1 - exp(-1 / (0.15 * srate)); pdc_delay = LMLA + 1; crk = exp(-1 / (0.3 * srate)); smQ = 1 - exp(-1 / (0.005 * srate)); xfRI = 1 / (0.003 * srate);   // (pdc +1: see the direct sound,)
   smab = 1 - exp(-1 / (0.25 * srate));                               // A / B trim: 250 ms glide
   // bass steering crossover: 4th-order Linkwitz-Riley = two equal 2nd-order Butterworth sections (low and high stay in phase)
-  fdesign(stC, stC + 40, 0, 250, 2); memcpy(stC + 5, stC, 5);
-  fdesign(stC + 10, stC + 40, 1, 250, 2); memcpy(stC + 15, stC + 10, 5);
+  fdesignbl(stC, stC + 40, 0, 250, 2); memcpy(stC + 5, stC, 5);
+  fdesignbl(stC + 10, stC + 40, 1, 250, 2); memcpy(stC + 15, stC + 10, 5);
   // every cached design is made again for the new rate (geometry, reverb lines, modes, source model, tone, filters, delay)
   last_pkey = -1; last_mdkey = -1; last_mfp = -1; last_gkey = -1; last_gkey2 = -1; lastfz = -1; lastfzo = -1; lastfzn = -1;
   lastbr = lastdk = -1000; lastlc = lasthc = -1; dllkey = -1;
@@ -5995,8 +6072,8 @@ cDON > 0.00001 || dlhold > 0 ? (
     dwp3 += dwr3; dwp3 > 6.2831853 ? dwp3 -= 6.2831853; dwp4 += dwr4; dwp4 > 6.2831853 ? dwp4 -= 6.2831853;
     dmL = cDTP * (dwA * (1 + sin(dwp1)) + dfA * (1 + sin(dwp3))); dmR = cDTP * (dwA * (1 + sin(dwp2)) + dfA * (1 + sin(dwp4)));
   ) : ( dmL = dmR = 0; );
-  drL = bqrun(bqrun(rdh(dlL, DLMAX, dwi - cDTL - dmL), dlC, dlSt, 1), dlC + 5, dlSt + 2, 1);
-  drR = bqrun(bqrun(rdh(dlR, DLMAX, dwi - cDTR - dmR), dlC + 10, dlSt + 4, 1), dlC + 15, dlSt + 6, 1);
+  drL = bqrun(bqrun(dlyread(dlL, DLMAX, dwi, cDTL + dmL), dlC, dlSt, 1), dlC + 5, dlSt + 2, 1);
+  drR = bqrun(bqrun(dlyread(dlR, DLMAX, dwi, cDTR + dmR), dlC + 10, dlSt + 4, 1), dlC + 15, dlSt + 6, 1);
 // DELAY TYPE: what every pass through the loop does to the repeat (it adds up: each echo is a copy of the one before)
   xDTY == 1 ? ( dtL1 = drL + (dtL1 - drL) * dtyA; dtR1 = drR + (dtR1 - drR) * dtyA; drL = tnr(1.4 * dtL1) / 1.4; drR = tnr(1.4 * dtR1) / 1.4; ) : (   // tape: darker, round
   xDTY == 2 ? ( dtL1 = drL + (dtL1 - drL) * dtyA; dtL2 = dtL1 + (dtL2 - dtL1) * dtyA; dtR1 = drR + (dtR1 - drR) * dtyA; dtR2 = dtR1 + (dtR2 - dtR1) * dtyA;
@@ -6049,8 +6126,8 @@ rmskip ? ( rmwas = 1; dirL = dirR = erL = erR = 0; lateL = lateR = 0;
   gnx = cGL[0] + (xGL[0] - cGL[0]) * gsm; gnx > cGL[0] * gRK + 0.00001 ? gnx = cGL[0] * gRK + 0.00001; cGL[0] = min(gnx, max(xGL[0], cGL[0]));
   gnx = cGR[0] + (xGR[0] - cGR[0]) * gsm; gnx > cGR[0] * gRK + 0.00001 ? gnx = cGR[0] * gRK + 0.00001; cGR[0] = min(gnx, max(xGR[0], cGR[0]));
   cA[0] += (xA[0] - cA[0]) * sm; cSM[0] = xSM[0];
-  bdv = rdh(ibuf, MAXIN, wiD - cDL[0]); lpL[0] = bdv + (lpL[0] - bdv) * cA[0]; bdv = lpL[0] + (bdv - lpL[0]) * cSM[0]; bdL = bdv * cGL[0];
-  bdv = rdh(ibuf, MAXIN, wiD - cDR[0]); lpR[0] = bdv + (lpR[0] - bdv) * cA[0]; bdv = lpR[0] + (bdv - lpR[0]) * cSM[0]; bdR = bdv * cGR[0];
+  bdv = dlyread(ibuf, MAXIN, wiD, cDL[0]); lpL[0] = bdv + (lpL[0] - bdv) * cA[0]; bdv = lpL[0] + (bdv - lpL[0]) * cSM[0]; bdL = bdv * cGL[0];
+  bdv = dlyread(ibuf, MAXIN, wiD, cDR[0]); lpR[0] = bdv + (lpR[0] - bdv) * cA[0]; bdv = lpR[0] + (bdv - lpR[0]) * cSM[0]; bdR = bdv * cGR[0];
   cHL[0] += (xHL[0] - cHL[0]) * sm; cHR[0] += (xHR[0] - cHR[0]) * sm; hdsL[0] = bdL + (hdsL[0] - bdL) * cHL[0]; bdL = hdsL[0]; hdsR[0] = bdR + (hdsR[0] - bdR) * cHR[0]; bdR = hdsR[0];   // head shadow
   cNF += (xNF - cNF) * sm; nfSL = bdL + (nfSL - bdL) * nfA; bdL += cNF * nfSL; nfSR = bdR + (nfSR - bdR) * nfA; bdR += cNF * nfSR;   // near field
 ) : (
@@ -6080,10 +6157,10 @@ loop(NT,
   );
   fmov ? ( cA[ti] += fdA[ti]; cSM[ti] += fdSM[ti]; );   // wall / air filters: a straight line to the end of the block while they move (see @block)
   (cGL[ti] + cGR[ti] > 0.0000001) ? (
-    vR = rdh(ibuf, MAXIN, wiD - cDL[ti]);   // one read per tap (cubic, every reflection; a linear read for the cluster measured no gain - stays cubic)
+    vR = dlyread(ibuf, MAXIN, wiD, cDL[ti]);   // one read per tap (cubic, every reflection; a linear read for the cluster measured no gain - stays cubic)
     lpL[ti] = vR + (lpL[ti] - vR) * cA[ti];                 // air / wall absorption
     vL = lpL[ti] + (vR - lpL[ti]) * cSM[ti];                 // through a wall / door: part of the highs gets through (shelf)
-    ti < itdN ? ( vR0 = rdh(ibuf, MAXIN, wiD - cDR[ti]); lpR[ti] = vR0 + (lpR[ti] - vR0) * cA[ti]; vR = lpR[ti] + (vR0 - lpR[ti]) * cSM[ti];   // the right ear reads its own time
+    ti < itdN ? ( vR0 = dlyread(ibuf, MAXIN, wiD, cDR[ti]); lpR[ti] = vR0 + (lpR[ti] - vR0) * cA[ti]; vR = lpR[ti] + (vR0 - lpR[ti]) * cSM[ti];   // the right ear reads its own time
       cHL[ti] += (xHL[ti] - cHL[ti]) * sm; cHR[ti] += (xHR[ti] - cHR[ti]) * sm;   // the head shadow of the far ear
       hdsL[ti] = vL + (hdsL[ti] - vL) * cHL[ti]; vL = hdsL[ti]; hdsR[ti] = vR + (hdsR[ti] - vR) * cHR[ti]; vR = hdsR[ti];
     ) : ( vR = vL; );
@@ -6098,10 +6175,10 @@ xfade > 0 ? (
   ti = 0;
   loop(NT,
     (oGL[ti] + oGR[ti] > 0.0000001) ? (
-      vR = rdh(ibuf, MAXIN, wiD - oDL[ti]);
+      vR = dlyread(ibuf, MAXIN, wiD, oDL[ti]);
       olpL[ti] = vR + (olpL[ti] - vR) * oA[ti];
       vL = olpL[ti] + (vR - olpL[ti]) * oSM[ti];
-      ti < itdN ? ( vR0 = rdh(ibuf, MAXIN, wiD - oDR[ti]); olpR[ti] = vR0 + (olpR[ti] - vR0) * oA[ti]; vR = olpR[ti] + (vR0 - olpR[ti]) * oSM[ti];
+      ti < itdN ? ( vR0 = dlyread(ibuf, MAXIN, wiD, oDR[ti]); olpR[ti] = vR0 + (olpR[ti] - vR0) * oA[ti]; vR = olpR[ti] + (vR0 - olpR[ti]) * oSM[ti];
         ohdsL[ti] = vL + (ohdsL[ti] - vL) * oHL[ti]; vL = ohdsL[ti]; ohdsR[ti] = vR + (ohdsR[ti] - vR) * oHR[ti]; vR = ohdsR[ti];
       ) : ( vR = vL; );
       ti == 0 ? ( xodL += vL * oGL[ti]; xodR += vR * oGR[ti]; ) : ( xoeL += vL * oGL[ti]; xoeR += vR * oGR[ti]; );
@@ -6132,7 +6209,7 @@ edi += 1; edi >= EDN ? edi = 0;
 // filters on the way: air, and a barrier (wall / window / door) in between. Without those filters the echoes behind a
 // barrier would keep all their highs (a hiss that hangs on with feedback).
 dlhold > 0 || shold > 0 ? (                   // (also the input's stereo width, see STEREO WIDTH)
-  dsv = rdh(sbuf, MAXIN, wi - cDL[0]);
+  dsv = dlyread(sbuf, MAXIN, wi, cDL[0]);
   lpSd = dsv + (lpSd - dsv) * cA[0]; dsv = lpSd + (dsv - lpSd) * cSM[0];
   dsv *= (cGL[0] + cGR[0]) * 0.5; dirL += dsv; dirR -= dsv;
 ) : ( lpSd = 0; );
@@ -6160,8 +6237,8 @@ dirL *= cMuD; dirR *= cMuD; erL *= cMuE; erR *= cMuE;
 // ---- late reverb: pre-delay -> 4 diffusers -> 8-line FDN ----
 cLD += (xLD - cLD) * smd;
 cLG += (xLG - cLG) * (xLG > cLG ? smu : sm);
-dv0 = rdh(ibuf, MAXIN, wiD - cLD);
-xfade > 0 && !ldS ? dv0 = dv0 * xgN + rdh(ibuf, MAXIN, wiD - oLD) * xgO;
+dv0 = dlyread(ibuf, MAXIN, wiD, cLD);
+xfade > 0 && !ldS ? dv0 = dv0 * xgN + dlyread(ibuf, MAXIN, wiD, oLD) * xgO;
 cLLP += (xLLP - cLLP) * sm; cLM += (xLM - cLM) * sm; lpLt = dv0 + (lpLt - dv0) * cLLP; dv0 = lpLt + (dv0 - lpLt) * cLM;   // barrier: tail heard through closed parts is dark
 cBNG += (xBNG - cBNG) * sm; bndS += (dv0 - bndS) * xBNA; dv0 += bndS * cBNG;   // boundary effect: more bass power from a source near a surface
 // directivity of the source: it radiates about Q = 2.2 in the mids (taken out of the reverb level, see barE), nearly round
@@ -6190,9 +6267,9 @@ loop(8,
   fbp = fdnbase + fk * LINEMAX;
   cFL[fk] += (flen[fk] - cFL[fk]) * smfd;
   modstep(fk); mdOf = moddep * mdV2[fk];
-  ov = rdh(fbp, LINEMAX, fwi - cFL[fk] - mdOf);
+  ov = dlyread(fbp, LINEMAX, fwi, cFL[fk] + mdOf);
   xfG && !xfS[fk] ? ov *= min(1, max(0, (xfcnt - (cFL[fk] + 2 * moddep + 4)) * xfRI));   // new room: nothing to read yet - then a 3 ms fade-in (no step)
-  xfade > 0 && !xfS[fk] ? ov = ov * xgN + rdh(fbp, LINEMAX, fwi - oFL[fk] - mdOf) * xgO * cXR;
+  xfade > 0 && !xfS[fk] ? ov = ov * xgN + dlyread(fbp, LINEMAX, fwi, oFL[fk] + mdOf) * xgO * cXR;
   // per line: the loop filter - every octave 125 Hz ... 8 kHz loses what the room's RT60 in that octave asks for
   fqG[fk] > fqGc[fk] * 1.26 ? fqGc[fk] = fqG[fk] : fqGc[fk] += (fqG[fk] - fqGc[fk]) * smQ; fst[fk] = fqGc[fk] * bqrun(ov, fqCc + fk * 30, fqS + fk * 12, 6);   // glides up as well (a jump of more than 2 dB still snaps - the hot-content scaling counts on it) // loop gain glides (5 ms) - a decay change no longer clicks
   fk += 1;
@@ -6237,17 +6314,17 @@ fbp[fwi] = cTH * f7 + sn * s7 - inj;
 cLG2 += (xLG2 - cLG2) * sm;
 cLG2 > 0.0000001 ? (
   cLD2 += (xLD2 - cLD2) * smd; cP2L += (xP2L - cP2L) * sm; cP2R += (xP2R - cP2R) * sm; cLLP2 += (xLLP2 - cLLP2) * sm;
-  dvb = rdh(ibuf, MAXIN, wiD - cLD2);
-  xfade > 0 && !ld2S ? dvb = dvb * xgN + rdh(ibuf, MAXIN, wiD - oLD2) * xgO;
+  dvb = dlyread(ibuf, MAXIN, wiD, cLD2);
+  xfade > 0 && !ld2S ? dvb = dvb * xgN + dlyread(ibuf, MAXIN, wiD, oLD2) * xgO;
   lpLt2 = dvb + (lpLt2 - dvb) * cLLP2; dvb = lpLt2 + (dvb - lpLt2) * cLM;
   fk = 0;
   loop(4,
     fbp = fdn2base + fk * LINEMAX;
     cFL2[fk] += (flen2[fk] - cFL2[fk]) * smfd;
     modstep(8 + fk); mdOf = moddep * mdV2[8 + fk];
-    ov = rdh(fbp, LINEMAX, fwi - cFL2[fk] - mdOf);
+    ov = dlyread(fbp, LINEMAX, fwi, cFL2[fk] + mdOf);
     xfG && !xfS[8 + fk] ? ov *= min(1, max(0, (xfcnt - (cFL2[fk] + 2 * moddep + 4)) * xfRI));
-    xfade > 0 && !xfS[8 + fk] ? ov = ov * xgN + rdh(fbp, LINEMAX, fwi - oFL2[fk] - mdOf) * xgO;
+    xfade > 0 && !xfS[8 + fk] ? ov = ov * xgN + dlyread(fbp, LINEMAX, fwi, oFL2[fk] + mdOf) * xgO;
     fhs2[fk] = (1 - fb2[fk]) * ov + fb2[fk] * fhs2[fk];
     fls2[fk] += (ov - fls2[fk]) * lfc;
     fst2[fk] = fg2[fk] * fhs2[fk] + (fgL2[fk] - fg2[fk]) * fls2[fk];
@@ -11635,6 +11712,30 @@ function dmfoot(ly, ty) local(tw, th, mh, mw)
   gfx_setfont(7); strcpy(#dmw, "dmajorsound.com"); gfx_measurestr(#dmw, tw, th);
   col(cMUTED, 1); txt(#dmw, WT - 20 - mw - mh / 2, ty, 2);
 );
+// THE NAME: the Ahh! wordmark (as the plug-in icon). "Ahh" in the built-in bold font, then an exclamation mark as tall as
+// the letters: the bar from the top of the h, the dot - the sound source - centred on the baseline, two reflections
+// around it, open at the top. Drawn in pixels from the font's own metrics (Arimo Bold: ascent 1854, descent 434,
+// h 1485 units high, ink of "Ahh" from 0.025 to 1.88 em), so the bar lines up with the h at every scale.
+function ahhmark(x, yc) local(fh, px, ty, bl, lh, em, ink, cx, rr, dr, bw, gp, top, k, a1, a2, rw)
+(
+  fh = floor(24 * gT + 0.5); gfx_setfont(5, "Arial", fh, 'b');
+  col(cTEXT, 1); txt("Ahh", x, yc, 0);
+  px = floor(gox + x * gs + 0.5); ty = floor(goy + yc * gs - fh / 2 + 0.5);     // where txt put the text box
+  bl = ty + fh * 1854 / 2288; lh = fh * 1485 / 2288; em = fh * 2048 / 2288;
+  ink = px + 1.88 * em;
+  rr = 0.30 * lh; dr = 0.104 * lh; bw = 0.20 * lh; gp = 0.09 * lh;
+  cx = floor(ink + 0.08 * lh + rr) + 0.5; top = floor(bl - lh + 0.5);   // (the bar on whole pixels, its top on the h's top row)
+  bw = max(2, floor(bw + 0.5)); dr = max(1.6, dr);
+  // reflections: two arcs around the dot, open at the top (62 degrees each side), drawn as rings of 1 px arcs
+  a1 = 62 * $pi / 180; a2 = 2 * $pi - a1;
+  col(cACTO, 0.35); rw = max(1, floor(0.045 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, rr - 0.0225 * lh - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
+  col(cACTO, 0.7);  rw = max(1, floor(0.055 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, 0.62 * rr - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
+  // the bar: a rounded line from the top of the h down to the gap above the dot
+  col(cTEXT, 1);
+  gfx_rect(floor(cx - bw / 2), top + floor(bw / 2), bw, max(1, floor(bl - dr - gp + 0.5) - top - 2 * floor(bw / 2)));
+  gfx_circle(cx - 0.5, top + bw / 2 - 0.5, bw / 2, 1, 1); gfx_circle(cx - 0.5, floor(bl - dr - gp + 0.5) - bw / 2 - 0.5, bw / 2, 1, 1);
+  col(cSRC, 1); gfx_circle(cx - 0.5, bl - 0.5, dr, 1, 1);
+);
 // Top bar: name, Basic/Expert and view mode switches, Tabs/All/Fit, room presets menu button and snapshot slots
 function gfxp11()
 (
@@ -11646,7 +11747,7 @@ szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx =
 // THE NAME AND THE MARK keep one size in every view (Basic, Expert, Tabs, All, Learn): drawn at gT (window only), not at the page scale;
 // vertically centered on the switch row, the view switches start after them (TBOFS)
 TBOFS = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + TBOFS;   // (again with the scale of this frame's top bar)
-gsT0 = gs; gs = gT; col(cTEXT, 1); gfx_setfont(5, "Arial", 14.5 * gT, 'b'); txt("Ahh!", 11, 17 * gsT0 / gT, 0); gfx_measurestr("Ahh!", ttw, tth);
+gsT0 = gs; gs = gT; ahhmark(11, 17 * gsT0 / gT);
 gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
 // Basic | Expert | Learn: one segmented switch, the active segment filled
 // VIEW MODE: a dark switch right after the name (the plugin's own view - not a preset, not a snapshot)

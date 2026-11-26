@@ -13,6 +13,7 @@ BUILTIN_ARGC = {
     'abs': 1, 'atan2': 2, 'ceil': 1, 'cos': 1, 'exp': 1, 'floor': 1, 'log': 1, 'log10': 1, 'max': 2, 'min': 2,
     'sin': 1, 'sqr': 1, 'sqrt': 1, 'tan': 1, 'pow': 2, 'sign': 1,
     'fft': 2, 'ifft': 2, 'fft_permute': 2, 'fft_ipermute': 2, 'memset': 3, 'memcpy': 3,
+    'dlyread': 4,   # native: high-quality fractional delay read (VST3 / AU / CLAP only, src/rt.cpp)
     'file_avail': 1, 'file_mem': 3, 'file_var': 2,
     'slider': 1, 'sliderchange': 1, 'time_precise': 0,
     'sprintf': -2, 'strcpy': 2, 'strcat': 2, 'strcmp': 2, 'strlen': 1, 'str_getchar': -2, 'str_setlen': 2,

@@ -1,7 +1,7 @@
 desc: Ahh
 //tags: reverb room acoustics image-source filter education surround
 //author: Bernd Dormayer
-//version: 1.2.0
+//version: 1.2.1
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -183,7 +183,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.2.0 - developed with AI assistance");
+strcpy(#verstr, "V 1.2.1 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -4066,6 +4066,7 @@ function kbrow() ( min(min((bwR - 20) / 3 / (2 * KR0 + 12), (bwB - 125) / (2 * K
 function hmix(id, x, yc, si, c, tip) local(v, f, nf, hit, t)
 (
   v = slider(si); f = min(1, max(0, v / 100)); hit = inbox(x - 3, yc - 8, 76, 16);
+  mmCur >= 0 && abs(mmB[mmCur * 5 + 1] - yc) < 6 ? ( mmB[mmCur * 5] = x - 8; );   // the header's level meter: left of the ring
   col(cHAIR, 1); ARC(x + 6, yc, 5.5, -0.75 * $pi, 0.75 * $pi, 2);
   f > 0.004 ? ( col(c, 1); ARC(x + 6, yc, 5.5, -0.75 * $pi, -0.75 * $pi + 1.5 * $pi * f, 2); );
   col(hit || kdrag == id ? cTEXT : (f < 0.999 ? c : cMUTED), 1); gfx_setfont(6);
@@ -6363,6 +6364,7 @@ rmskip ? ( rmwas = 1; dirL = dirR = erL = erR = 0; lateL = lateR = 0;
   gnx = cGL[0] + (xGL[0] - cGL[0]) * gsm; gnx > cGL[0] * gRK + 0.00001 ? gnx = cGL[0] * gRK + 0.00001; cGL[0] = min(gnx, max(xGL[0], cGL[0]));
   gnx = cGR[0] + (xGR[0] - cGR[0]) * gsm; gnx > cGR[0] * gRK + 0.00001 ? gnx = cGR[0] * gRK + 0.00001; cGR[0] = min(gnx, max(xGR[0], cGR[0]));
   cA[0] += (xA[0] - cA[0]) * sm; cSM[0] = xSM[0];
+  pro_on ? ( qjj = 0; loop(5, qG5c[qjj] += (qG5x[qjj] - qG5c[qjj]) * sm; qjj += 1; ); );   // (5.1: the direct sound's loudspeaker gains keep following the positions - the Room-off panner uses them)
   bdv = dlyreadhq(ibuf, MAXIN, wiD, cDL[0]); lpL[0] = bdv + (lpL[0] - bdv) * cA[0]; bdv = lpL[0] + (bdv - lpL[0]) * cSM[0]; bdL = bdv * cGL[0];
   bdv = dlyreadhq(ibuf, MAXIN, wiD, cDR[0]); lpR[0] = bdv + (lpR[0] - bdv) * cA[0]; bdv = lpR[0] + (bdv - lpR[0]) * cSM[0]; bdR = bdv * cGR[0];
   cHL[0] += (xHL[0] - cHL[0]) * sm; cHR[0] += (xHR[0] - cHR[0]) * sm; hdsL[0] = bdL + (hdsL[0] - bdL) * cHL[0]; bdL = hdsL[0]; hdsR[0] = bdR + (hdsR[0] - bdR) * cHR[0]; bdR = hdsR[0];   // head shadow
@@ -6678,6 +6680,16 @@ cPAN += (xPAN - cPAN) * sm;
 abs(cPAN) > 0.0000001 ? ( panA = (cPAN + 1) * 0.7853981634; panL = cos(panA) * 1.4142135624; panR = sin(panA) * 1.4142135624; panW = 1 - abs(cPAN); )
                       : ( panL = panR = panW = 1; );
 byL = bpMo * panL + bpSo * panW; byR = bpMo * panR - bpSo * panW;   // through the Doppler delay (= bpM1 / bpS1 when it is not in use)
+// 5.1, ROOM OFF = a SURROUND PANNER: the mid goes to the loudspeakers of the source's direction (the direct sound's gains,
+// brought to constant power - no distance, as in stereo), the side stays left / right - in front on L / R, behind on Ls / Rs
+pro_on ? (
+  qbn = sqrt(sqr(qG5c[0]) + sqr(qG5c[1]) + sqr(qG5c[2]) + sqr(qG5c[3]) + sqr(qG5c[4]));
+  qbn > 0.0000001 ? (
+    qbk = 1.4142135624 / qbn; qjj = 0; loop(5, qBY[qjj] = bpMo * qG5c[qjj] * qbk; qjj += 1; );
+    qbf = sqrt(sqr(qG5c[0]) + sqr(qG5c[1]) + sqr(qG5c[2])) / qbn; qbr = sqrt(sqr(qG5c[3]) + sqr(qG5c[4])) / qbn;
+    qBY[0] += bpSo * qbf; qBY[1] -= bpSo * qbf; qBY[3] += bpSo * qbr; qBY[4] -= bpSo * qbr;
+  ) : ( qBY[0] = byL; qBY[1] = byR; qBY[2] = qBY[3] = qBY[4] = 0; );
+);
 // TONE (REVERB section): colors only the room sound – early reflections + tail; the direct sound stays as it is
 rmL = erL + lateL; rmR = erR + lateR;
 bron ? ( rmL = bqrun(rmL, bsC, bsS, 1); rmR = bqrun(rmR, bsC, bsS + 2, 1); );          // bright: high shelf at 4 kHz, up to +12 dB
@@ -6698,7 +6710,7 @@ fpost && fany ? ( fmL = fchain(outL, lcSL, lcFL, hcSL, hcFL); fmR = fchain(outR,
 // ---- RoomservicePro: the 5.1 output - direct sound + early reflections per loudspeaker (vbap5), the tail on all five, then
 // the same tone / coincidence / mix / Filter chain as the stereo path, per loudspeaker. L / R replace the stereo result below.
 pro_on ? (
-  qLT[0] = lateL; qLT[1] = lateR; qBY[0] = byL; qBY[1] = byR;
+  qLT[0] = lateL; qLT[1] = lateR;
   qjj = 0;
   loop(5,
     qrr = qER[qjj] + qLT[qjj];
@@ -6715,7 +6727,7 @@ pro_on ? (
   outL = qO[0]; outR = qO[1];
   // the LFE: the direct sound's mono through the crossover, its own level (glides like the other gains), the wet share of the mix
   cLFG += (xLFG - cLFG) * smQ;
-  qO[5] = bqrun(qLFm, qLFC, qLFS, 2) * cLFG * cEQL * rmxk * cMIX * cOG;
+  qO[5] = bqrun(qLFm * cEQL * rmxk + bpMo * (1 - rmxk), qLFC, qLFS, 2) * cLFG * cMIX * cOG;   // (Room off: the LFE gets the source itself)
 );
 // A / B LOUDNESS MATCH: measure what goes out (before the trim), play B as loud as A
 abPw += outL * outL + outR * outR; cABG += (xABG - cABG) * smab; outL *= cABG; outR *= cABG;
@@ -6900,6 +6912,16 @@ function rzgeo(id) (
 // (also the one of the 3D view) folds / opens everything.
 // RESET of one module: its parameters back to the defaults - the power button (on / off) stays; one undo step
 function mrr(a, b) local(i) ( i = a; loop(b - a + 1, sset(i, sdef(i)); i += 1; ); );
+// The 5.1 sliders (above 119) are not part of setp / sset (their lists end at 119): set here directly and sent to the host
+function set51(i, v) (
+  i == 143 ? ( slider143 = v; slider_automate(slider143); );
+  i == 144 ? ( slider144 = v; slider_automate(slider144); );
+  i == 147 ? ( slider147 = v; slider_automate(slider147); );
+  i == 148 ? ( slider148 = v; slider_automate(slider148); );
+  i == 149 ? ( slider149 = v; slider_automate(slider149); );
+  i == 150 ? ( slider150 = v; slider_automate(slider150); );
+  i == 151 ? ( slider151 = v; slider_automate(slider151); );
+);
 // Resets module id's sliders to defaults via sset/mrr (Filter, Source, Delay, Room, Walls/Reflectors, Free field); takes an undo snapshot first
 function modulereset(id) local(i) (
   id != 15 ? snap_take();
@@ -6910,7 +6932,7 @@ function modulereset(id) local(i) (
   id == 4 ? ( isfree ? ( i = 0; loop(12, vopt[RFB + i] = FFP[ffpLast * 16 + 4 + i]; i += 1; ); vopt[RFB + 12] = vopt[RFB + 13] = 12; vopt[RFB + 14] = 0; rflSel = 0; ) : ( mrr(5, 9); sset(19, 1); ); );   // free field: the two reflectors back to the loaded place
   id == 15 ? ffpapply(0);                                                                               // Free field: back to the Street (power stays)
   id == 5 ? ( mrr(42, 46); sset(92, 100); mrr(95, 97); );                                                // Barrier (41 = type / power)
-  id == 7 ? ( sset(18, 100); sset(22, 0); sset(23, 1); sset(40, 0); sset(60, 0); vopt[49] = 0; sset(143, 0); sset(144, 100); sset(147, 0); sset(148, 0); sset(149, 0); sset(150, 0); sset(151, 0); );       // Output
+  id == 7 ? ( sset(18, 100); sset(22, 0); sset(23, 1); sset(40, 0); sset(60, 0); vopt[49] = 0; set51(143, 0); set51(144, 100); set51(147, 0); set51(148, 0); set51(149, 0); set51(150, 0); set51(151, 0); );       // Output
   id == 14 ? ( mrr(101, 109); );                                                                         // Motion (100)
   id != 15 ? snap_notify();
 );
@@ -6936,26 +6958,63 @@ function o5field(k, cx, cy) local(si, v, lo, hi, id, hit)
   hit = inbox(cx - 8, cy - 6, 16, 12);
   col(hit ? cBORD : cLINE, 1); RR(cx - 8, cy - 6, 16, 12, 3);
   col(abs(v) < 0.05 ? cMUTED : cTEXT, 1); gfx_setfont(7); txt(#o5f, cx, cy, 1);
-  click && hit ? ( (mouse_cap & 16) ? setp(si, 0) : vedopen(id, #o5f); click = 0; );
-  vedPend && vedId == id ? ( setp(si, min(hi, max(lo, vedVal))); vedPend = 0; );
+  click && hit ? ( (mouse_cap & 16) ? set51(si, 0) : vedopen(id, #o5f); click = 0; );
+  vedPend && vedId == id ? ( set51(si, min(hi, max(lo, vedVal))); vedPend = 0; );
   vedit == id ? vedplace(cx, cy, 44);
   hit ? ( tipon = 1; tipforce = 0; tipx = cx; tipy = cy + 18;
     tipstr = k == 3 ? "LFE level: click = type it in dB (-24 … +10), Alt+click = 0 dB – the LFE knob below does the same" : "Level of this loudspeaker channel: click = type it in dB (-24 … +6), Alt+click = 0 dB – e.g. to match the speakers of your room"; );
 );
-// SMALL IN / OUT METER in a module header: input left (gray), output right (the Output color), L and R each, -48 … 0 dB.
-// Every module shows the level going in and coming out while you work on it. Its place is kept, so the meter-only frames
-// repaint it alone (see the partial frame at the end).
-function mmbar(bx, yc, v, c) local(f)
+// SMALL IN / OUT METER in a module header: In (gray, L R) and Out (the Output color; L R, in 5.1 L R C LFE Ls Rs), -48 … 0 dB.
+// The header only registers it (mmB: x of its RIGHT edge, y, scale, offsets); the module's mix ring moves it to its own
+// left (hmix) - so nothing overlaps. All meters are drawn after the modules (mmflush) and alone on the meter-only frames.
+// The mouse over one shows it large, with the channel names.
+function mmbar(bx, yc, w, hh, v, c) local(f)
 (
   f = min(1, max(0, (dbs(v) + 48) / 48));
-  col(cLINE, 1); R(bx, yc - 6, 2.5, 12);
-  f > 0.01 ? ( col(v >= 0.891 ? cWARN : c, 1); R(bx, yc + 6 - 12 * f, 2.5, 12 * f); );
+  col(cLINE, 1); R(bx, yc - hh / 2, w, hh);
+  f > 0.01 ? ( col(v >= 0.891 ? cWARN : c, 1); R(bx, yc + hh / 2 - hh * f, w, hh * f); );
 );
-function mmeter(x, yc) local(idl)
+function mmout(k) ( k == 0 ? pkOL : (k == 1 ? pkOR : (k == 2 ? qPK[2] : (k == 3 ? qPK[5] : (k == 4 ? qPK[3] : qPK[4])))); );
+function mmWd() ( slider136 >= 0.5 ? 31 : 17; );   // 2 x In + gap + 2 / 6 x Out
+function mmdraw(xr, yc) local(idl, x, k, n)
 (
-  idl = time_precise() - lastblk > 0.3;
-  mmbar(x, yc, idl ? 0 : pkIL, cDIM2); mmbar(x + 3.5, yc, idl ? 0 : pkIR, cDIM2);
-  mmbar(x + 10, yc, idl ? 0 : pkOL, cIOTT); mmbar(x + 13.5, yc, idl ? 0 : pkOR, cIOTT);
+  idl = time_precise() - lastblk > 0.3; n = slider136 >= 0.5 ? 6 : 2; x = xr - mmWd();
+  col(cSURF, 1); R(x - 1, yc - 7, mmWd() + 2, 14);
+  mmbar(x, yc, 2.5, 12, idl ? 0 : pkIL, cDIM2); mmbar(x + 3.5, yc, 2.5, 12, idl ? 0 : pkIR, cDIM2);
+  k = 0; loop(n, mmbar(x + 10 + k * 3.5, yc, 2.5, 12, idl ? 0 : mmout(k), cIOTT); k += 1; );
+);
+function mmpop(xr, yc) local(idl, n, w, x, y, k, bx)
+(
+  idl = time_precise() - lastblk > 0.3; n = slider136 >= 0.5 ? 6 : 2; w = 22 + (2 + n) * 15 + 12; x = max(4, min(xr - w, WT - w - 4)); y = yc + 10;
+  col(cINK, 0.14); RR(x + 1, y + 3, w, 86, 6); col(cSURF, 1); RR(x, y, w, 86, 6); col(cBORD, 1); RRO(x, y, w, 86, 6);
+  col(cMUTED, 1); gfx_setfont(7); txt("In", x + 8 + 12, y + 9, 1); txt("Out", x + 8 + 42 + (n - 1) * 7.5 + 4.5, y + 9, 1);
+  k = 0; loop(2 + n,
+    bx = x + 8 + k * 15 + (k >= 2 ? 12 : 0);
+    mmbar(bx, y + 44, 9, 52, idl ? 0 : (k == 0 ? pkIL : (k == 1 ? pkIR : mmout(k - 2))), k < 2 ? cDIM2 : cIOTT);
+    col(cMUTED, 1); gfx_setfont(7); txt(k == 0 ? "L" : (k == 1 ? "R" : (k == 2 ? "L" : (k == 3 ? "R" : (k == 4 ? "C" : (k == 5 ? "LFE" : (k == 6 ? "Ls" : "Rs")))))), bx + 4.5, y + 78, 1);
+    k += 1; );
+);
+// the header meter under the mouse (-1 = none)
+function mmover() local(k, h, px, py)
+(
+  h = -1; k = 0;
+  loop(mmN,
+    px = (mouse_x - mmB[k * 5 + 3]) / mmB[k * 5 + 2]; py = (mouse_y - mmB[k * 5 + 4]) / mmB[k * 5 + 2];
+    mmB[k * 5] > 0 && px >= mmB[k * 5] - mmWd() - 2 && px <= mmB[k * 5] + 2 && abs(py - mmB[k * 5 + 1]) <= 8 ? h = k;
+    k += 1; );
+  h;
+);
+// draws every registered header meter (and the large one under the mouse); part = 1: a meter-only frame
+function mmflush(part) local(k, gsS, gxS, gyS)
+(
+  gsS = gs; gxS = gox; gyS = goy; k = 0;
+  loop(mmN,
+    gs = mmB[k * 5 + 2]; gox = mmB[k * 5 + 3]; goy = mmB[k * 5 + 4];
+    mmB[k * 5] > 0 ? mmdraw(mmB[k * 5], mmB[k * 5 + 1]);
+    k += 1; );
+  !part ? mmHovL = (mouse_cap & 1) ? -1 : mmover();
+  mmHovL >= 0 && mmHovL < mmN ? ( k = mmHovL; gs = mmB[k * 5 + 2]; gox = mmB[k * 5 + 3]; goy = mmB[k * 5 + 4]; setfonts(); mmpop(mmB[k * 5], mmB[k * 5 + 1]); );
+  gs = gsS; gox = gxS; goy = gyS; setfonts();
 );
 // Draws a section header at (x,y) with title s and color c: fold chevron, click folds (Alt+click toggles all), sets zoom close button position
 function sechdr(id, s, x, y, c) local(m, op, ax, ay, hw, vi, head, colm, anyo)
@@ -6991,11 +7050,10 @@ function sechdr(id, s, x, y, c) local(m, op, ax, ay, hw, vi, head, colm, anyo)
       click && rsih ? ( modulereset(id); click = 0; );
       rsih ? ( tipon = 1; tipforce = 0; tipstr = "Reset: this module back to its defaults (on / off stays) – Ctrl/Cmd+Z undoes it"; tipx = rsix; tipy = ay + 16; );
     );
-    // the small In / Out meter, left of the module's power button (not in Output - it has the big meters - and not in Learn)
-    id != 7 && !learn && crdW >= hw + 150 && mmN < MMCAP ? (
-      mmeter(crdX + crdW - 58, ay);
-      mmB[mmN * 5] = crdX + crdW - 58; mmB[mmN * 5 + 1] = ay; mmB[mmN * 5 + 2] = gs; mmB[mmN * 5 + 3] = gox; mmB[mmN * 5 + 4] = goy; mmN += 1;
-      tipbox(crdX + crdW - 61, ay - 8, 23, 16, "Level: In (gray, left) and Out (right), each L / R – the big meters are in Output");
+    // the small In / Out meter: registered here, left of the module's power button; hmix moves it (not in Output - it has the big meters - and not in Learn)
+    mmCur = -1;
+    id != 7 && basic && crdW >= hw + 140 && mmN < MMCAP && goy + ay * gs > 30 * gT ? (
+      mmB[mmN * 5] = basic ? crdX + crdW - 40 : -1; mmB[mmN * 5 + 1] = ay; mmB[mmN * 5 + 2] = gs; mmB[mmN * 5 + 3] = gox; mmB[mmN * 5 + 4] = goy; mmCur = mmN; mmN += 1;   // (Basic only: in Tabs the open tab carries the meter, in All the headers are full)
     );
     head ? tipbox(x + 2, y + 2, hw - 14, 20, vlock ? "GUI locked – unlock it with Lock GUI at the right of the signal-flow strip" : basic ? (op ? "Click: fold the four sections (Alt+click: fold everything)" : "Click: open the four sections (Alt+click: open everything)")
                                                     : (op ? "Click: fold this section (Alt+click: fold everything)" : "Click: open this section (Alt+click: open everything)"));
@@ -7226,13 +7284,13 @@ function tabrow() local(n, i, id, q, x, w, on, act, c, hit, dhit, shit, cy, sq, 
    x = tbX0 = max(8, (goxZ - goxN) / gsN + 0.2); i = 0;
 // nine tabs - on a narrow window the status texts get shorter so the whole row stays inside the window (a name never gets cut)
   tbtot = 0; tbmin = 0;
-  loop(n, id = tbo[i]; gfx_setfont(7); stw2 = tws(tabref(id)); gfx_setfont(2); tbnw = max(tws(tabname(id)), stw2); tbtot += 28 + tbnw + (stsolo(tabq(id)) > 0 ? 22 : 0) + 2 + 3 + 7; tbmin += max(0, tbnw - tws(tabname(id))); i += 1; );
+  loop(n, id = tbo[i]; gfx_setfont(7); stw2 = tws(tabref(id)); gfx_setfont(2); tbnw = max(tws(tabname(id)), stw2); tbtot += 28 + tbnw + (stsolo(tabq(id)) > 0 ? 22 : 0) + 2 + 3 + 7 + (id == tabsel && id != 7 ? mmWd() + 10 : 0); tbmin += max(0, tbnw - tws(tabname(id))); i += 1; );
   tbcut = min(1, max(0, tbtot - 7 - (WT - 8 - tbX0 - (stpwT > 0 ? stpwT + 30 : 0))) / max(1, tbmin)); i = 0;   // share of the status width that has to go (0 = all fit) // the row starts on the module's left edge - the first tab's frame runs straight into it
   loop(n,
     id = tbo[i]; q = tabq(id); c = tabc(id); act = id == tabsel; on = id == 15 ? isfree : (id == 4 && isfree ? vopt[RFB + 14] < 0.5 && (vopt[RFB] >= 0.5 || vopt[RFB + 6] >= 0.5) : (q > 0 ? (id == 1 ? ston(q) && !isfree : ston(q)) : 1)); sq = q > 0 ? stsolo(q) : 0; tdq = q > 0 || id == 15 || (id == 4 && isfree);   // Reflectors (Walls tab outdoors) - a round on / off button like Barrier // Free field and Room switch each other (the dot of the one that is off brings it back)
     q > 0 ? ststat(q == 6 ? 6 : q) : ( id == 7 ? ststat(6) : ( id == 14 ? mtstat() : ( id == 15 ? strcpy(#sts, isfree ? "outdoors" : "off") : ( id == 4 && isfree ? sprintf(#sts, "R1 %s · R2 %s", rflName(vopt[RFB]), rflName(vopt[RFB + 6])) : strcpy(#sts, #wmt) ) ) ) );
     gfx_setfont(7); stw2 = tws(tabref(id));   // a fixed width per tab - it does not jump with its values (longer status text is shortened)
-    gfx_setfont(2); nw = max(tws(tabname(id)), stw2); nw -= (nw - tws(tabname(id))) * tbcut; w = 28 + nw + (sq > 0 ? 22 : 0) + 2;
+    gfx_setfont(2); nw = max(tws(tabname(id)), stw2); nw -= (nw - tws(tabname(id))) * tbcut; mmtw = act && id != 7 ? mmWd() + 10 : 0; w = 28 + nw + (sq > 0 ? 22 : 0) + 2 + mmtw;
     hit = inbox(x, TBY + 2, w, TBH); dhit = tdq && sqr(mx - (x + 12)) + sqr(my - cy) < 56;
     sx = x + w - 24; shit = sq > 0 && inbox(sx - 2, cy - 9, 20, 18);
     act ? ( tbAX = x; tbAW = w; col(c, 1); cCTLon ? ( RR(x - 1.2, TBY - 1.2, w + 2.4, TBH + 6.6, 7.2); col(szoom ? cSURF : mixc(cSURF, c, cCTLon == 2 ? 0.22 : 0.16), 1); RR(x, TBY, w, TBH + 6, 6); R(x, TAY - 2, w, 6); ) : ( RR(x - 1.6, TBY - 1.6, w + 3.2, TBH + 7, 7.4); col(cSURF, 1); RR(x, TBY, w, TBH + 6, 6); R(x, TAY - 2, w, 6); ); )   // the active tab: a frame in the module color, 1.6 wide (no line over the title)
@@ -7241,6 +7299,7 @@ function tabrow() local(n, i, id, q, x, w, on, act, c, hit, dhit, shit, cy, sq, 
           : ( col(c, 1); RR(x + 9.5, cy - 6, 3, 12, 1.5); );
     col(act ? cTEXT : (on ? cMUTED : cDIM2), 1); gfx_setfont(2); txt(tabname(id), x + 24, cy - 5, 0);
     col(on ? cMUTED : cDIM2, 1); gfx_setfont(7); txtfit(#sts, x + 24, cy + 7, nw);
+    mmtw > 0 && mmN < MMCAP ? ( mmB[mmN * 5] = x + w - (sq > 0 ? 28 : 6); mmB[mmN * 5 + 1] = cy; mmB[mmN * 5 + 2] = gs; mmB[mmN * 5 + 3] = gox; mmB[mmN * 5 + 4] = goy; mmN += 1; );   // In / Out level of the open module
     sq > 0 ? (
       soloM == sq ? ( col(cAMB, 1); RR(sx, cy - 7, 16, 14, 4); col(0xFFFFFF, 1); ) : ( col(shit ? cTEXT : cBORD, 1); RRO(sx, cy - 7, 16, 14, 4); col(shit ? cTEXT : cMUTED, 1); );   // (S centered on both lines)
       gfx_setfont(6); txt("S", sx + 8, cy, 1);
@@ -7571,7 +7630,7 @@ secopen(7) ? (
 // BASIC: the same look, compact - spectrum | output meters, faders Dry / wet | Output
     q51 = !basic && slider136 >= 0.5;   // RoomservicePro: the 5.1 output - six meters, the vectorscope, the LFE / Center controls
     om51 = slider136 >= 0.5;   // 5.1: six output meters in every view (Basic too); the 5.1 controls only in Expert (q51)
-    omw = 64; omw2 = om51 ? 128 : 64; omy = IOY + (basic ? 44 : 54); omh = IOH - (basic ? 44 + 46 : 54 + 80); omx1 = IOX + 14; omx2 = IOX + IOW - 14 - omw2;   // 8 px more under the meters - L / R sat on the fader names
+    omw = 64; omw2 = om51 ? 128 : 64; omy = IOY + (basic ? 44 : 54); omh = IOH - (basic ? 44 + 46 : 54 + 80); omx1 = IOX + 14; omx2 = IOX + IOW - 14 - omw2; basic && om51 ? ( omh -= 10; );   // (Basic, 5.1: the six channel names stay clear of the Output fader's text)   // 8 px more under the meters - L / R sat on the fader names
     gj = basic ? 1 : 0;
     loop(basic ? 1 : 2,
       omx = gj == 0 ? omx1 : omx2; omwj = gj == 0 ? omw : omw2; om6 = om51 && gj == 1;
@@ -7655,19 +7714,19 @@ secopen(7) ? (
         knobtip(o5cx, o5y, "Output gain: -inf … +24 dB, all six channels (double-click = type a value, Alt+click = 0 dB)");
       ) : gk == 3 ? (
         sprintf(#fv, slider143 > 0.05 ? "+%.1f" : "%.1f", slider143); kdim = !lfon;
-        kmap(0, -24, 10, 1); nf = knob(60, o5cx, o5y, "LFE", #fv, (slider143 + 24) / 34, 24 / 34); kdim = 0; kchg ? setp(143, min(10, max(-24, nf * 34 - 24)));
+        kmap(0, -24, 10, 1); nf = knob(60, o5cx, o5y, "LFE", #fv, (slider143 + 24) / 34, 24 / 34); kdim = 0; kchg ? set51(143, min(10, max(-24, nf * 34 - 24)));
         knobtip(o5cx, o5y, "LFE level: -24 … +10 dB (double-click = type a value, Alt+click = 0 dB)");
       ) : (
         sprintf(#fv, slider144 <= 0.5 ? "ph." : (slider144 >= 99.5 ? "disc." : "%.0f%%"), slider144);
-        kmap(0, 0, 100, 1); nf = knob(61, o5cx, o5y, "Center", #fv, slider144 / 100, 1); kchg ? setp(144, nf * 100);
+        kmap(0, 0, 100, 1); nf = knob(61, o5cx, o5y, "Center", #fv, slider144 / 100, 1); kchg ? set51(144, nf * 100);
         knobtip(o5cx, o5y, "Center: 0 % = phantom (the front sits on L / R only), 100 % = discrete (hard C). Power stays the same (double-click = type a value, Alt+click = discrete)");
       );
       gk += 1;
     );
     // the correlation of the stereo downmix, right of the knobs (when there is room)
-    o5cx0 = o5x0 + 5 * o5sp + 16; o5cw = IOX + IOW - 14 - o5cx0;
+    o5cx0 = o5x0 + 5 * o5sp + 16; o5cw = omx2 - 12 - o5cx0;   // (ends left of the output meters and their level fields)
     o5cw >= 90 ? (
-      col(cMUTED, 1); gfx_setfont(4); txt("Correlation · stereo downmix", o5cx0, o5y - 13, 0);
+      col(cMUTED, 1); gfx_setfont(4); txt(o5cw >= 190 ? "Correlation · stereo downmix" : "Downmix corr.", o5cx0, o5y - 13, 0);
       crv = crvS; corrbar(o5cx0, o5y + 2, o5cw, crv); crv <= 1.5 ? sprintf(#w1, "%+.2f", crv) : strcpy(#w1, "–");
       col(crvC, 1); gfx_setfont(2); txt(#w1, o5cx0 + o5cw, o5y - 13, 2);
       tipbox(o5cx0, o5y - 20, o5cw, 30, "Correlation of the stereo downmix of the 5.1 output (Lo = L + 0.7 C + 0.7 Ls, Ro = R + 0.7 C + 0.7 Rs, without LFE): +1 = mono, 0 = wide, below 0 = parts cancel when the mix is folded down to stereo or mono");
@@ -9247,27 +9306,28 @@ col(cSTAGE, 1); RR(VX + 8, VY + 24, VW - 16, VH - 50, 7);   // the stage the roo
 // source, listener and the reflectors (up to the area's size; taller ones: Fit) - so the area fills the view like a room
 pHt = roomH; isfree ? ( pHt = max(1.2, max(sz, lz) + 0.4);
   vopt[RFB + 14] < 0.5 ? ( vopt[RFB] >= 0.5 ? pHt = max(pHt, min(vopt[RFB + 5], max(roomW, roomD))); vopt[RFB + 6] >= 0.5 ? pHt = max(pHt, min(vopt[RFB + 11], max(roomW, roomD))); ); );
+stgRB = VW >= 230 && VH >= 170 ? 20 : 0;   // room for the bottom row (source pill, Handles, Doppler, 5.1 chips) under the room and its width line
 pS = 0; k3 = 0.58; kY3 = 0.58; kXb = 0.4;   // (the depth skew stays 0.4 - the look since; a variable-name clash had fixed it there)
-loop(10, kx3 = 0.22 + (0.58 - k3) * 0.9; t3 = min((VW - 96) / (roomW + kx3 * roomD), (VH - 80) / (k3 * roomD + 0.95 * pHt));
+loop(10, kx3 = 0.22 + (0.58 - k3) * 0.9; t3 = min((VW - 96) / (roomW + kx3 * roomD), (VH - 80 - stgRB) / (k3 * roomD + 0.95 * pHt));
   t3 > pS * 1.03 ? ( pS = t3; kY3 = k3; kXb = 0.4;  ); k3 -= 0.02; );
 pKX = kXb * pS; pKY = kY3 * pS; pSZ = 0.95 * pS;
 pX0 = VX + (VW - pS * (roomW + kXb * roomD)) / 2;
-pY0 = VY + 28 + (VH - 80 - pS * (kY3 * roomD + 0.95 * pHt)) / 2 + 0.95 * pHt * pS;
+pY0 = VY + 28 + (VH - 80 - stgRB - pS * (kY3 * roomD + 0.95 * pHt)) / 2 + 0.95 * pHt * pS;
 // PLAN: straight from above - x to the right, y (back wall -> front) down, height not shown; to scale
 planv ? (
-  pS = min((VW - 96) / roomW, (VH - 100) / roomD); pKX = 0; pKY = pS; pSZ = 0;
-  pX0 = VX + (VW - pS * roomW) / 2; pY0 = VY + 46 + (VH - 100 - pS * roomD) / 2;
+  pS = min((VW - 96) / roomW, (VH - 100 - stgRB) / roomD); pKX = 0; pKY = pS; pSZ = 0;
+  pX0 = VX + (VW - pS * roomW) / 2; pY0 = VY + 46 + (VH - 100 - stgRB - pS * roomD) / 2;
 );
 // SIDE VIEW (3D tab, chip "Side"): the room from the side, to scale - the depth to the right (back wall at the left), the height up; the width is not shown
 // FRONT VIEW (chip "Front"): the room from the front wall, to scale - x to the right, the height up; the depth is not shown. sidev: 0 = 3D, 1 = Side, 2 = Front
 sidevOn = vtab == 1 && sidev > 0; frontv = sidevOn && sidev == 2;
 sidevOn && !frontv ? (
-  pS = min((VW - 96) / roomD, (VH - 100) / pHt); pKX = pS; pKY = 0.0001 * pS; pSZ = pS;
-  pX0 = VX + (VW - pS * roomD) / 2; pY0 = VY + 46 + (VH - 100 - pS * pHt) / 2 + pS * pHt;
+  pS = min((VW - 96) / roomD, (VH - 100 - stgRB) / pHt); pKX = pS; pKY = 0.0001 * pS; pSZ = pS;
+  pX0 = VX + (VW - pS * roomD) / 2; pY0 = VY + 46 + (VH - 100 - stgRB - pS * pHt) / 2 + pS * pHt;
 );
 frontv ? (
-  pS = min((VW - 96) / roomW, (VH - 100) / pHt); pKX = 0.0001 * pS; pKY = 0.0001 * pS; pSZ = pS;
-  pX0 = VX + (VW - pS * roomW) / 2; pY0 = VY + 46 + (VH - 100 - pS * pHt) / 2 + pS * pHt;
+  pS = min((VW - 96) / roomW, (VH - 100 - stgRB) / pHt); pKX = 0.0001 * pS; pKY = 0.0001 * pS; pSZ = pS;
+  pX0 = VX + (VW - pS * roomW) / 2; pY0 = VY + 46 + (VH - 100 - stgRB - pS * pHt) / 2 + pS * pHt;
 );
 // while an edge or a size label is dragged the projection holds still as long as the room fits into it: the edge stays
 // under the mouse (smaller room: no zoom-in that would pull the edge away). A room that grows beyond it: the view zooms out.
@@ -10683,11 +10743,11 @@ zrh ? ( tipon = 1; tipforce = 0; tipstr = zoomv ? "Back to the normal view (Esc 
 zoomv ? ( SIX = ZBX + 14; );
 // MORPH in the heading (tabs): a fader beside the snapshot name - off, 1 … 16 = that snapshot, between = a blend; automatable
 tabm && !zoomv ? (
-  mrk = slider64; mphx = VX + VW - 78 - 182 - 150;
+  mrk = slider64; mphx = VX + VW - 78 - 212 - 134;
   mrk < 1 ? strcpy(#fv, "off") : ( abs(mrk - floor(mrk + 0.5)) < 0.005 ? sprintf(#fv, "snapshot %d", floor(mrk + 0.5)) : sprintf(#fv, "%d → %d  %.0f %%", floor(mrk), floor(mrk) + 1, (mrk - floor(mrk)) * 100) );
   kmap(0, 0, 16, 1);
-  nf = hsl(33, mphx, vay - 7, 136, "Morph", #fv, mrk / 16, 0, cRMTT);
-  tipbox(mphx - 4, vay - 9, 144, 18, "Snapshot morph (automatable): off, 1 … 16 = that snapshot, in between = blend into the next one (3.5 = half 3, half 4). Automate it in REAPER to change rooms with the picture – double-click = type a value");
+  nf = hsl(33, mphx, vay - 7, 116, "Morph", #fv, mrk / 16, 0, cRMTT);
+  tipbox(mphx - 4, vay - 9, 124, 18, "Snapshot morph (automatable): off, 1 … 16 = that snapshot, in between = blend into the next one (3.5 = half 3, half 4). Automate it in REAPER to change rooms with the picture – double-click = type a value");
   kchg ? setp(64, nf < 0.5 / 16 ? 0 : nf * 16);
 );
 // HIDE / SHOW the room view (Expert, also key V): hidden = a bar with a live mini plan, every other module gets the room
@@ -12653,6 +12713,7 @@ dmenu ? (
 // Draws the popup menus: room presets (search, my rooms), motion presets, free field presets and source model menu
 function gfxp13()
 (
+mmflush(0);
 thm_open ? (
   col(cINK, 0.14); RR(thmx + 1, thmy + 3, thmw, thmh, 8);
   col(cSURF, 1); RR(thmx, thmy, thmw, thmh, 8); col(cBORD, 1); RRO(thmx, thmy, thmw, thmh, 8);
@@ -13402,17 +13463,13 @@ gfxp15();
         + floor(hIn) * 13 + floor(hOut) * 17 + floor(hIL * 10) * 31 + floor(hIR * 10) * 37 + floor(hOL * 10) * 41 + floor(hOR * 10) * 43 + (gwarn > 0 && time_precise() - lastblk < 0.3) * floor(time_precise() * 8) * 19 + floor(dbs(lmgv) * 4) * 29 + (time_precise() - lastblk > 0.3) * 31 + floor(time_precise() / 1.5) * 23 + (secopen(7) && time_precise() - lastblk < 3) * floor(time_precise() * 25) * 41 + floor((crvS > 1.5 ? 3 : crvS) * 50 + 0.5) * 43;   // the displayed (calm) correlation decides the repaint - the raw value changed every frame and repainted the meters and the mini meter for nothing
   // an open menu, panel or page lies on top: no repaint of the section through it - the next frame is a full one
   ovlon = rsave || rmenu || smenu || fmenu || bmenu || kmenu || wmenu || emenu || helpon || xpon || dmenu || tpvis || snedit || shpin || shcur || hlpon || snctx || mpmenu || ffpmenu || rpmenu || kovl;   // + the Motion, Free field and Reflector menus and the keys page
+  iokey += floor(dbs(qPK[2]) * 2) * 47 + floor(dbs(qPK[3]) * 2) * 53 + floor(dbs(qPK[4]) * 2) * 59 + floor(dbs(qPK[5]) * 2) * 61;
+  ((mouse_cap & 1) ? -1 : mmover()) != mmHovL ? ( fullcnt = 0; );   // the mouse came onto / left a header meter: the large one appears / goes with a full frame
   iokey != lastiokey ? (
     !zoomv && !szoom ? ( ovlon ? ( !(hlpon || kovl) ? ( fullcnt = 0; ); ) : ( col(cBG, 1); R(IOX - 1, IOY - 1, IOW + 2, IOH + 2); drawio(); rzon && rzok(basic ? 22 : 7) ? rcdraw(basic ? 44 : 7); ); );   // (its corner grip lies inside: drawn again)
 // the mini correlation meter in the strip moves too - also in Tabs, where another module is open (szoom)
     mcOn && !ovlon && (tabm || (!zoomv && !szoom)) ? ( mgsS = gs; mgxS = gox; mgyS = goy; gs = mcGS; gox = mcGX; goy = mcGY; setfonts(); col(tabm ? cBG : cSURF, 1); R(mcX - 2, mcCY - 8, mcW + 4, 16); mcorrdraw(mcX, mcCY); gs = mgsS; gox = mgxS; goy = mgyS; setfonts(); );
-    // the small In / Out meters in the module headers
-    !ovlon ? (
-      mgsS = gs; mgxS = gox; mgyS = goy; gk = 0;
-      loop(mmN, gs = mmB[gk * 5 + 2]; gox = mmB[gk * 5 + 3]; goy = mmB[gk * 5 + 4];
-        col(cSURF, 1); R(mmB[gk * 5] - 0.5, mmB[gk * 5 + 1] - 7, 17.5, 14); mmeter(mmB[gk * 5], mmB[gk * 5 + 1]); gk += 1; );
-      gs = mgsS; gox = mgxS; goy = mgyS;
-    );
+    !ovlon ? mmflush(1);   // the small In / Out meters in the module headers
     lastiokey = iokey; );
 );   // end of: full / partial frame
 

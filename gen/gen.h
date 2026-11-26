@@ -1115,9 +1115,11 @@ struct Gen : Runtime {
   double g_mm0y = 0;
   double g_mmb = 0;
   double g_mmcap = 0;
+  double g_mmcur = 0;
   double g_mmcx = 0;
   double g_mmcy = 0;
   double g_mmdrag = 0;
+  double g_mmhovl = 0;
   double g_mmn = 0;
   double g_mmtc = 0;
   double g_mnvb = 0;
@@ -2520,8 +2522,13 @@ struct Gen : Runtime {
   double F_mhp(double, double, double);
   double F_mixc(double, double, double);
   double F_mloc(double, double, double);
-  double F_mmbar(double, double, double, double);
-  double F_mmeter(double, double);
+  double F_mmbar(double, double, double, double, double, double);
+  double F_mmdraw(double, double);
+  double F_mmflush(double);
+  double F_mmout(double);
+  double F_mmover();
+  double F_mmpop(double, double);
+  double F_mmwd();
   double F_modeset(double);
   double F_modreset();
   double F_modstep(double);
@@ -2669,6 +2676,7 @@ struct Gen : Runtime {
   double F_segd(double, double, double, double, double, double);
   double F_segp(double, double, double, double, double, double, double, double, double);
   double F_segtrack(double, double, double, double);
+  double F_set51(double, double);
   double F_setalpha(double);
   double F_setdens(double);
   double F_setfonts();

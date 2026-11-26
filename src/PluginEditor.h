@@ -34,6 +34,7 @@ private:
     int updState = 0;
     std::string updUrl;
     int lastW = 0, lastH = 0; double sizeChangeMs = -1.0e9;   // live resize: frames wait until the size stands still
+    bool freshEditor = true;
     int sysDarkAge = 0; bool sysDark = false;   // the computer's dark mode (Interface: System)
     double nextFrameMs = 0, lastPaintMs = 0;
     float lastPaintScale = 1.0f, candidateScale = 1.0f;

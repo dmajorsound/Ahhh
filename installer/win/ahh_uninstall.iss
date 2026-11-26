@@ -1,10 +1,10 @@
 ; Ahh uninstaller for Windows (Inno Setup 6): removes Ahh and Roomservice (its name up to 1.0.4), VST3 and CLAP.
 ; Projects and presets stay untouched. ISCC /DAppVer=1.0.5 /DFileVer=1.0.5
 #ifndef AppVer
-  #define AppVer "1.1.0"
+  #define AppVer "1.1.1"
 #endif
 #ifndef FileVer
-  #define FileVer "1.1.0"
+  #define FileVer "1.1.1"
 #endif
 
 [Setup]
@@ -44,6 +44,16 @@ FinishedLabelNoIcons=Ahh has been removed. Rescan your plug-ins in your Applicat
 FinishedLabel=Ahh has been removed. Rescan your plug-ins in your Applications.
 
 [Code]
+// white behind the artwork on every page, so the logo never sits in a box of another color
+procedure InitializeWizard();
+begin
+  WizardForm.Color := clWhite;
+  WizardForm.MainPanel.Color := clWhite;
+  WizardForm.InnerPage.Color := clWhite;
+  WizardForm.WelcomePage.Color := clWhite;
+  WizardForm.FinishedPage.Color := clWhite;
+end;
+
 procedure Gone(Path: String; IsDir: Boolean; var Failed: Boolean);
 begin
   if IsDir then begin

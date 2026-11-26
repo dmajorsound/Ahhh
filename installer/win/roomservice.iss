@@ -1,9 +1,9 @@
 ; Roomservice installer for Windows (Inno Setup 6). The version comes from the build: ISCC /DAppVer=1.0.1 /DFileVer=1.0.1
 #ifndef AppVer
-  #define AppVer "1.1.0"
+  #define AppVer "1.1.1"
 #endif
 #ifndef FileVer
-  #define FileVer "1.1.0"
+  #define FileVer "1.1.1"
 #endif
 
 [Setup]
@@ -45,9 +45,20 @@ Name: "full"; Description: "VST3 and CLAP"
 Name: "custom"; Description: "Choose formats"; Flags: iscustom
 
 [Components]
-Name: "vst3"; Description: "VST3 (REAPER and most other hosts)"; Types: full custom
-Name: "clap"; Description: "CLAP (REAPER, Bitwig Studio and other hosts that support CLAP)"; Types: full custom
+Name: "vst3"; Description: "VST3 (Nuendo, REAPER and most other DAWs)"; Types: full custom
+Name: "clap"; Description: "CLAP (REAPER, Bitwig Studio and other DAWs that support CLAP)"; Types: full custom
 
 [Messages]
 WelcomeLabel1=Ahh!%nRoom Simulation
 WelcomeLabel2=This installs Ahh as VST3 and CLAP plug-in into the common plug-in folders.%n%nAfterwards, rescan your plug-ins in your Applications.
+
+[Code]
+// white behind the artwork on every page, so the logo never sits in a box of another color
+procedure InitializeWizard();
+begin
+  WizardForm.Color := clWhite;
+  WizardForm.MainPanel.Color := clWhite;
+  WizardForm.InnerPage.Color := clWhite;
+  WizardForm.WelcomePage.Color := clWhite;
+  WizardForm.FinishedPage.Color := clWhite;
+end;

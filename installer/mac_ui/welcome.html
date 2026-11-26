@@ -5,9 +5,16 @@ html, body { height: 100%; margin: 0; }
 body { font: 13px -apple-system, "Helvetica Neue", sans-serif; color: #333;
        display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 @media (prefers-color-scheme: dark) { body { color: #e6e6e6; } }
+.icon { width: 96px; margin-bottom: 20px; }
+.brand { position: absolute; top: 14px; right: 16px; width: 44px; }
 h1 { font-size: 17px; margin: 0 0 4px; }
 p { margin: 0; color: #888; }
 </style></head><body>
+<picture>
+  <source srcset="logo-dark.png" media="(prefers-color-scheme: dark)">
+  <img class="brand" src="logo.png" alt="dmajorsound">
+</picture>
+<img class="icon" src="icon.png" alt="Ahh!">
 <h1>Ahh! &ndash; Room Simulation</h1>
-<p>Installs Ahh as VST3, Audio Unit and CLAP. On the next page you can untick the formats you do not need. Afterwards, rescan your plug-ins in your Applications.</p>
+<p>Installs Ahh as VST3, Audio Unit and CLAP. On the next page you can untick the formats you do not need. Quit your DAW first. Afterwards, rescan your plug-ins in your DAW.</p>
 </body></html>

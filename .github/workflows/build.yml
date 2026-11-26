@@ -1,5 +1,5 @@
 # Builds Ahh (called Roomservice up to 1.0.4) on GitHub's own Macs and PCs: macOS VST3 + AU + CLAP (Universal: Apple Silicon and Intel,
-# ad-hoc signed), Windows VST3 + CLAP, plus installers (Mac .pkg, Windows .exe) with the dmajorsound artwork.
+# ad-hoc signed), Windows VST3 + CLAP, plus installers (Mac .dmg, Windows .exe) with the dmajorsound artwork.
 # The results are under "Actions" -> the run -> "Artifacts".
 # "Run workflow" with a tag (e.g. v1.0.1) also publishes the installers as a GitHub release.
 # Runs only when started by hand: this repository is private, and Mac build minutes are limited there.
@@ -14,9 +14,9 @@ on:
         default: ""
 
 env:
-  VERSION: "1.1.0"            # shown in the installers
-  FILEVER: "1.1.0"            # used in the file names
-  PKGVER: "1.1.0"             # numeric version for the macOS package receipts
+  VERSION: "1.1.1"            # shown in the installers
+  FILEVER: "1.1.1"            # used in the file names
+  PKGVER: "1.1.1"             # numeric version for the macOS package receipts
   CLAP_JUCE_COMMIT: 3837f4a6ed2ab0ba46aba69ae5b7041c7c64ce74   # clap-juce-extensions (CLAP format)
   JUCE_COMMIT: d60b7a78030661574a615b586d9325ba7a7fa7dd   # JUCE 9.0.5, the version the port is tested with
 
@@ -97,7 +97,7 @@ jobs:
           mk Ahh.component au /Library/Audio/Plug-Ins/Components
           mk Ahh.clap clap /Library/Audio/Plug-Ins/CLAP
           mkdir -p ui
-          cp installer/mac_ui/welcome.html ui/
+          cp installer/mac_ui/welcome.html installer/mac_ui/logo.png installer/mac_ui/logo-dark.png installer/mac_ui/icon.png ui/
           tiffutil -cathidpicheck installer/mac_ui/background.png installer/mac_ui/background@2x.png -out ui/background.tiff
           tiffutil -cathidpicheck installer/mac_ui/background-darkAqua.png installer/mac_ui/background-darkAqua@2x.png -out ui/background-darkAqua.tiff
           sed "s/VERSION/$PKGVER/g" installer/mac_ui/distribution.xml > distribution.xml
@@ -108,11 +108,55 @@ jobs:
           cp installer/mac_ui/uninstall.html ui/
           sed "s/VERSION/$PKGVER/g" installer/mac_ui/uninstall.xml > uninstall.xml
           productbuild --distribution uninstall.xml --resources ui --package-path . "Ahh_${FILEVER}_uninstaller_mac.pkg"
-          ls -la Ahh_*_mac.pkg
+          # disk image like OLAAF: installer, the Privacy & Security shortcut and the uninstaller in one window
+          mkdir -p dmg/.background
+          cp "Ahh_${FILEVER}_installer_mac.pkg" "dmg/Install Ahh.pkg"
+          cp "Ahh_${FILEVER}_uninstaller_mac.pkg" "dmg/Uninstall Ahh.pkg"
+          cat > "dmg/Blocked? Open Privacy & Security.webloc" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>URL</key><string>x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension</string>
+          </dict></plist>
+          PLIST
+          sed -i '' 's/^          //' "dmg/Blocked? Open Privacy & Security.webloc"
+          plutil -lint "dmg/Blocked? Open Privacy & Security.webloc"
+          tiffutil -cathidpicheck installer/mac_dmg/background.png installer/mac_dmg/background@2x.png -out dmg/.background/background.tiff
+          hdiutil create -volname "Ahh $FILEVER" -srcfolder dmg -ov -format UDRW -fs HFS+ rw.dmg
+          DEV=$(hdiutil attach -readwrite -noverify -noautoopen rw.dmg | grep -E '^/dev/' | head -1 | awk '{print $1}')
+          sleep 2
+          osascript <<OSA || echo "Finder layout skipped"
+          tell application "Finder"
+            tell disk "Ahh $FILEVER"
+              open
+              set current view of container window to icon view
+              set toolbar visible of container window to false
+              set statusbar visible of container window to false
+              set the bounds of container window to {200, 120, 840, 562}
+              set vo to the icon view options of container window
+              set arrangement of vo to not arranged
+              set icon size of vo to 64
+              set text size of vo to 12
+              set background picture of vo to file ".background:background.tiff"
+              set position of item "Install Ahh.pkg" of container window to {150, 160}
+              set position of item "Blocked? Open Privacy & Security.webloc" of container window to {330, 160}
+              set position of item "Uninstall Ahh.pkg" of container window to {530, 160}
+              update without registering applications
+              delay 2
+              close
+            end tell
+          end tell
+          OSA
+          sync
+          hdiutil detach "$DEV" || hdiutil detach -force "$DEV"
+          hdiutil convert rw.dmg -format UDZO -imagekey zlib-level=9 -o "Ahh_${FILEVER}_installer_mac.dmg"
+          ls -la Ahh_*_mac.pkg Ahh_*_mac.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: Ahh_mac
-          path: Ahh_*_mac.pkg
+          path: |
+            Ahh_*_installer_mac.dmg
+            Ahh_*_uninstaller_mac.pkg
 
   windows:
     name: Windows
@@ -173,4 +217,4 @@ jobs:
             gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag
           fi
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Ahh! $VERSION" \
-            --latest --notes-file notes.txt dl/Ahh_mac/*.pkg dl/Ahh_windows/*.exe
+            --latest --notes-file notes.txt dl/Ahh_mac/*.dmg dl/Ahh_mac/*.pkg dl/Ahh_windows/*.exe

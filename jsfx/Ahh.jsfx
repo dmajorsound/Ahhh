@@ -8252,7 +8252,7 @@ snctx ? (
 // bar takes it), the wheel scrolls it; on the help page the button "All keys ..." opens the keys page
 (kovl || hlpon) && (click || rclick) ? (
   sqr(mouse_x - pxX) + sqr(mouse_y - pxY) <= sqr(pxR + 1) || !(mouse_x >= pwX0 && mouse_x < pwX1 && mouse_y >= pwY0 && mouse_y < pwY1) ? ( kovl = 0; hlpon = 0; ) : (
-    hlpon && click && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= max(hkY0, pbY0) && mouse_y < min(hkY1, pbY1) ? ( hlpon = 0; kovl = 1; ) : ( pgClk = click; ); );
+    hlpon && click && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1 ? ( hlpon = 0; kovl = 1; ) : ( pgClk = click; ); );
   click = 0; rclick = 0; mouse_wheel = 0;
 );
 (kovl || hlpon) && mouse_wheel != 0 ? ( pgSc = min(max(pgSc - mouse_wheel / 120 * 40, 0), pgMax); mouse_wheel = 0; );
@@ -10374,7 +10374,7 @@ function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
 (
   cw = min(WT - 24, 780); two = cw >= 640; hpch = min(HT - 24, max(200, hlpH + 54));
   // (the only thing that changes on this page: the button at its end under the mouse)
-  pgopen(1, cw, hpch, max(hlpH, 100), "Ahh! – how it works", mx >= (WT - cw) / 2 + cw - 200 && mx < (WT - cw) / 2 + cw - 20 && my + pgSc >= pgBY + hlpYr && my + pgSc < pgBY + hlpYr + 20) ? (
+  pgopen(1, cw, hpch, max(hlpH, 100), "Ahh! – how it works", 0) ? (
   cx = pgCX; cy = pgBY - 44;
   w1 = two ? cw / 2 - 34 : cw - 40; x1 = cx + 20; x2 = two ? cx + cw / 2 + 14 : x1;
   y = cy + 54;
@@ -10392,11 +10392,13 @@ function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
   y += hlpsec(x2, y, w1, "Most used keys", "1 … 9 tabs (Tabs view) or snapshots  ·  Ctrl/Cmd+Z undo  ·  arrows move the listener  ·  [ ] tabs  ·  0 Tabs / All  ·  Z zoom  ·  V Stage View  ·  Esc closes  ·  hold Ctrl/Cmd = help text under the mouse  ·  ? every key");
   yb = max(ya, y) + 4;
   // the keys page (its screen place is kept for the click test at the start of the next frame)
-  col(inbox(cx + cw - 200, yb, 180, 20) ? cHAIR : cLINE, 1); RR(cx + cw - 200, yb, 180, 20, 6); col(cTEXT, 1); gfx_setfont(6); txt("All keys and mouse actions", cx + cw - 110, yb + 10, 1);
-  hlpYr = yb - pgBY; hlpH = hlpYr + 34;                                               // the body as tall as its text (next frame)
+  hlpYr = yb - pgBY; hlpH = hlpYr + 10;                                               // the body as tall as its text (next frame)
   );
   pgclose();
-  hkX0 = gox + (pgCX + cw - 200) * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + (pgBY + hlpYr - pgSc) * gs; hkY1 = hkY0 + 20 * gs;   // (screen place, scrolled)
+  // "All keys and mouse actions": in the page's fixed head, top right beside the close button - no scrolling needed
+  hkbx = pgCX + cw - 36 - 180; hkby = pgCY + 6;
+  col(inbox(hkbx, hkby, 180, 20) ? cHAIR : cLINE, 1); RR(hkbx, hkby, 180, 20, 6); col(cTEXT, 1); gfx_setfont(6); txt("All keys and mouse actions", hkbx + 90, hkby + 10, 1);
+  hkX0 = gox + hkbx * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + hkby * gs; hkY1 = hkY0 + 20 * gs;   // (screen place for the click test)
 );
 // a label in the room view: title in its color, one line below; kept inside the view
 LBB = 4194304 + 44200;   // labels already placed in this frame (x, y, w) - a new one moves out of their way

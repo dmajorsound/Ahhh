@@ -837,7 +837,6 @@ struct Gen : Runtime {
   double g_hlph = 0;
   double g_hlpon = 0;
   double g_hlpw = 0;
-  double g_hlpyr = 0;
   double g_hmax = 0;
   double g_ho5 = 0;
   double g_hol = 0;

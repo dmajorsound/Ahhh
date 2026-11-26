@@ -1936,7 +1936,7 @@ void Gen::initStrings() {
   setLiteral(11931, "Input gain");
   setLiteral(11932, "Snapshot morph");
   setLiteral(11933, "Module mix");
-  setLiteral(11934, "V 1.2.1 - developed with AI assistance");
+  setLiteral(11934, "V 1.2.2 - developed with AI assistance");
   setLiteral(11935, "00000000000000000000000000000000000000000000000000000000000000000000016adddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddbb98653100000000000000000000000000000000000000000");
   setLiteral(11936, "000000000000000000000000000000000000000000000000000000000000000000002dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb863000000000000000000000000000000000000");
   setLiteral(11937, "00000000000000000000000000000000000000000000000000000000000000000000cfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeb7300000000000000000000000000000000");

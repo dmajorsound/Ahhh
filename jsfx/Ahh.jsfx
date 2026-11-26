@@ -8273,7 +8273,8 @@ snctx ? (
 // bar takes it), the wheel scrolls it; on the help page the button "All keys ..." opens the keys page
 (kovl || hlpon) && (click || rclick) ? (
   sqr(mouse_x - pxX) + sqr(mouse_y - pxY) <= sqr(pxR + 1) || !(mouse_x >= pwX0 && mouse_x < pwX1 && mouse_y >= pwY0 && mouse_y < pwY1) ? ( kovl = 0; hlpon = 0; ) : (
-    hlpon && click && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1 ? ( hlpon = 0; kovl = 1; ) : ( pgClk = click; ); );
+    hlpon && click && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1 ? ( hlpon = 0; kovl = 1; ) : (
+    hlpon && click && mouse_x >= mnX0 && mouse_x < mnX1 && mouse_y >= hkY0 && mouse_y < hkY1 ? ( mango = 1; click = 0; ) : ( pgClk = click; ); ); );
   click = 0; rclick = 0; mouse_wheel = 0;
 );
 (kovl || hlpon) && mouse_wheel != 0 ? ( pgSc = min(max(pgSc - mouse_wheel / 120 * 40, 0), pgMax); mouse_wheel = 0; );
@@ -8829,7 +8830,7 @@ pgst = (kovl || hlpon) && kovl == kovlw && hlpon == hlpw;
 pgkey = pgSc * 3.7 + pgDrag * 811.3 + hlpH * 1.3
       + (sqr(mouse_x - pxX) + sqr(mouse_y - pxY) <= sqr(pxR + 1)) * 1013.9
       + (mouse_x >= pbX0 && mouse_x < pbX1 && mouse_y >= pbY0 && mouse_y < pbY1) * 2027.3
-      + (hlpon && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3049.7;
+      + (hlpon && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3049.7 + (hlpon && mouse_x >= mnX0 && mouse_x < mnX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3061.3;
 pgst ? ( ukey += pgkey; );
 updav ? ( ukey += (floor(time_precise() * 1.6) % 2) * 5171.3; );
 dofull = pgst ? ( ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 3) || (lastcap & 3) || mouse_wheel != 0 )
@@ -10420,6 +10421,11 @@ function hlpdraw() local(cw, two, cx, cy, hpch, x1, x2, w1, y, ya, yb)
   hkbx = pgCX + cw - 36 - 180; hkby = pgCY + 6;
   col(inbox(hkbx, hkby, 180, 20) ? cHAIR : cLINE, 1); RR(hkbx, hkby, 180, 20, 6); col(cTEXT, 1); gfx_setfont(6); txt("All keys and mouse actions", hkbx + 90, hkby + 10, 1);
   hkX0 = gox + hkbx * gs; hkX1 = hkX0 + 180 * gs; hkY0 = goy + hkby * gs; hkY1 = hkY0 + 20 * gs;   // (screen place for the click test)
+  // "Read manual": opens the manual on dmajorsound.com in the browser (the host does it, see mango)
+  mnbx = hkbx - 8 - 96;
+  col(inbox(mnbx, hkby, 96, 20) ? cHAIR : cLINE, 1); RR(mnbx, hkby, 96, 20, 6); col(cTEXT, 1); gfx_setfont(6); txt("Read manual", mnbx + 48, hkby + 10, 1);
+  mnX0 = gox + mnbx * gs; mnX1 = mnX0 + 96 * gs;
+  tipbox(mnbx, hkby, 96, 20, "Opens the Ahh! manual on dmajorsound.com in your browser");
 );
 // a label in the room view: title in its color, one line below; kept inside the view
 LBB = 4194304 + 44200;   // labels already placed in this frame (x, y, w) - a new one moves out of their way

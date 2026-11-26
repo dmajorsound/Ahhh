@@ -129,6 +129,10 @@ void RoomServiceEditor::timerCallback() {
     }
     latchedButtons = 0;
     if (g->g_updgo != 0.0) { g->g_updgo = 0.0; rs::UpdateCheck::openPage(updUrl); }
+    if (g->g_mango != 0.0) {   // Help: "Read manual"
+        g->g_mango = 0.0;
+        if (std::getenv("AHH_TEST_NOBROWSER") == nullptr) juce::URL("https://dmajorsound.com/software/ahh/manual.html").launchInDefaultBrowser();
+    }
     g->v_mouse_cap = liveCap;                     // the next frame sees the release
     // only what changed goes to the screen: nothing when the picture stands still, a meter's own area when it moves
     gfx.takeDirty(dirty);

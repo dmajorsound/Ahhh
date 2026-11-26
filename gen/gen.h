@@ -1060,6 +1060,7 @@ struct Gen : Runtime {
   double g_lx = 0;
   double g_ly = 0;
   double g_lz = 0;
+  double g_mango = 0;
   double g_maxin = 0;
   double g_mccy = 0;
   double g_mcgs = 0;
@@ -1131,6 +1132,8 @@ struct Gen : Runtime {
   double g_mnvl = 0;
   double g_mnvr = 0;
   double g_mnvt = 0;
+  double g_mnx0 = 0;
+  double g_mnx1 = 0;
   double g_moc = 0;
   double g_moddep = 0;
   double g_mol = 0;

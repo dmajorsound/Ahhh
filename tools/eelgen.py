@@ -18,7 +18,7 @@ BUILTIN_ARGC = {
     'slider': 1, 'sliderchange': 1, 'time_precise': 0,
     'sprintf': -2, 'strcpy': 2, 'strcat': 2, 'strcmp': 2, 'strlen': 1, 'str_getchar': -2, 'str_setlen': 2,
     'gfx_arc': -5, 'gfx_blit': -3, 'gfx_circle': -3, 'gfx_drawstr': -1, 'gfx_getchar': None, 'gfx_gradrect': -8,
-    'gfx_line': -4, 'gfx_measurestr': 3, 'gfx_rect': -4, 'gfx_roundrect': -5, 'gfx_setcursor': -1,
+    'gfx_line': -4, 'gfx_measurestr': 3, 'gfx_rect': -4, 'gfx_roundrect': -5, 'gfx_ahhicon': 3, 'gfx_setcursor': -1,
     'gfx_setfont': -1, 'gfx_setimgdim': 3, 'gfx_triangle': -6,
 }
 WRAP1 = {'sin': 'rt_sin', 'cos': 'rt_cos', 'tan': 'rt_tan', 'exp': 'rt_exp', 'log': 'rt_log', 'log10': 'rt_log10'}
@@ -251,7 +251,7 @@ class Gen:
         if name == 'gfx_measurestr':
             return 'gfx_measurestr(%s, %s, %s)' % (vals[0], self.lv(args[1]), self.lv(args[2])), 'V'
         if name in ('sprintf', 'gfx_drawstr', 'gfx_setfont', 'gfx_arc', 'gfx_blit', 'gfx_circle', 'gfx_getchar',
-                    'gfx_gradrect', 'gfx_line', 'gfx_rect', 'gfx_roundrect', 'gfx_setcursor', 'gfx_triangle', 'str_getchar',
+                    'gfx_gradrect', 'gfx_line', 'gfx_rect', 'gfx_roundrect', 'gfx_ahhicon', 'gfx_setcursor', 'gfx_triangle', 'str_getchar',
                     'slider_automate_idx', 'slider_automate_mask'):
             return '%s({%s})' % (name, ', '.join(vals)), 'V'
         return '%s(%s)' % (name, ', '.join(vals)), 'V'
@@ -340,7 +340,7 @@ def promotable(f):
 # A global that every piece of code assigns before it reads it, and that no called function touches in between, never
 # carries a value from one run to the next: each function / section gets its own C++ local for it (t_name). Variables
 # the C++ side reads or writes by name (HOST_VISIBLE) always stay real.
-HOST_VISIBLE = {'vopt', 'updav', 'updgo', 'gs', 'hlpon', 'kovl', 'helpon'}
+HOST_VISIBLE = {'vopt', 'updav', 'updgo', 'sysdark', 'gs', 'hlpon', 'kovl', 'helpon'}
 
 def temp_globals(funcs, trees, fglob):
     bodies = [(f.body, set(f.params) | set(f.locals)) for f in funcs.values()] + [(t, set()) for t in trees.values() if t is not None]

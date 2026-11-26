@@ -1604,11 +1604,11 @@
    "lo": 0.0,
    "hi": 1.0,
    "step": 1.0,
-   "label": "Loudspeaker layout",
+   "label": "Loudspeaker layout (always ITU)",
    "hidden": true,
    "enums": [
     "ITU",
-    "Film"
+    "ITU"
    ]
   },
   {
@@ -1712,6 +1712,56 @@
     "Off",
     "On"
    ]
+  },
+  {
+   "idx": 147,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 6.0,
+   "step": 0.1,
+   "label": "5.1 level L (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 148,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 6.0,
+   "step": 0.1,
+   "label": "5.1 level R (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 149,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 6.0,
+   "step": 0.1,
+   "label": "5.1 level C (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 150,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 6.0,
+   "step": 0.1,
+   "label": "5.1 level Ls (dB)",
+   "hidden": true,
+   "enums": null
+  },
+  {
+   "idx": 151,
+   "default": 0.0,
+   "lo": -24.0,
+   "hi": 6.0,
+   "step": 0.1,
+   "label": "5.1 level Rs (dB)",
+   "hidden": true,
+   "enums": null
   }
  ],
  "in_pins": 6,

@@ -148,7 +148,7 @@ slider133:12<-12,24,1>-Reflector 2 level (dB)
 slider134:0<0,1,1{On,Off}>-Reflectors bypass
 slider135:0<0,1,1{On,Off}>-Doppler when dragging by hand
 slider136:0<0,1,1{Stereo,5.1}>-Output format
-slider137:0<0,1,1{ITU,Film}>-Loudspeaker layout
+slider137:0<0,1,1{ITU,ITU}>-Loudspeaker layout (always ITU)
 slider138:30<15,45,0.1>-ITU front angle (deg)
 slider139:110<90,150,0.1>-ITU surround angle (deg)
 slider140:1.2<0.3,3,0.01>-Loudspeaker height (m)
@@ -158,6 +158,11 @@ slider143:0<-24,10,0.1>-LFE level (dB)
 slider144:100<0,100,0.1>-Phantom ... discrete center (%)
 slider145:0<0,1,1{Follows the listener,Fixed in the room}>-Loudspeaker ring
 slider146:0<0,1,1{Off,On}>-Source snaps to a speaker
+slider147:0<-24,6,0.1>-5.1 level L (dB)
+slider148:0<-24,6,0.1>-5.1 level R (dB)
+slider149:0<-24,6,0.1>-5.1 level C (dB)
+slider150:0<-24,6,0.1>-5.1 level Ls (dB)
+slider151:0<-24,6,0.1>-5.1 level Rs (dB)
 
 in_pin:left input
 in_pin:right input
@@ -182,7 +187,7 @@ strcpy(#verstr, "V 1.1.2 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
-NT = 49; NIMG = 25; NCL = 24; TS = 64; NSL = 119; NSN = 117;               // taps: 0 direct, 1-6 first order (N E S W floor ceiling), 7-24 second order, 25-48 early cluster; NSL = slider count, NSN = sliders in a snapshot
+NT = 49; NIMG = 25; NCL = 24; TS = 64; NSL = 119; NSN = 119;               // taps: 0 direct, 1-6 first order (N E S W floor ceiling), 7-24 second order, 25-48 early cluster; NSL = slider count, NSN = sliders in a snapshot
 
 MAXIN   = ceil(srate * 2.2) + 8;         // input delay line: 2nd-order images of the largest room (~480 m) + ITD + pre-delay
 LINEMAX = ceil(srate * 0.3) + 8;         // per FDN line
@@ -257,6 +262,7 @@ cvY = 0; function allocA(n) local(p) ( p = ALC; (p % 65536) + n > 65536 ? p = (f
 // the listener is held in the middle of the room, facing the screen wall - the source pans across the loudspeakers like in a
 // cinema panner and the room adds its acoustics (seen from the middle). base[60], base[61] = the ring's center, base[62] = its
 // radius, base[63] = its turn (radians, 0 = towards the top wall).
+MMCAP = 24; mmB = alloc(5 * MMCAP); mmN = 0;   // the small In / Out meters in the module headers: x, y, scale, offsets (GUI)
 SPKN = 6; SPKL = alloc(64); SPKG = alloc(64); qSnapK = -1;   // SPKL: read by the audio thread (@block), SPKG: the same list for the GUI - every thread fills its own, so no variable is written by both
 function spkset(base, ch, x, y, z, az, arr) local(p) ( p = base + ch * 8; p[0] = x; p[1] = y; p[2] = z; p[3] = az; p[4] = arr; p[5] = 0; );
 // the ring: ITU angles from the sliders (L / R +-front, Ls / Rs +-surround), Film with the fixed angles of a cinema seen from the
@@ -324,7 +330,7 @@ EDN = 1024; edB0 = alloc(4 * EDN); edB1 = edB0 + EDN; edB2 = edB1 + EDN; edB3 = 
 // qLP / qLPo: the tap's wall / air filter state for the loudspeaker read (the ear reads of the stereo path keep their own)
 qG5x = alloc(5 * TS); qG5c = alloc(5 * TS); qG5o = alloc(5 * TS); qLP = alloc(TS); qLPo = alloc(TS); memset(qG5x, 0, 17 * TS);
 // per sample, five values each: direct, early, their settled parts, the old set's parts, near-field state, tail, output, room sound, steering, bypass, meters
-QP5 = alloc(128); qDR = QP5; qER = QP5 + 8; qSDR = QP5 + 16; qSER = QP5 + 24; qODR = QP5 + 32; qOER = QP5 + 40; qNF = QP5 + 48; qLT = QP5 + 56; qO = QP5 + 64; qRM = QP5 + 72; qST = QP5 + 80; qBY = QP5 + 88; qPK = QP5 + 96; memset(QP5, 0, 128);
+QP5 = alloc(128); qDR = QP5; qER = QP5 + 8; qSDR = QP5 + 16; qSER = QP5 + 24; qODR = QP5 + 32; qOER = QP5 + 40; qNF = QP5 + 48; qLT = QP5 + 56; qO = QP5 + 64; qRM = QP5 + 72; qST = QP5 + 80; qBY = QP5 + 88; qPK = QP5 + 96; qVD = QP5 + 104; qVR = QP5 + 112; memset(QP5, 0, 128);   // qVD / qVR: peaks of the direct sound / the reflections per loudspeaker (the 5.1 vectorscope)
 qED = alloc(10 * EDN); memset(qED, 0, 10 * EDN); qEDL = alloc(10);   // early scattering: two allpasses per loudspeaker (lengths, see q5edset)
 qSTS = alloc(40); memset(qSTS, 0, 40);                                // bass steering: per loudspeaker the low and the high split (2 + 2 biquads)
 qBSS = alloc(16); qDKS = alloc(8); qPKS = alloc(16); memset(qBSS, 0, 40);   // tone shelf, dark low-pass, coincidence peak - per loudspeaker
@@ -930,6 +936,7 @@ dlsm = 1 - exp(-1 / (0.08 * srate));   // delay time: 80 ms glide (like tape - n
 dwr1 = 2 * $pi * 0.53 / srate; dwr2 = 2 * $pi * 0.61 / srate; dwr3 = 2 * $pi * 6.1 / srate; dwr4 = 2 * $pi * 6.7 / srate;   // tape: wow / flutter rates L, R
 dwA = 0.001 * srate; dfA = 0.00008 * srate; dwp2 = 1.9; dwp4 = 0.7;     // tape: wow depth 1 ms (dwA) and flutter depth 0.08 ms (dfA), in samples; dwp2 / dwp4 = start phases of the R oscillators (L start at 0)
 gwarn = 0;
+trsL = trsR = trsC = trsLs = trsRs = 1; trgL = trgR = trgC = trgLs = trgRs = 1;
 pkIL = pkIR = pkOL = pkOR = 0; hIL = hIR = hOL = hOR = -150; hO5 = -150; tO5 = 0; VSN = 24; vsB = alloc(2 * VSN); memset(vsB, 0, 2 * VSN); vsP = 0; tIL = tIR = tOL = tOR = 0; hTl = 0;
 pmdec = exp(-1 / (0.15 * srate));      // level meters: ~58 dB/s fall (time constant 150 ms)
 clipwarn = 0;
@@ -3063,7 +3070,7 @@ function fbd(i) ( i != 4 && i != 7 && i != 16; );
 // text at (x, yc): al 0 = left, 1 = centered, 2 = right; vertically centered on yc using the measured line height
 function txt(s, x, yc, al) local(px, py, tw2, th2)
 (
-  gclp && (x < clX0 || x > clX1 || yc < clY0 || yc > clY1) ? 0 : (
+  rvTX || (gclp && (x < clX0 || x > clX1 || yc < clY0 || yc > clY1)) ? 0 : (
   gfx_measurestr(s, tw2, th2);
   px = gox + x * gs; py = goy + yc * gs;
   gfx_x = floor((al == 1 ? px - tw2 / 2 : (al == 2 ? px - tw2 : px)) + 0.5);
@@ -3106,12 +3113,14 @@ function txtfit(s, x, yc, w) local(n)
 // Draws text s in the current color on a rounded 88 percent surface-color plate (4 px padding) at x,yc; al 0 left, 1 center, 2 right.
 function txtplate(s, x, yc, al) local(w, h, x0, tr, tg, tb)
 (
+  !rvTX ? (
   tr = gfx_r; tg = gfx_g; tb = gfx_b;
   w = tws(s) + 8; h = 14;
   x0 = al == 1 ? x - w / 2 : (al == 2 ? x - w : x);
   col(cSURF, 0.88); RR(x0, yc - h / 2, w, h, 4);
   gfx_r = tr; gfx_g = tg; gfx_b = tb; gfx_a = 1;
   txt(s, x0 + 4, yc, 0);
+  );
 );
 // automation notifications in the documented sliderX form (one slider per call)
 function sauto(i) (
@@ -3955,6 +3964,7 @@ function kovldraw() local(cw, ovch, cx, cy, c1, c2, y, ovkw, ovdw)
   krow(c1, y, "Plan: wall", "Drag = stretch (Alt: height, Ctrl/Cmd: size)", ovkw, ovdw); y += 25;
   krow(c1, y, "Room corner", "Drag = size (Ctrl/Cmd: all, Alt: height)", ovkw, ovdw); y += 25;
   krow(c1, y, "Wheel on floor", "Zoom the Stage View in / out 0.1 … 5x (Fit, 1:1)", ovkw, ovdw); y += 25;
+  krow(c1, y, "Shift + wheel", "Stage View: stereo width of the source (up = wider)", ovkw, ovdw); y += 25;
   krow(c1, y, "Module corner", "Drag = size, double-click = standard", ovkw, ovdw); y += 25;
   krow(c1, y, "Bar over tabs", "Drag = Stage View height, double-click = auto", ovkw, ovdw); y += 25;
   krow(c1, y, "Shift + click", "Module in the strip: solo it", ovkw, ovdw); y += 25;
@@ -4495,6 +4505,7 @@ function drawlock(x, yc, c) local(y)
 // a ball: color c, radius r (px at the page scale), lit from the top left; letter inside (S / L)
 function ball3d(x, y, r, c, s)
 (
+  b3tx = rvTX; rvTX = 0;   // (Labels off: the S and L on the balls stay)
 // matte - one flat color, a fine edge a little darker, the letter in white (B&W: source solid, listener a ring)
   monoOn ? (
     strcmp(s, "L") == 0 ? ( col(cSURF, 1); CIF(x, y, r, 1); col(cTEXT, 1); CIF(x, y, r, 0); CIF(x, y, r - 0.7, 0); CIF(x, y, r - 1.4, 0); col(cTEXT, 1); )
@@ -4507,6 +4518,7 @@ function ball3d(x, y, r, c, s)
     col(darkmode ? 0x101418 : 0xFFFFFF, 1);   // dark mode: light pastel balls, dark letter
   );
   gfx_setfont(6); txt(s, x, y + 0.5, 1);
+  rvTX = b3tx;
 );
 // direction arrow from the edge of a ball (center x0, y0, radius r) to x1, y1 (projected)
 function arrow3d(x0, y0, x1, y1, r, c, al) local(dx, dy, l, ex, ey)
@@ -4586,15 +4598,17 @@ function prospk() local(i, j, k, z, cx, cy, ang, px, py, lab, rr, tw, az, a)
   // LFE: its own small area (not a direction - the subwoofer is not panned), on the floor inside the ring, behind the listener
   a = $pi + SPKG[63];
   PJ(SPKG[60] + sin(a) * rr * 0.6, SPKG[61] - cos(a) * rr * 0.6, z * 0.25);
-  col(slider141 >= 0.5 ? cBORD : cLINE, 1); RR(qx - 14, qy - 7, 28, 13, 3);
+  !rvTX ? ( col(slider141 >= 0.5 ? cBORD : cLINE, 1); RR(qx - 14, qy - 7, 28, 13, 3); );
   col(slider141 >= 0.5 ? cMUTED : cDIM, 1); gfx_setfont(4); txt("LFE", qx, qy, 1);
   // the chip: layout, angles, where the ring sits, height - and the warning when the track has too few channels
   slider137 < 0.5 ? sprintf(#pskt, "5.1   ITU   %g / %g deg   %s   height %g m", slider138, slider139, slider145 >= 0.5 ? "in the room" : "at the listener", min(z, 99))
                   : sprintf(#pskt, "5.1   Film   25 / 100 deg   %s   height %g m", slider145 >= 0.5 ? "in the room" : "at the listener", min(z, 99));
-  !pro_on ? sprintf(#pskt, "5.1 needs 6 track channels - the track plays stereo");
-  gfx_setfont(4); tw = tws(#pskt) + 22;
-  col(cSURF, 0.9); RR(VX + 10, VY + 28, tw, 16, 8); col(!pro_on ? cWARN : cBORD, 1); RRO(VX + 10, VY + 28, tw, 16, 8);
-  col(!pro_on ? cWARN : cMUTED, 1); txt(#pskt, VX + 10 + tw / 2, VY + 36, 1);
+  !rvTX ? (
+  gfx_setfont(4); tw = tws(#pskt) + 22;   // (no warning about the track's channel count: a stereo source is moved in the 5.1 room as it is)
+  p51y = VY + (isfree ? 48 : 28);   // outdoors: under the FREE FIELD label
+  col(cSURF, 0.9); RR(VX + 10, p51y, tw, 16, 8); col(cBORD, 1); RRO(VX + 10, p51y, tw, 16, 8);
+  col(cMUTED, 1); txt(#pskt, VX + 10 + tw / 2, p51y + 8, 1);
+  );
 );
 // SOURCE PILL: stereo width and mono mix of the source, in the room view - visible and adjustable from every
 // module and in Basic, 136 x 20 (plus the Handles chip,) in the lower left corner of the plan / 3D view
@@ -4613,7 +4627,7 @@ function srcpill(x, y) local(on, nf, hit, dpw)
 // the stereo handles (the span of the source in the view) on / off - drawn only while the chip fits into the view
   x + 200 <= VX + VW - 8 ? (
     chip(x + 142, y + 3, 58, 14, "Handles", vopt[51] < 0.5, cSRTT) ? ( vopt[51] = vopt[51] >= 0.5 ? 0 : 1; click = 0; );
-    tipbox(x + 142, y + 3, 58, 14, vopt[51] < 0.5 ? "Stereo handles on (key H): the span of the source is always drawn with two ends you can drag – display only, the signal is not touched. Click: hide them (Alt+Shift+drag on the source ball still sets the width)" : "Stereo handles hidden (key H). Click: show them again");
+    tipbox(x + 142, y + 3, 58, 14, vopt[51] < 0.5 ? "Stereo handles on (key H): the span of the source is drawn with its two ends – Shift + mouse wheel in the Stage View sets the stereo width (up = wider, down = narrower). Click: hide them (Shift + wheel still works)" : "Stereo handles hidden (key H) – Shift + mouse wheel in the Stage View still sets the stereo width. Click: show them again");
   );
 // Doppler while dragging by hand (slider135): on = the real pitch glide, off = only the distance (level, filter, room)
   dpw = x + 264 <= VX + VW - 8 ? 58 : 44;   // a narrow view: the short label still fits
@@ -4621,34 +4635,25 @@ function srcpill(x, y) local(on, nf, hit, dpw)
     chip(x + 206, y + 3, dpw, 14, dpw > 50 ? "Doppler" : "Dop", slider135 < 0.5, cSRTT) ? ( slider135 = slider135 >= 0.5 ? 0 : 1; slider_automate(slider135); click = 0; );
     tipbox(x + 206, y + 3, dpw, 14, slider135 < 0.5 ? "Doppler on: dragging source or listener glides the delays – a real pitch change while they move (fast drags are audible). Click: off – only the distance changes (level, filter, room), no pitch. Motion has its own Doppler setting" : "Doppler off while dragging by hand: the pitch stays, only the distance changes. Click: on again (the real pitch glide)");
   );
-// RoomservicePro: the output format (Stereo | 5.1) and, in 5.1, the speaker layout (ITU | Film) - drawn while they fit into the view
-  x + 212 + dpw + 36 <= VX + VW - 8 ? (
-    chip(x + 212 + dpw, y + 3, 36, 14, "5.1", slider136 >= 0.5, cIOTT) ? ( slider136 = slider136 >= 0.5 ? 0 : 1; slider_automate(slider136); click = 0; );
-    tipbox(x + 212 + dpw, y + 3, 36, 14, slider136 >= 0.5 ? "Output 5.1: the room is rendered to six loudspeaker channels (L R C LFE Ls Rs). Needs a track with 6 channels, otherwise it plays stereo. Click: back to stereo" : "Output stereo. Click: 5.1 loudspeaker output (needs a track with 6 channels)");
-    slider136 >= 0.5 && x + 254 + dpw + 70 <= VX + VW - 8 ? (
-      segtrack(x + 254 + dpw, y + 2, 70, 16);
-      segp(x + 254 + dpw, y + 2, 70, 16, 2, 0, "ITU", slider137 < 0.5, cTEXT) ? ( slider137 = 0; slider_automate(slider137); click = 0; );
-      segp(x + 254 + dpw, y + 2, 70, 16, 2, 1, "Film", slider137 >= 0.5, cTEXT) ? ( slider137 = 1; slider_automate(slider137); click = 0; );
-      tipbox(x + 254 + dpw, y + 2, 35, 16, "ITU: the loudspeakers on a ring around the listener at the standard angles (30 degrees front, 110 degrees surround - adjustable)");
-      tipbox(x + 289 + dpw, y + 2, 35, 16, "Film: a cinema seen from the mixing position - L C R across the screen (25 degrees), the surrounds as arrays at the sides (100 degrees)");
-    );
+// 5.1 (switched in the top bar): the ITU layout is fixed (no Film layout any more) - the ring's place and Snap - drawn while they fit into the view
+  slider136 >= 0.5 ? (
     // the ring on the listener (it moves and turns with him) or in the middle of the room (the listener is held there: a cinema panner, the room adds its acoustics)
-    slider136 >= 0.5 && x + 330 + dpw + 96 <= VX + VW - 8 ? (
-      segtrack(x + 330 + dpw, y + 2, 96, 16);
-      segp(x + 330 + dpw, y + 2, 96, 16, 2, 0, "Listener", slider145 < 0.5, cTEXT) ? ( slider145 = 0; slider_automate(slider145); click = 0; );
-      segp(x + 330 + dpw, y + 2, 96, 16, 2, 1, "Room", slider145 >= 0.5, cTEXT) ? ( slider145 = 1; slider_automate(slider145); click = 0; );
-      tipbox(x + 330 + dpw, y + 2, 48, 16, "Ring at the listener: the loudspeakers sit around him and turn with his facing - move him towards a wall and that wall comes from the side, early and loud");
-      tipbox(x + 378 + dpw, y + 2, 48, 16, "Ring in the room: the listener is held in the middle, facing the screen - the source pans across the loudspeakers like in a cinema panner, the room adds its acoustics");
+    x + 212 + dpw + 96 <= VX + VW - 8 ? (
+      segtrack(x + 212 + dpw, y + 2, 96, 16);
+      segp(x + 212 + dpw, y + 2, 96, 16, 2, 0, "Listener", slider145 < 0.5, cTEXT) ? ( slider145 = 0; slider_automate(slider145); click = 0; );
+      segp(x + 212 + dpw, y + 2, 96, 16, 2, 1, "Room", slider145 >= 0.5, cTEXT) ? ( slider145 = 1; slider_automate(slider145); click = 0; );
+      tipbox(x + 212 + dpw, y + 2, 48, 16, "Ring at the listener: the loudspeakers sit around him and turn with his facing - move him towards a wall and that wall comes from the side, early and loud");
+      tipbox(x + 260 + dpw, y + 2, 48, 16, "Ring in the room: the listener is held in the middle, facing the screen - the source pans across the loudspeakers like in a cinema panner, the room adds its acoustics");
     );
     // snap: the direct sound on one loudspeaker (the nearest to the source's direction), the room stays around it
-    slider136 >= 0.5 && x + 432 + dpw + 64 <= VX + VW - 8 ? (
-      chip(x + 432 + dpw, y + 2, 64, 16, "Snap spk", slider146 >= 0.5, cSRTT) ? ( slider146 = slider146 >= 0.5 ? 0 : 1; slider_automate(slider146); click = 0; );
-      tipbox(x + 432 + dpw, y + 2, 64, 16, "Snap to loudspeaker: the direct sound sits on the one loudspeaker nearest to the source's direction - a hard channel assignment. Reflections and reverb still come from the room");
+    x + 314 + dpw + 64 <= VX + VW - 8 ? (
+      chip(x + 314 + dpw, y + 2, 64, 16, "Snap spk", slider146 >= 0.5, cSRTT) ? ( slider146 = slider146 >= 0.5 ? 0 : 1; slider_automate(slider146); click = 0; );
+      tipbox(x + 314 + dpw, y + 2, 64, 16, "Snap to loudspeaker: the direct sound sits on the one loudspeaker nearest to the source's direction - a hard channel assignment. Reflections and reverb still come from the room");
     );
   );
   kchg && !(on || devm) ? setp(98, nf * 200); kchg = 0;
   hit && mouse_wheel != 0 ? mouse_wheel = 0;   // (not the floor zoom)
-  tipbox(x + 55, y, 80, 20, devm ? "Source – stereo width: no effect with a device (a mono loudspeaker)" : on ? "Source – stereo width: off while mono mix is on" : "Source – stereo width: 100 % = as the input comes in, 0 % = mono, up to 200 % = wider (drag, wheel, Alt+click = 100 %; the same control as in the Source module, % or m there)");
+  tipbox(x + 55, y, 80, 20, devm ? "Source – stereo width: no effect with a device (a mono loudspeaker)" : on ? "Source – stereo width: off while mono mix is on" : "Source – stereo width: 100 % = as the input comes in, 0 % = mono, up to 200 % = wider (drag, wheel, Alt+click = 100 %; Shift + wheel anywhere in the Stage View; the same control as in the Source module, % or m there)");
 );
 // Draws the Mono mix toggle (slider110) at (x, y), label beside it if side else below; click flips it and sends automation.
 function monobtn(x, y, side) local(on) (
@@ -4689,7 +4694,7 @@ function drawspan() local(h, px, py, x1, y1, x2, y2, ok)
     spHov = spHL >= 12 && (sqr(mx - x1) + sqr(my - y1) < 64 || sqr(mx - x2) + sqr(my - y2) < 64);   // the mouse on a handle (the walls and edges stand back - tooltips and clicks)
     spHov || drag == 13 ? (
       col(cSRC, 0.9); CIF(x1, y1, 4.2, 0); CIF(x2, y2, 4.2, 0);
-      swfmt(); strcpy(#swt, "Stereo width "); strcat(#swt, #fv); strcat(#swt, " – drag the ends (Shift = fine) · double-click = 100 % / 0 % · Alt+click = 100 % · Ctrl/Cmd+click = 0 %");
+      swfmt(); strcpy(#swt, "Stereo width "); strcat(#swt, #fv); strcat(#swt, " – Shift + mouse wheel: up = wider, down = narrower · double-click = 100 % / 0 % · Alt+click = 100 % · Ctrl/Cmd+click = 0 %");
       tipon = 1; tipforce = 0; tipstr = #swt; tipx = spCx; tipy = min(y1, y2) - 16;
     );
   );
@@ -5499,7 +5504,7 @@ function srcitem(yy) local(ri, k, top)
 // how a parameter morphs: 0 linear, 1 logarithmic, 2 switch (half way), 3 angle (the short way round)
 function mtype(i) (
   (i == 1 || i == 16 || i == 19 || i == 23 || i == 24 || i == 26 || i == 27 || i == 29 || i == 30 || i == 35 || i == 36 || i == 39
-   || i == 41 || i == 46 || i == 58 || i == 59 || i == 60 || i == 63 || (i >= 65 && i <= 69) || i == 72 || i == 73 || i == 85 || i == 86 || i == 87 || i == 93 || i == 94 || i == 110 || i == 114 || i == 115 || i == 116) ? 2 : ((i == 25 || i == 28 || i == 31 || i == 32 || i == 62 || i == 70 || i == 71 || (i >= 79 && i <= 82)) ? 1 : ((i == 17 || i == 61) ? 3 : 0));
+   || i == 41 || i == 46 || i == 58 || i == 59 || i == 60 || i == 63 || (i >= 65 && i <= 69) || i == 72 || i == 73 || i == 85 || i == 86 || i == 87 || i == 93 || i == 94 || i == 110 || i == 114 || i == 115 || i == 116 || i == 119) ? 2 : ((i == 25 || i == 28 || i == 31 || i == 32 || i == 62 || i == 70 || i == 71 || (i >= 79 && i <= 82)) ? 1 : ((i == 17 || i == 61) ? 3 : 0));
 );
 // Returns the default value of slider i (GUI-thread copy; a_sdef is the audio-thread copy).
 function sdef(i) ( i == 118 ? 1 : i >= 111 ? 0 : (i == 110 ? 0 : (i == 100 ? 0 : (i == 101 ? 0 : (i == 102 ? 0 : (i == 103 ? 0.25 : (i == 104 ? 2 : (i == 105 ? 0 : (i == 106 ? 0 : (i == 107 ? 0 : (i == 108 ? 0 : (i == 109 ? 0.5 : (i == 98 ? 100 : (i == 99 ? 0 : (i == 1 ? 0 : (i == 2 ? 5.5 : (i == 3 ? 4.5 : (i == 4 ? 2.6 : (i == 5 ? 0.04 : (i == 6 ? 0.04 : (i == 7 ? 0.04 : (i == 8 ? 0.04 : (i == 9 ? 0.33 : (i == 10 ? 2.75 : (i == 11 ? 0.25 : (i == 12 ? 1.5 : (i == 13 ? 2.75 : (i == 14 ? 2.25 : (i == 15 ? 1.5 : (i == 16 ? 1 : (i == 17 ? 0 : (i == 18 ? 100 : (i == 19 ? 1 : (i == 20 ? 0 : (i == 21 ? 0 : (i == 22 ? 0 : (i == 23 ? 1 : (i == 24 ? 0 : (i == 25 ? 80 : (i == 26 ? 1 : (i == 27 ? 0 : (i == 28 ? 12000 : (i == 29 ? 1 : (i == 30 ? 0 : (i == 31 ? 1 : (i == 32 ? 1 : (i == 33 ? 0 : (i == 34 ? 0 : (i == 35 ? 0 : (i == 36 ? 0 : (i == 37 ? 0 : (i == 38 ? 80 : (i == 39 ? 0 : (i == 40 ? 0 : (i == 41 ? 0 : (i == 42 ? 1.25 : (i == 43 ? 0 : (i == 44 ? 25 : (i == 45 ? 2.75 : (i == 46 ? 0 : (i == 47 ? 0 : (i == 48 ? 0 : (i == 49 ? 0 : (i == 50 ? 0 : (i == 51 ? 0 : (i == 52 ? 0 : (i == 53 ? 0 : (i == 54 ? 0 : (i == 55 ? 0 : (i == 56 ? 0 : (i == 57 ? 0 : (i == 58 ? 0 : (i == 59 ? 0 : (i == 60 ? 0 : (i == 61 ? 0 : (i == 62 ? 100 : (i == 63 ? 1 : (i == 64 ? 0 : (i == 65 ? 0 : (i == 66 ? 0 : (i == 67 ? 0 : (i == 68 ? 1 : (i == 69 ? 1 : (i == 70 ? 50 : (i == 71 ? 50 : (i == 72 ? 8 : (i == 73 ? 8 : (i == 74 ? 0 : (i == 75 ? 30 : (i == 76 ? 30 : (i == 77 ? 0 : (i == 78 ? 0 : (i == 79 ? 120 : (i == 80 ? 120 : (i == 81 ? 10000 : (i == 82 ? 10000 : (i == 83 ? 0 : (i == 84 ? 0 : (i == 85 ? 1 : (i == 86 ? 1 : (i == 87 ? 1 : (i >= 88 && i <= 92 ? 100 : (i == 97 ? 100 : 0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))); );
@@ -5520,7 +5525,7 @@ function a_mdef(i) ( i == 62 ? 100 : (i == 86 || i == 87 ? 0 : (i >= 65 ? a_sdef
 // Saves all slider values into snapshot slot k (format flag 19), with sliders above 64 stored in the extended array, then calls sliderchange(-1).
 function saveslot(k) local(b, i)
 (
-  b = uslot + k * USL; b[0] = 19; i = 1;   // 19: + distance perspective (117)
+  b = uslot + k * USL; b[0] = 20; i = 1;   // 20: + Motion Doppler, free-field ground (118, 119) - they were not stored before; 19: + distance perspective (117)
     // flag history (see loadslot): 18: + delay type, repeats through the device (115, 116); 17: distortion counts on Original (older: 0 there); 16: + source call line (111-114); 15: + input mono mix (110); 14: + motion (100-109); 6: sliders 1-63 + 65-85 (5: 65-84, without the source switch); 4: no delay (65 and up); 3: before 0.201, no source aim = aimed at the listener; 2: 0.197, slider 62 was air temperature; 1: sliders 1-60
   loop(NSN, i < 64 ? ( b[i] = slider(i); ) : ( i > 64 ? ( uslotX[k * USX + i - 64] = slider(i); ); ); i += 1; );
   uslotR[k * URR] = 1; rfget(uslotR + k * URR + 1);   // the reflectors belong to the snapshot
@@ -5538,14 +5543,14 @@ function loadslot(k) local(b, i)
 (
   b = uslot + k * USL;
   // a slider newer than the slot's format flag b[0] (thresholds as in the flag list in saveslot) takes the morph default mdef(i); otherwise the stored value, clamped
-  b[0] ? ( snap_take(); i = 1; loop(NSN, i != 64 ? sset(i, (i > 60 && b[0] < 1.5) || (i >= 62 && b[0] < 2.5) || (i == 63 && b[0] < 3.5) || (i > 64 && b[0] < 4.5) || (i > 84 && b[0] < 5.5) || (i > 85 && b[0] < 6.5) || (i > 86 && b[0] < 7.5) || (i > 87 && b[0] < 8.5) || (i > 92 && b[0] < 9.5) || (i > 94 && b[0] < 10.5) || (i > 96 && b[0] < 11.5) || (i > 97 && b[0] < 12.5) || (i > 99 && b[0] < 13.5) || (i > 109 && b[0] < 14.5) || (i > 110 && b[0] < 15.5) || (i == 37 && b[0] < 16.5 && floor(b[35] + 0.5) == 0) || (i > 114 && b[0] < 17.5) || (i > 116 && b[0] < 18.5) ? mdef(i) : sclamp(i, i < 64 ? b[i] : uslotX[k * USX + i - 64])); i += 1; ); uslotR[k * URR] >= 0.5 ? rfput(uslotR + k * URR + 1); selw = 0; snap_notify(); );   // (a snapshot with reflectors brings them back; an older one leaves them as they are)
+  b[0] ? ( snap_take(); i = 1; loop(NSN, i != 64 ? sset(i, (i > 60 && b[0] < 1.5) || (i >= 62 && b[0] < 2.5) || (i == 63 && b[0] < 3.5) || (i > 64 && b[0] < 4.5) || (i > 84 && b[0] < 5.5) || (i > 85 && b[0] < 6.5) || (i > 86 && b[0] < 7.5) || (i > 87 && b[0] < 8.5) || (i > 92 && b[0] < 9.5) || (i > 94 && b[0] < 10.5) || (i > 96 && b[0] < 11.5) || (i > 97 && b[0] < 12.5) || (i > 99 && b[0] < 13.5) || (i > 109 && b[0] < 14.5) || (i > 110 && b[0] < 15.5) || (i == 37 && b[0] < 16.5 && floor(b[35] + 0.5) == 0) || (i > 114 && b[0] < 17.5) || (i > 116 && b[0] < 18.5) || (i > 117 && b[0] < 19.5) ? mdef(i) : sclamp(i, i < 64 ? b[i] : uslotX[k * USX + i - 64])); i += 1; ); uslotR[k * URR] >= 0.5 ? rfput(uslotR + k * URR + 1); selw = 0; snap_notify(); );   // (a snapshot with reflectors brings them back; an older one leaves them as they are)
 );
 // Returns true if slot k is filled and all of its saved slider values equal the current ones (up to the range its format version covers).
 function slotmatch(k) local(b, i, m)
 (
   b = uslot + k * USL; m = b[0] > 0; i = 1;
   // loop count = the highest slider number the slot's format flag stores (same thresholds as loadslot)
-  loop(b[0] < 1.5 ? 60 : (b[0] < 2.5 ? 61 : (b[0] < 3.5 ? 62 : (b[0] < 4.5 ? 63 : (b[0] < 5.5 ? 84 : (b[0] < 6.5 ? 85 : (b[0] < 7.5 ? 86 : (b[0] < 8.5 ? 87 : (b[0] < 9.5 ? 92 : (b[0] < 10.5 ? 94 : (b[0] < 11.5 ? 96 : (b[0] < 12.5 ? 97 : (b[0] < 13.5 ? 99 : (b[0] < 14.5 ? 109 : (b[0] < 15.5 ? 110 : (b[0] < 17.5 ? 114 : (b[0] < 18.5 ? 116 : NSN)))))))))))))))), i != 64 && !(i == 37 && b[0] < 16.5 && floor(b[35] + 0.5) == 0) ? ( abs(slider(i) - (i < 64 ? b[i] : uslotX[k * USX + i - 64])) > 0.0001 ? m = 0; ); i += 1; );
+  loop(b[0] < 1.5 ? 60 : (b[0] < 2.5 ? 61 : (b[0] < 3.5 ? 62 : (b[0] < 4.5 ? 63 : (b[0] < 5.5 ? 84 : (b[0] < 6.5 ? 85 : (b[0] < 7.5 ? 86 : (b[0] < 8.5 ? 87 : (b[0] < 9.5 ? 92 : (b[0] < 10.5 ? 94 : (b[0] < 11.5 ? 96 : (b[0] < 12.5 ? 97 : (b[0] < 13.5 ? 99 : (b[0] < 14.5 ? 109 : (b[0] < 15.5 ? 110 : (b[0] < 17.5 ? 114 : (b[0] < 18.5 ? 116 : (b[0] < 19.5 ? 117 : NSN))))))))))))))))), i != 64 && !(i == 37 && b[0] < 16.5 && floor(b[35] + 0.5) == 0) ? ( abs(slider(i) - (i < 64 ? b[i] : uslotX[k * USX + i - 64])) > 0.0001 ? m = 0; ); i += 1; );
 // in the free field the reflectors must match too (in a room they play no part)
   m && slider1 >= 0.5 && uslotR[k * URR] >= 0.5 ? ( i = 0; loop(15, abs(vopt[RFB + i] - uslotR[k * URR + 1 + i]) > 0.0001 ? m = 0; i += 1; ); );
   m;
@@ -5652,7 +5657,7 @@ ser_sermagic = 7391.25;
 file_avail(0) < 0 ? (
   // ---- save ----
   ser_sm = ser_sermagic; file_var(0, ser_sm); ser_sv = 18; file_var(0, ser_sv);
-  ser_sn = 16; file_var(0, ser_sn); ser_su = USL; file_var(0, ser_su); ser_sl = SNL; file_var(0, ser_sl); ser_so = 70; file_var(0, ser_so);
+  ser_sn = 16; file_var(0, ser_sn); ser_su = USL; file_var(0, ser_su); ser_sl = SNL; file_var(0, ser_sl); ser_so = 72; file_var(0, ser_so);
   file_mem(0, uslot, 16 * USL); file_mem(0, snam, 16 * SNL); file_mem(0, vopt, ser_so);   // 0.362: the count written is the count in the header (0.359 - 0.361 wrote 51 values under the number 52: a project saved with them is read with 51)
   ser_sd = DSL; file_var(0, ser_sd); file_mem(0, dsc, 16 * DSL);   // v2: descriptions
   ser_sx = USX; file_var(0, ser_sx); file_mem(0, uslotX, 16 * USX);   // v4: snapshot extension (delay); 56 per slot (motion)
@@ -5668,7 +5673,7 @@ file_avail(0) < 0 ? (
     memset(uslot, 0, 16 * USL); memset(snam, 0, 16 * SNL);
     ser_k = 0; loop(ser_sn, file_mem(0, ser_scr, ser_su); memcpy(uslot + ser_k * USL, ser_scr, min(ser_su, USL)); ser_k += 1; );
     ser_k = 0; loop(ser_sn, file_mem(0, ser_scr, ser_sl); memcpy(snam + ser_k * SNL, ser_scr, min(ser_sl, SNL)); ser_k += 1; );
-    vopt[18] = vopt[19] = vopt[20] = 0; memset(vopt + 21, 0, 24); ser_cn = ser_so == 52 ? 51 : min(ser_so, 70); file_mem(0, ser_scr, ser_cn); memcpy(vopt, ser_scr, ser_cn); vopt[18] = 0; ser_so < 49 ? ( vopt[48] = 0; ); ser_so < 50 ? ( vopt[49] = 0; ); ser_so < 51 ? ( vopt[50] = 0; ); ser_so < 52 ? ( vopt[51] = 0; );   // Hear is never loaded (monitor only)
+    vopt[18] = vopt[19] = vopt[20] = 0; memset(vopt + 21, 0, 24); ser_cn = ser_so == 52 ? 51 : min(ser_so, 72); file_mem(0, ser_scr, ser_cn); memcpy(vopt, ser_scr, ser_cn); vopt[18] = 0; ser_so < 49 ? ( vopt[48] = 0; ); ser_so < 50 ? ( vopt[49] = 0; ); ser_so < 51 ? ( vopt[50] = 0; ); ser_so < 52 ? ( vopt[51] = 0; );   // Hear is never loaded (monitor only)
     ser_so < 48 ? ( vopt[45] = 0; vopt[46] = 1; vopt[47] = 0; vopt[12] = vopt[12] - (vopt[12] & 512); );   // before 0.246: open in the new tabs (the All tab = the two columns as before)
     ser_sv < 10 ? ( vopt[14] = 0; memset(vopt + 21, 0, 21); vopt[12] = vopt[12] - (vopt[12] & 1024); );   // before 0.230: layout A - standard sizes, the delay open, Plan view
     ser_sv < 11 && floor(slider35 + 0.5) == 0 ? ( slider37 = 0; );   // 0.304: before, distortion did nothing on Original (now it saturates)
@@ -5728,6 +5733,7 @@ file_avail(0) < 0 ? (
 // first start of an instance: view defaults (vopt[64], vopt[65] = reflector levels +12 dB, vopt[66] = reflectors off flag (0 = on), vopt[67] = free-field outline view ON, vopt[68] = Input Guard OFF)
 vopt[0] != 7333 ? ( vopt[64] = vopt[65] = 12; vopt[66] = 0; vopt[67] = 1; vopt[68] = 0; vopt[69] = 0; vopt[0] = 7333; vopt[1] = 0; vopt[2] = 0; vopt[3] = 0; vopt[4] = 1; vopt[8] = 1; vopt[11] = 1; vopt[12] = 2304; vopt[14] = vopt[15] = 0; vopt[16] = 1; vopt[17] = 0; memset(vopt + 21, 0, 24); vopt[45] = 0; vopt[46] = 1; vopt[47] = 0; );   // new instance: Basic view
 @block
+slider137 = 0;   // the 5.1 layout is always ITU (the Film layout is gone from the plug-in; old projects with Film play ITU)
 // sample rate changed (REAPER does not re-run @init then, see srsetup): set everything up for the new rate
 srate > 1000 && srate != srini ? ( srsetup(); geoagain = 2; );
 // RoomservicePro: the output format. 5.1 needs six channels on the track (num_ch); with fewer the plug-in stays stereo.
@@ -5812,7 +5818,7 @@ mrv != mrlast ? (
       loop(NSN,
         mi != 64 ? (
         // mva / mvb: value of slider mi in snapshot A / B; a slider newer than that snapshot's format flag takes its morph default (same thresholds as loadslot)
-        mva = (mi > 60 && mpa[0] < 1.5) || (mi >= 62 && mpa[0] < 2.5) || (mi == 63 && mpa[0] < 3.5) || (mi > 64 && mpa[0] < 4.5) || (mi > 84 && mpa[0] < 5.5) || (mi > 85 && mpa[0] < 6.5) || (mi > 86 && mpa[0] < 7.5) || (mi > 87 && mpa[0] < 8.5) || (mi > 92 && mpa[0] < 9.5) || (mi > 94 && mpa[0] < 10.5) || (mi > 96 && mpa[0] < 11.5) || (mi > 97 && mpa[0] < 12.5) || (mi > 99 && mpa[0] < 13.5) || (mi > 109 && mpa[0] < 14.5) || (mi > 110 && mpa[0] < 15.5) || (mi == 37 && mpa[0] < 16.5 && floor(mpa[35] + 0.5) == 0) || (mi > 114 && mpa[0] < 17.5) || (mi > 116 && mpa[0] < 18.5) ? a_mdef(mi) : (mi < 64 ? mpa[mi] : mpaX[mi]); mvb = (mi > 60 && mpb[0] < 1.5) || (mi >= 62 && mpb[0] < 2.5) || (mi == 63 && mpb[0] < 3.5) || (mi > 64 && mpb[0] < 4.5) || (mi > 84 && mpb[0] < 5.5) || (mi > 85 && mpb[0] < 6.5) || (mi > 86 && mpb[0] < 7.5) || (mi > 87 && mpb[0] < 8.5) || (mi > 92 && mpb[0] < 9.5) || (mi > 94 && mpb[0] < 10.5) || (mi > 96 && mpb[0] < 11.5) || (mi > 97 && mpb[0] < 12.5) || (mi > 99 && mpb[0] < 13.5) || (mi > 109 && mpb[0] < 14.5) || (mi > 110 && mpb[0] < 15.5) || (mi == 37 && mpb[0] < 16.5 && floor(mpb[35] + 0.5) == 0) || (mi > 114 && mpb[0] < 17.5) || (mi > 116 && mpb[0] < 18.5) ? a_mdef(mi) : (mi < 64 ? mpb[mi] : mpbX[mi]);
+        mva = (mi > 60 && mpa[0] < 1.5) || (mi >= 62 && mpa[0] < 2.5) || (mi == 63 && mpa[0] < 3.5) || (mi > 64 && mpa[0] < 4.5) || (mi > 84 && mpa[0] < 5.5) || (mi > 85 && mpa[0] < 6.5) || (mi > 86 && mpa[0] < 7.5) || (mi > 87 && mpa[0] < 8.5) || (mi > 92 && mpa[0] < 9.5) || (mi > 94 && mpa[0] < 10.5) || (mi > 96 && mpa[0] < 11.5) || (mi > 97 && mpa[0] < 12.5) || (mi > 99 && mpa[0] < 13.5) || (mi > 109 && mpa[0] < 14.5) || (mi > 110 && mpa[0] < 15.5) || (mi == 37 && mpa[0] < 16.5 && floor(mpa[35] + 0.5) == 0) || (mi > 114 && mpa[0] < 17.5) || (mi > 116 && mpa[0] < 18.5) || (mi > 117 && mpa[0] < 19.5) ? a_mdef(mi) : (mi < 64 ? mpa[mi] : mpaX[mi]); mvb = (mi > 60 && mpb[0] < 1.5) || (mi >= 62 && mpb[0] < 2.5) || (mi == 63 && mpb[0] < 3.5) || (mi > 64 && mpb[0] < 4.5) || (mi > 84 && mpb[0] < 5.5) || (mi > 85 && mpb[0] < 6.5) || (mi > 86 && mpb[0] < 7.5) || (mi > 87 && mpb[0] < 8.5) || (mi > 92 && mpb[0] < 9.5) || (mi > 94 && mpb[0] < 10.5) || (mi > 96 && mpb[0] < 11.5) || (mi > 97 && mpb[0] < 12.5) || (mi > 99 && mpb[0] < 13.5) || (mi > 109 && mpb[0] < 14.5) || (mi > 110 && mpb[0] < 15.5) || (mi == 37 && mpb[0] < 16.5 && floor(mpb[35] + 0.5) == 0) || (mi > 114 && mpb[0] < 17.5) || (mi > 116 && mpb[0] < 18.5) || (mi > 117 && mpb[0] < 19.5) ? a_mdef(mi) : (mi < 64 ? mpb[mi] : mpbX[mi]);
         mty = mtype(mi);
         mty == 2 ? ( mv = mrf < 0.5 ? mva : mvb; ) : (
         mty == 1 ? ( mv = mva > 0 && mvb > 0 ? mva * (mvb / mva) ^ mrf : mva + (mvb - mva) * mrf; ) : (
@@ -6155,6 +6161,7 @@ qRD = min(QRBN - 4, floor(0.010 * srate));   // the rear offset: the rear networ
 // the LFE: crossover 80 / 120 Hz (two equal Butterworth sections = Linkwitz-Riley 4th order), level in dB, Off = gain 0 (glides)
 k0 = slider142 >= 0.5 ? 120 : 80; k0 != qLFfc ? ( qLFfc = k0; fdesignbl(qLFC, qLFW, 0, k0, 2); memcpy(qLFC + 5, qLFC, 5); memset(qLFS, 0, 4); );
 xLFG = slider141 >= 0.5 ? 10 ^ (min(10, max(-24, slider143)) / 20) : 0;
+trgL = 10 ^ (min(6, max(-24, slider147)) / 20); trgR = 10 ^ (min(6, max(-24, slider148)) / 20); trgC = 10 ^ (min(6, max(-24, slider149)) / 20); trgLs = 10 ^ (min(6, max(-24, slider150)) / 20); trgRs = 10 ^ (min(6, max(-24, slider151)) / 20);   // 5.1: the level of each loudspeaker channel (the LFE has its own level)
 mdcmov = 0; k0 = 0; loop(mdN, abs(mdM[k0 * 6] - mdC0[k0]) > 0.000000001 || abs(mdM[k0 * 6 + 1] - mdC1[k0]) > 0.000000001 ? ( mdcmov = 1; mdD0[k0] = (mdM[k0 * 6] - mdC0[k0]) / samplesblock; mdD1[k0] = (mdM[k0 * 6 + 1] - mdC1[k0]) / samplesblock; ) : ( mdD0[k0] = mdD1[k0] = 0; ); k0 += 1; );
 // SLEEP: the input has been silent and the output below -140 dB for longer than every delay in the plugin (taps, reverb
 // lines, delay with feedback): @sample does nothing until the input comes back (no CPU while a track is silent). Asleep,
@@ -6699,6 +6706,7 @@ pro_on ? (
     dkon ? ( qDKS[qjj] = qrr + (qDKS[qjj] - qrr) * dkA; qrr = qDKS[qjj]; );
     cPK1 > 0.0001 ? qrr += cPK1 * (bqrun(qDR[qjj] + qrr, bpkC, qPKS + qjj * 2, 1) - qDR[qjj] - qrr);
     qff = (qDR[qjj] + qrr) * cEQL * rmxk + qBY[qjj] * (1 - rmxk);
+    qvk = cEQL * rmxk * cMIX * cOG; qVD[qjj] = max(abs(qDR[qjj] * qvk), qVD[qjj] * pmdec); qVR[qjj] = max(abs(qrr * qvk), qVR[qjj] * pmdec);   // (vectorscope: direct green, reflections + reverb blue)
     qO[qjj] = ((1 - cMIX) * cSDRY * (qjj == 0 ? qIL : (qjj == 1 ? qIR : 0)) + cMIX * qff) * cOG;
     fpost && fany ? ( qff = fchain(qO[qjj], qFS + qjj * 20, qFS + qjj * 20 + 8, qFS + qjj * 20 + 10, qFS + qjj * 20 + 18);
       cFMX >= 0.99999 ? ( qO[qjj] += (qff - qO[qjj]) * cFMX; ) : ( qO[qjj] = qff * cFMX + fapath(qO[qjj], qFAS + qjj * 40) * (1 - cFMX); ); );
@@ -6727,6 +6735,10 @@ lmx = lmDL[lmdd]; lmDL[lmdd] = outL; outL = lmx; lmx = lmDR[lmdd]; lmDR[lmdd] = 
 pro_on ? ( qjj = 0; loop(3, qbb = qLMD + qjj * 590; lmx = qbb[lmdd]; qbb[lmdd] = qO[2 + qjj]; qO[2 + qjj] = lmx; qjj += 1; ); qbb = qLMD + 1770; lmx = qbb[lmdd]; qbb[lmdd] = qO[5]; qO[5] = lmx; );
 lmdd += 1; lmdd >= LMLA ? lmdd = 0;
 outL *= lmga; outR *= lmga; pro_on ? ( qO[2] *= lmga; qO[3] *= lmga; qO[4] *= lmga; qO[5] *= lmga; );   // (the LFE is not in the limiter's detector - bass peaks must not duck the image - but takes its gain)
+pro_on ? (   // 5.1: the level of each channel (L R C Ls Rs; the LFE has its own) - after the limiter, before the safety clipper
+  trsL += (trgL - trsL) * sm; trsR += (trgR - trsR) * sm; trsC += (trgC - trsC) * sm; trsLs += (trgLs - trsLs) * sm; trsRs += (trgRs - trsRs) * sm;
+  outL *= trsL; outR *= trsR; qO[2] *= trsC; qO[3] *= trsLs; qO[4] *= trsRs;
+);
 lmgv = min(lmga, 1 - (1 - lmgv) * pmdec);                                  // gain-reduction meter (GUI)
 lmga < 0.944 ? gwarn = srate * 0.25;                                       // more than 0.5 dB: shown as limiting
 gwarn > 0 ? gwarn -= 1;
@@ -6893,7 +6905,7 @@ function modulereset(id) local(i) (
   id == 4 ? ( isfree ? ( i = 0; loop(12, vopt[RFB + i] = FFP[ffpLast * 16 + 4 + i]; i += 1; ); vopt[RFB + 12] = vopt[RFB + 13] = 12; vopt[RFB + 14] = 0; rflSel = 0; ) : ( mrr(5, 9); sset(19, 1); ); );   // free field: the two reflectors back to the loaded place
   id == 15 ? ffpapply(0);                                                                               // Free field: back to the Street (power stays)
   id == 5 ? ( mrr(42, 46); sset(92, 100); mrr(95, 97); );                                                // Barrier (41 = type / power)
-  id == 7 ? ( sset(18, 100); sset(22, 0); sset(23, 1); sset(40, 0); sset(60, 0); vopt[49] = 0; );       // Output
+  id == 7 ? ( sset(18, 100); sset(22, 0); sset(23, 1); sset(40, 0); sset(60, 0); vopt[49] = 0; sset(143, 0); sset(144, 100); sset(147, 0); sset(148, 0); sset(149, 0); sset(150, 0); sset(151, 0); );       // Output
   id == 14 ? ( mrr(101, 109); );                                                                         // Motion (100)
   id != 15 ? snap_notify();
 );
@@ -6908,6 +6920,21 @@ function ic_reset(cx, cy) local(px, py, dx, dy) (   // an open circle with an ar
 function foldall() local(vi, allm) (
   vi = basic ? 13 : 12; allm = basic ? 682 : 4094 + 16384;                 // all section bits + 512 (3D view) (+ 1024 Delay, 2048 Decay by band, 16384 Motion)
   vopt[vi] = (vopt[vi] & allm) != allm ? allm : 0;
+);
+// SMALL IN / OUT METER in a module header: input left (gray), output right (the Output color), L and R each, -48 … 0 dB.
+// Every module shows the level going in and coming out while you work on it. Its place is kept, so the meter-only frames
+// repaint it alone (see the partial frame at the end).
+function mmbar(bx, yc, v, c) local(f)
+(
+  f = min(1, max(0, (dbs(v) + 48) / 48));
+  col(cLINE, 1); R(bx, yc - 6, 2.5, 12);
+  f > 0.01 ? ( col(v >= 0.891 ? cWARN : c, 1); R(bx, yc + 6 - 12 * f, 2.5, 12 * f); );
+);
+function mmeter(x, yc) local(idl)
+(
+  idl = time_precise() - lastblk > 0.3;
+  mmbar(x, yc, idl ? 0 : pkIL, cDIM2); mmbar(x + 3.5, yc, idl ? 0 : pkIR, cDIM2);
+  mmbar(x + 10, yc, idl ? 0 : pkOL, cIOTT); mmbar(x + 13.5, yc, idl ? 0 : pkOR, cIOTT);
 );
 // Draws a section header at (x,y) with title s and color c: fold chevron, click folds (Alt+click toggles all), sets zoom close button position
 function sechdr(id, s, x, y, c) local(m, op, ax, ay, hw, vi, head, colm, anyo)
@@ -6942,6 +6969,12 @@ function sechdr(id, s, x, y, c) local(m, op, ax, ay, hw, vi, head, colm, anyo)
       col(rsih ? c : cMUTED, 1); ic_reset(rsix, ay);
       click && rsih ? ( modulereset(id); click = 0; );
       rsih ? ( tipon = 1; tipforce = 0; tipstr = "Reset: this module back to its defaults (on / off stays) – Ctrl/Cmd+Z undoes it"; tipx = rsix; tipy = ay + 16; );
+    );
+    // the small In / Out meter, left of the module's power button (not in Output - it has the big meters - and not in Learn)
+    id != 7 && !learn && crdW >= hw + 150 && mmN < MMCAP ? (
+      mmeter(crdX + crdW - 58, ay);
+      mmB[mmN * 5] = crdX + crdW - 58; mmB[mmN * 5 + 1] = ay; mmB[mmN * 5 + 2] = gs; mmB[mmN * 5 + 3] = gox; mmB[mmN * 5 + 4] = goy; mmN += 1;
+      tipbox(crdX + crdW - 61, ay - 8, 23, 16, "Level: In (gray, left) and Out (right), each L / R – the big meters are in Output");
     );
     head ? tipbox(x + 2, y + 2, hw - 14, 20, vlock ? "GUI locked – unlock it with Lock GUI at the right of the signal-flow strip" : basic ? (op ? "Click: fold the four sections (Alt+click: fold everything)" : "Click: open the four sections (Alt+click: open everything)")
                                                     : (op ? "Click: fold this section (Alt+click: fold everything)" : "Click: open this section (Alt+click: open everything)"));
@@ -7232,15 +7265,16 @@ col(cTEXT, 1); gfx_setfont(2); txt("View", vgx, 17 + vgd, 0);
 click && inbox(vgx - 2, 7 + vgd, 26, 20) ? ( nv = showinfo ? 0 : 1; !basic ? ( vopt[1] = nv; vopt[2] = nv; ); vopt[3] = nv; vopt[6] = nv; );
 tipbox(vgx - 2, 7 + vgd, 26, 20, basic ? "View: switch tips and waves on or off at once" : "View: switch tips, paths, direct line and waves on or off at once");
 gk = 0;
-loop(basic ? 2 : 5,
-  gq = basic ? (gk == 0 ? 0 : 3) : gk;   // Basic: Tips, Waves
+loop(basic ? 3 : 6,
+  gq = basic ? (gk == 0 ? 0 : (gk == 1 ? 3 : 5)) : gk;   // Basic: Tips, Waves, Labels
   vtx = vgx + 26 + gk * 30;
-  von = gq == 0 ? tipsOn : (gq == 1 ? showpaths : (gq == 2 ? showdirect : (gq == 3 ? wavesOn : !hidew)));
-  col(von ? cTEXT : cMUTED, 1); gfx_setfont(von ? 6 : 4); txt(gq == 0 ? "Tips" : (gq == 1 ? "Paths" : (gq == 2 ? "Direct" : (gq == 3 ? "Waves" : "Walls"))), vtx + 13, 17 + vgd, 1);
+  von = gq == 0 ? tipsOn : (gq == 1 ? showpaths : (gq == 2 ? showdirect : (gq == 3 ? wavesOn : (gq == 4 ? !hidew : !hidetx))));
+  col(von ? cTEXT : cMUTED, 1); gfx_setfont(von ? 6 : 4); txt(gq == 0 ? "Tips" : (gq == 1 ? "Paths" : (gq == 2 ? "Direct" : (gq == 3 ? "Waves" : (gq == 4 ? "Walls" : "Labels")))), vtx + 13, 17 + vgd, 1);
   von ? ( col(cRMTT, 1); LNW(vtx + 3, 24 + vgd, vtx + 23, 24 + vgd, 1.4); );
   click && inbox(vtx, 7 + vgd, 28, 20) ? (
-    gq == 0 ? ( vopt[3] = !tipsOn; ); gq == 1 ? ( vopt[1] = !showpaths; ); gq == 2 ? ( vopt[2] = !showdirect; ); gq == 3 ? ( vopt[6] = !wavesOn; ); gq == 4 ? ( vopt[10] = !hidew; );
+    gq == 0 ? ( vopt[3] = !tipsOn; ); gq == 1 ? ( vopt[1] = !showpaths; ); gq == 2 ? ( vopt[2] = !showdirect; ); gq == 3 ? ( vopt[6] = !wavesOn; ); gq == 4 ? ( vopt[10] = !hidew; ); gq == 5 ? ( vopt[71] = !hidetx; );
   );
+  gq == 5 ? tipbox(vtx, 7 + vgd, 28, 20, hidetx ? "Labels are hidden in the Stage View – click to show them again" : "Labels: the texts in the Stage View (sizes, distances, loudspeaker names). Off = only the drawing – the lines, handles and barrier buttons are easier to grab") :
   tipbox(vtx, 7 + vgd, 28, 20, gq == 0 ? "Tips: help texts on mouse-over" : (gq == 1 ? "Paths: reflection paths and the critical-distance circle" : (gq == 2 ? "Direct: the direct-sound line between source and listener"
     : (gq == 3 ? "Waves: how the sound spreads – the direct wavefront (blue) and the wall reflections (violet) as moving air, slowed down so you can follow it" : (hidew ? "Walls are hidden – click to show them again (the sound is the same)" : "Hide the walls in the Stage View: easier to grab source and listener – the sound does not change")))));
   gk += 1;
@@ -7417,8 +7451,11 @@ function vsdraw(gx, gy, gr) local(k, az, a, e, et, vsx, vsy, lv, vbl, xx, yy, d,
     a = az * $pi / 180;
     lv = k == 0 ? mOL : (k == 1 ? mOR : (k == 2 ? mOC : (k == 3 ? mOLs : mORs)));
     e = lv * lv; et += e; vsx += e * sin(a); vsy += e * cos(a);
-    vbl = gr * 0.45 * lin2f(dbs(lv), -60, 0);
-    col(cIOTT, 1); vbl > 0.5 ? LNW(gx + sin(a) * gr, gy - cos(a) * gr, gx + sin(a) * (gr - vbl), gy - cos(a) * (gr - vbl), 3);
+    // two bars per loudspeaker, side by side: the source's direct sound (green) and the reflections + reverb (blue)
+    vsdl = aidle ? 0 : gr * 0.45 * lin2f(dbs(qVD[k == 0 ? 0 : (k == 1 ? 1 : (k == 2 ? 2 : (k == 3 ? 3 : 4)))]), -60, 0);
+    vsrl = aidle ? 0 : gr * 0.45 * lin2f(dbs(qVR[k]), -60, 0);
+    col(cSRC, 1); vsdl > 0.5 ? LNW(gx + sin(a) * gr - cos(a) * 1.8, gy - cos(a) * gr - sin(a) * 1.8, gx + sin(a) * (gr - vsdl) - cos(a) * 1.8, gy - cos(a) * (gr - vsdl) - sin(a) * 1.8, 2.4);
+    col(cACTO, 1); vsrl > 0.5 ? LNW(gx + sin(a) * gr + cos(a) * 1.8, gy - cos(a) * gr + sin(a) * 1.8, gx + sin(a) * (gr - vsrl) + cos(a) * 1.8, gy - cos(a) * (gr - vsrl) + sin(a) * 1.8, 2.4);
     col(cMUTED, 1); CIF(gx + sin(a) * gr, gy - cos(a) * gr, 2.2, 1);
     gfx_setfont(7); txt(k == 0 ? "L" : (k == 1 ? "R" : (k == 2 ? "C" : (k == 3 ? "Ls" : "Rs"))), gx + sin(a) * (gr + 9), gy - cos(a) * (gr + 9), 1);
     k += 1;
@@ -7436,7 +7473,7 @@ function vsdraw(gx, gy, gr) local(k, az, a, e, et, vsx, vsy, lv, vbl, xx, yy, d,
   col(cHAIR, 1); RR(gx + gr + 14, gy - d / 2, 5, d, 2.5);
   lv > 0.01 ? ( col(cIOTT, 1); RR(gx + gr + 14, gy + d / 2 - d * lv, 5, d * lv, 2.5); );
   col(cMUTED, 1); gfx_setfont(7); txt("LFE", gx + gr + 16.5, gy + d / 2 + 8, 1);
-  tipbox(gx - gr - 4, gy - gr - 4, 2 * gr + 30, 2 * gr + 8, "5.1 vectorscope: the ring carries the five loudspeakers of the chosen layout, the bars from the ring inward are their levels, the dot is where the energy of the five channels sits (with a short trail). Right: the LFE level");
+  tipbox(gx - gr - 4, gy - gr - 4, 2 * gr + 30, 2 * gr + 8, "5.1 vectorscope: the ring carries the five loudspeakers, the bars from the ring inward are their levels – green = the direct sound of the source, blue = reflections and reverb; the dot is where the energy of the five channels sits (with a short trail). Right: the LFE level");
 );
 // LEVEL BARS: one smooth bar in three zones (green up to -12 dB, amber up to -3 dB, red above) on a soft track
 function mzc(z) ( z == 0 ? (darkmode ? 0x4CC38A : 0x2E9E6A) : (z == 1 ? cWARN : 0xE5484D); );
@@ -7549,6 +7586,7 @@ secopen(7) ? (
     spdraw(iosx, spy, iosw, sph);
     // faders: Input under the input meters, Output under the output meters, Dry / wet in the middle
     fy = IOY + IOH - (basic ? 30 : 54); fw = basic ? (IOW - 28 - 24) / 2 : (IOW - 28 - 2 * 24) / 3;
+    !q51 ? (
     !basic ? (
     sprintf(#fv, slider40 <= -71.9 ? "-inf" : (slider40 > 0.05 ? "+%.1f dB" : "%.1f dB"), slider40);
     kmap(3, 0, 1, 1); nf = hsl(22, IOX + 14, fy, fw, "Input", #fv, ilvl2f(slider40), ilvl2f(0), cIOTT);
@@ -7564,28 +7602,53 @@ secopen(7) ? (
     kmap(2, 0, 1, 1); nf = hsl(7, IOX + IOW - 14 - fw, fy, fw, "Output", #fv, lvl2f(slider22), lvl2f(0), cIOTT);
     tipbox(IOX + IOW - 14 - fw, fy - 6, fw, 20, "Output gain: -inf … +24 dB out of the plugin – the mark = 0 dB, the standard (double-click = type a value, Alt+click = 0 dB)");
     kchg ? setp(22, f2lvl(nf));
+    );
     // bottom row: correlation (middle), gain reduction (right) - not in Basic
     q51 ? (
-    // RoomservicePro, 5.1: the bottom row carries the LFE (on / off, level, crossover) and the Center (phantom ... discrete)
-    cyy = IOY + IOH - 22;
+    // 5.1: ONE ROW OF KNOBS instead of the faders - Input, Dry / wet, Output | LFE (on, crossover, level) | Center |
+    // the levels of L R C Ls Rs. Knobs are easier to set than short faders, and all ten fit next to each other
+    kscale(1); kcol = cIOTT; o5y = IOY + IOH - 36;
     lfon = slider141 >= 0.5;
-    chip(IOX + 14, cyy - 7, 34, 14, "LFE", lfon, cIOTT) ? ( slider141 = lfon ? 0 : 1; slider_automate(slider141); click = 0; );
-    tipbox(IOX + 14, cyy - 7, 34, 14, "LFE on / off: the subwoofer channel carries the direct sound alone (no reflections, no reverb), low-passed at the crossover");
-    segtrack(IOX + 52, cyy - 7, 64, 14);
-    segp(IOX + 52, cyy - 7, 64, 14, 2, 0, "80", slider142 < 0.5, cIOTT) ? ( slider142 = 0; slider_automate(slider142); click = 0; );
-    segp(IOX + 52, cyy - 7, 64, 14, 2, 1, "120", slider142 >= 0.5, cIOTT) ? ( slider142 = 1; slider_automate(slider142); click = 0; );
-    tipbox(IOX + 52, cyy - 7, 64, 14, "LFE crossover: the subwoofer gets everything below 80 or 120 Hz (24 dB per octave)");
-    sprintf(#fv, slider143 > 0.05 ? "+%.1f dB" : "%.1f dB", slider143);
-    kmap(0, -24, 10, 1); nf = hsl(60, IOX + 126, cyy - 8, max(60, fw - 112), "Level", #fv, (slider143 + 24) / 34, 24 / 34, cIOTT);
-    tipbox(IOX + 126, cyy - 14, max(60, fw - 112), 20, "LFE level: -24 ... +10 dB, the mark = 0 dB (double-click = type a value, Alt+click = 0 dB)");
-    kchg ? setp(143, min(10, max(-24, nf * 34 - 24)));
-    cxx = IOX + 14 + fw + 24; cww = fw;
-    sprintf(#fv, slider144 <= 0.5 ? "phantom" : (slider144 >= 99.5 ? "discrete" : "%.0f %%"), slider144);
-    kmap(0, 0, 100, 1); nf = hsl(61, cxx, cyy - 8, cww, "Center · phantom … discrete", #fv, slider144 / 100, 1, cIOTT);
-    tipbox(cxx, cyy - 14, cww, 20, "Center: 0 % = phantom center (the front sits on L / R only), 100 % = discrete (hard C). Power stays the same across the range (double-click = type a value, Alt+click = discrete)");
-    kchg ? setp(144, nf * 100);
+    chip(IOX + 14, o5y - 17, 46, 14, "LFE", lfon, cIOTT) ? ( slider141 = lfon ? 0 : 1; slider_automate(slider141); click = 0; );
+    tipbox(IOX + 14, o5y - 17, 46, 14, "LFE on / off: the subwoofer channel carries the direct sound alone (no reflections, no reverb), low-passed at the crossover");
+    segtrack(IOX + 14, o5y + 3, 46, 14);
+    segp(IOX + 14, o5y + 3, 46, 14, 2, 0, "80", slider142 < 0.5, cIOTT) ? ( slider142 = 0; slider_automate(slider142); click = 0; );
+    segp(IOX + 14, o5y + 3, 46, 14, 2, 1, "120", slider142 >= 0.5, cIOTT) ? ( slider142 = 1; slider_automate(slider142); click = 0; );
+    tipbox(IOX + 14, o5y + 3, 46, 14, "LFE crossover: the subwoofer gets everything below 80 or 120 Hz (24 dB per octave)");
+    o5x0 = IOX + 70; o5sp = (IOX + IOW - 14 - o5x0) / 10; gk = 0;
+    loop(10,
+      o5cx = o5x0 + o5sp * (gk + 0.5);
+      gk == 0 ? (
+        sprintf(#fv, slider40 <= -71.9 ? "-inf" : (slider40 > 0.05 ? "+%.1f" : "%.1f"), slider40);
+        kmap(3, 0, 1, 1); nf = knob(22, o5cx, o5y, "Input", #fv, ilvl2f(slider40), ilvl2f(0)); kchg ? setp(40, f2ilvl(nf));
+        knobtip(o5cx, o5y, "Input gain: -inf … +48 dB into the plugin (double-click = type a value, Alt+click = 0 dB)");
+      ) : gk == 1 ? (
+        sprintf(#fv, "%.0f%%", slider18);
+        kmap(0, 0, 100, 1); nf = knob(12, o5cx, o5y, "Dry / wet", #fv, slider18 / 100, 1); kchg ? setp(18, nf * 100);
+        knobtip(o5cx, o5y, "Dry / wet of the whole plugin: 0 % = the original only, 100 % = full room simulation (Alt+click = 100 %)");
+      ) : gk == 2 ? (
+        sprintf(#fv, slider22 <= -71.9 ? "-inf" : (slider22 > 0.05 ? "+%.1f" : "%.1f"), slider22);
+        kmap(2, 0, 1, 1); nf = knob(7, o5cx, o5y, "Output", #fv, lvl2f(slider22), lvl2f(0)); kchg ? setp(22, f2lvl(nf));
+        knobtip(o5cx, o5y, "Output gain: -inf … +24 dB, all six channels (double-click = type a value, Alt+click = 0 dB)");
+      ) : gk == 3 ? (
+        sprintf(#fv, slider143 > 0.05 ? "+%.1f" : "%.1f", slider143); kdim = !lfon;
+        kmap(0, -24, 10, 1); nf = knob(60, o5cx, o5y, "LFE", #fv, (slider143 + 24) / 34, 24 / 34); kdim = 0; kchg ? setp(143, min(10, max(-24, nf * 34 - 24)));
+        knobtip(o5cx, o5y, "LFE level: -24 … +10 dB (double-click = type a value, Alt+click = 0 dB)");
+      ) : gk == 4 ? (
+        sprintf(#fv, slider144 <= 0.5 ? "ph." : (slider144 >= 99.5 ? "disc." : "%.0f%%"), slider144);
+        kmap(0, 0, 100, 1); nf = knob(61, o5cx, o5y, "Center", #fv, slider144 / 100, 1); kchg ? setp(144, nf * 100);
+        knobtip(o5cx, o5y, "Center: 0 % = phantom (the front sits on L / R only), 100 % = discrete (hard C). Power stays the same (double-click = type a value, Alt+click = discrete)");
+      ) : (
+        o5k = gk - 5; o5v = slider(147 + o5k);
+        sprintf(#fv, o5v > 0.05 ? "+%.1f" : "%.1f", o5v);
+        kmap(0, -24, 6, 1); nf = knob(93 + o5k, o5cx, o5y, o5k == 0 ? "L" : (o5k == 1 ? "R" : (o5k == 2 ? "C" : (o5k == 3 ? "Ls" : "Rs"))), #fv, (o5v + 24) / 30, 24 / 30);
+        kchg ? setp(147 + o5k, min(6, max(-24, nf * 30 - 24)));
+        knobtip(o5cx, o5y, "Level of this loudspeaker channel: -24 … +6 dB, e.g. to match the speakers of your room (double-click = type a value, Alt+click = 0 dB)");
+      );
+      gk += 1;
+    );
     grdb = -dbs(mGV); sprintf(#w1, clipon ? (grdb > 0.05 ? "Limiter −%.1f dB" : "Limiter idle") : "Limiter off", grdb);
-    col(clipon && grdb > 0.05 ? cIOTT : cMUTED, 1); gfx_setfont(4); txt(#w1, IOX + IOW - 14, cyy, 2);
+    col(clipon && grdb > 0.05 ? cIOTT : cMUTED, 1); gfx_setfont(4); txt(#w1, iosx + iosw, IOY + 30, 2);   // (5.1: right of the spectrum's title - the knob row has no room for it)
     ) : !basic ? (
     cyy = IOY + IOH - 22; cxx = IOX + 14 + fw + 24; cww = fw;
     col(cMUTED, 1); gfx_setfont(4); txt("Correlation · mono compatibility", cxx, cyy - 13, 0);   // over its bar
@@ -8108,10 +8171,22 @@ snctx ? (
 vedit && mouse_x >= vedPX0 && mouse_x < vedPX1 && mouse_y >= vedPY0 && mouse_y < vedPY1 ? ( click = 0; rclick = 0; );
 tipon = 0; tipforce = 0; cfade = 1; wheelused = 0;
 shsec = 0; shclr = click && shpin;          // section help: hover target of this frame; a click anywhere else closes a pinned panel
+// the logo's place on the page (page units): left, top, size - and the Interface menu under it (System / Dark / Light, as in OLAAF)
+function thgeo() local(rT)
+(
+  rT = gT / gs; thS = 31 * rT; thX = 9 * rT; thY = 17 - thS / 2;
+  thmx = thX; thmy = thY + thS + 5; thmw = 168; thmr = 22; thmh = 28 + 3 * thmr + 6;
+  o51X = thX + thS + 8; o51Y = 8; o51W = 74; o51H = 18;   // the Stereo | 5.1 switch right of the logo
+);
 // ---- dropdown menus + help: geometry and click handling (before any other control sees the click) ----
 fzsel = min(12, max(0, floor(slider35 + 0.5))); spcur = -1; k = 0; loop(NSP, spcur < 0 && spmatch(k) ? spcur = k; k += 1; );   /* 0.309: the matching preset, once per frame */ devm = slider85 >= 0.5 && fzsel > 0 && slider89 >= 99.95; rbyp = slider36 >= 0.5;   // devm: a device plays - a mono loudspeaker, the stereo width does nothing (isfree comes from the audio block)
 gT = max(0.5, min(gfx_w / 860, gfx_h / 560));   // the scale of the name and the mark: the window alone (the same in every view)
-tbOff = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126));    // the view switches, presets and snapshots move right when the name is larger than the page scale
+thgeo(); tbOff = max(0, ceil(o51X + o51W + 8 - 126));    // the view switches, presets and snapshots move right when the logo is larger than the page scale
+// the Interface menu (open): a click on an item picks it, any other click only closes the menu
+thm_open && click ? (
+  inbox(thmx, thmy + 28, thmw, 3 * thmr) ? ( vopt[70] = min(2, floor((my - thmy - 28) / thmr)); );
+  thm_open = 0; click = 0;
+);
 roombx = 242 + tbOff; roomby = 11; roombw = 98; roombh = 17;
 roommx = roombx; roommy = roomby + roombh + 4; roomih = 16; RMCW = 240; RMHH = 16; roommw = 2 * RMCW + 12;
 NOPOS = -99999;
@@ -8625,7 +8700,7 @@ actcol = cTEXT; kcol = cTEXT;
 
 // ---- redraw decision: full frame only when something besides the meters can have changed ----
 ukey = 0; i = 1; loop(NSL, ukey += slider(i) * (i * 7919 + 1); i += 1; );
-ukey += (slider136 >= 0.5 ? mOC * 7.1 + mOLf * 7.3 + mOLs * 7.7 + mORs * 7.9 + hO5 * 8.3 : 0) + slider136 * 5003 + slider137 * 5009 + slider138 * 17.3 + slider139 * 19.7 + slider140 * 23.1 + slider141 * 29 + slider142 * 31 + slider143 * 37.7 + slider144 * 41.3 + slider145 * 43.7 + slider146 * 47.9 + qSnapK * 53.3 + pro_on * 3.3;   // RoomservicePro: the output format, the speaker layout and the 5.1 settings redraw the view (host automation, too)
+ukey += (slider136 >= 0.5 ? mOC * 7.1 + mOLf * 7.3 + mOLs * 7.7 + mORs * 7.9 + hO5 * 8.3 : 0) + slider136 * 5003 + slider137 * 5009 + slider138 * 17.3 + slider139 * 19.7 + slider140 * 23.1 + slider141 * 29 + slider142 * 31 + slider143 * 37.7 + slider144 * 41.3 + slider145 * 43.7 + slider146 * 47.9 + slider147 * 59.1 + slider148 * 61.3 + slider149 * 67.7 + slider150 * 71.9 + slider151 * 73.1 + qSnapK * 53.3 + pro_on * 3.3;   // RoomservicePro: the output format, the speaker layout and the 5.1 settings redraw the view (host automation, too)
 soloT = time_precise();                  // heartbeat: a solo lasts only while this window is drawn
 ukey += soloM * 4201 + selw * 53.3 + mouse_x * 3.1 + mouse_y * 5.3 + mouse_cap * 1000.7 + gfx_w * 7.7 + gfx_h * 11.3 + zoomv * 31 + saveArm * 37;
 i = 1; loop(7, ukey += vopt[i] * (101 + i * 13); i += 1; ); ukey += vopt[14] * 7717 + vopt[15] * 1229 + snlast * 17 + vopt[9] * 977 + vopt[10] * 1039 + vopt[11] * 1103 + vopt[12] * 1171 + vopt[13] * 1187 + scy * 3.7 + szoom * 1213;
@@ -8653,7 +8728,8 @@ dofull ? ( lastukey = ukey; fullcnt = 15; ) : ( !pgst ? ( fullcnt -= 1; ); );
 vedSeen = 0;                              // set again by the control that owns an open value box
 // ---- theme: dark (the default) or light, both in the gray design (block below); black & white (Expert) has its own palette ----
 // (only the wall lift of dark mode is set here - the palettes follow below)
-cCTLon = 0; darkmode = vopt[4] >= 0.5; monoOn = !basic && vopt[7] >= 0.5;   // black & white: Expert only
+thmode = floor(vopt[70] + 0.5); darkmode = thmode == 1 ? 1 : (thmode == 2 ? 0 : sysdark >= 0.5); vopt[4] = darkmode; hidetx = vopt[71] >= 0.5;   // 0 System (the computer's light / dark setting), 1 Dark, 2 Light
+cCTLon = 0; monoOn = !basic && vopt[7] >= 0.5;   // black & white: Expert only
 wlift = darkmode ? 60 : 0;   // dark mode: the wall shading of the room view a little lighter
 // black & white: own high-contrast palette (pure black / white, light gray sections) instead of grayed colors
 monoOn ? (
@@ -9132,6 +9208,7 @@ function elsign() local(d, w, x, y, hit)
 // Draws the room view (stage, 3D/plan/side projection) from room dimensions: sets scale pS, skews pKX/pKY/pSZ and origin pX0/pY0
 function gfxp1()
 (
+rvTX = hidetx;   // Labels off (View): no text in the room drawing - the lines, handles and barrier buttons are free to grab (gfxp2 switches it back)
 spHov = 0; spOk = 0;   // (drawspan sets them again; with source and listener on the same spot it is not drawn at all)
 col(cSTAGE, 1); RR(VX + 8, VY + 24, VW - 16, VH - 50, 7);   // the stage the room stands on
 // 28 px top (facing), 52 px bottom (width line + tool row); 44 px left (height), 44 px right (depth)
@@ -9470,6 +9547,8 @@ showdirect ? (
                                 : txtplate(#w2, (hx0 + qx) / 2 + 10, (hy0 + qy) / 2, 0);
 );
 
+// 5.1: the loudspeaker ring under the objects - the source, its stereo handles and the listener stay on top
+vtab < 2 && !lrnTL && slider136 >= 0.5 ? prospk();   // (also outdoors: the ring sits on the listener)
 // objects, back to front
 abs(sx - lx) < 0.02 && abs(sy - ly) < 0.02 ? ( bon ? drawbarrier(); drawcombined(); ) : (
   bon ? (
@@ -9512,6 +9591,7 @@ rbyp ? (
 // Room view overlays: info window, delay plate, bottom row (Snap, Link, Lock, Aim), and the back-part material chip
 function gfxp2()
 (
+rvTX = 0;
 // INFO window (button "i" in the heading, off by default): distance, critical distance, direct / room ratio
 vopt[19] >= 0.5 && !rbyp && !basic ? (
   ldir = sqr(tapG[0]); lrm = sqr(erg) * erE + (isfree ? 0 : sqr(lateg) * tailE);
@@ -9643,9 +9723,9 @@ inbox(VX, VY, VW, VH) ? (
     edgedraw(ehv, cRMTT);
     tipon = 1; tipx = mx; tipy = my - 18;
     tipstr = sidevOn ? (floor(ehv / 4) == 2 ? (frontv ? "Room width – drag left / right (Shift = fine) · Ctrl/Cmd = size" : "Room depth – drag left / right (Shift = fine) · Ctrl/Cmd = size") : "Room height – drag up / down (Shift = fine) · Ctrl/Cmd = size") :
-           floor(ehv / 4) == 0 ? "Room width – drag along the line or mouse wheel (Shift = fine) · Alt = height · Ctrl/Cmd = size"
-           : (floor(ehv / 4) == 1 ? "Room depth – drag along the line or mouse wheel (Shift = fine) · Alt = height · Ctrl/Cmd = size"
-                                  : "Room height – drag up / down or mouse wheel (Shift = fine) · Ctrl/Cmd = size");
+           floor(ehv / 4) == 0 ? "Room width – drag along the line or mouse wheel · Alt = height · Ctrl/Cmd = size"
+           : (floor(ehv / 4) == 1 ? "Room depth – drag along the line or mouse wheel · Alt = height · Ctrl/Cmd = size"
+                                  : "Room height – drag up / down or mouse wheel · Ctrl/Cmd = size");
   ) :
   !basic && !isfree && !hidew && !spHov && (inface(1) || inface(2) || inface(4)) ? ( tipon = 1; tipx = mx; tipy = my - 18;
     tipstr = "Wall: hatching shows absorption α – click to select it for the α knob and materials"; );
@@ -9717,6 +9797,7 @@ function mtfinish() local(zcm, L, k, j, t, f, cxm, cym, R, mv, Tdur, Tback, Ttot
 // Room view mouse handling: drag source/listener/walls/room edges, height, turn, snap, size labels and motion-path drawing
 function gfxp3()
 (
+rvTX = hidetx;   // Labels off: the size labels on hover stay hidden too (gfxp4 switches it back)
 // ---------- mouse: drag = move, shift+drag = height, alt+drag = turn listener, click wall = select ----------
 time_precise() - lkT < 2.5 ? ( tipon = 1; tipforce = 1; tipstr = lkWho == 2 ? "The listener is locked – unlock it with L in the Lock row under the Stage View" : "The source is locked – unlock it with S in the Lock row under the Stage View"; tipx = mx; tipy = my - 22; );
 (mouse_cap & 1) ? (
@@ -9984,6 +10065,14 @@ time_precise() - lkT < 2.5 ? ( tipon = 1; tipforce = 1; tipstr = lkWho == 2 ? "T
 );
 );
 // TIMELINE and RT60 PER OCTAVE: the analysis tabs of the room view (Expert)
+// LEARN: a line between two points that stops g1 / g2 short of its ends - the paths leave the S and L balls with a small gap,
+// so the letters stay readable
+LGAP = 16;
+function LNGAP(x1, y1, x2, y2, g1, g2, w) local(d, ux, uy)
+(
+  d = sqrt(sqr(x2 - x1) + sqr(y2 - y1));
+  d > g1 + g2 + 2 ? ( ux = (x2 - x1) / d; uy = (y2 - y1) / d; LNW(x1 + ux * g1, y1 + uy * g1, x2 - ux * g2, y2 - uy * g2, w); );
+);
 function gfxpT()
 (
 // ---- ECHOGRAM: the room over time ----
@@ -10270,7 +10359,7 @@ function lanno() local(lrc, dx1, dy1, lbk, lbg, k, t, rpx, rpy, msx, msy, rx, ry
       lbk == 3 ? ( t = (roomD - sy) / max(0.001, 2 * roomD - sy - ly); rpx = sx + (lx - sx) * t; rpy = roomD; msx = sx; msy = 2 * roomD - sy; strcpy(#lw3, "front wall"); ) :
                  ( t = sx / max(0.001, sx + lx); rpx = 0; rpy = sy + (ly - sy) * t; msx = -sx; msy = sy; strcpy(#lw3, "left wall"); );
       PJ(sx, sy, 0); dx1 = qx; dy1 = qy; PJ(rpx, rpy, 0); rx = qx; ry = qy;
-      col(cRMTT, 1); LNW(dx1, dy1, rx, ry, 2); PJ(lx, ly, 0); LNW(rx, ry, qx, qy, 2); CIF(rx, ry, 3, 1);
+      col(cRMTT, 1); LNGAP(dx1, dy1, rx, ry, LGAP, 0, 1.1); PJ(lx, ly, 0); LNGAP(rx, ry, qx, qy, 0, LGAP, 1.1); CIF(rx, ry, 2.5, 1);
       PJ(msx, msy, 0);
       qx > VX + 10 && qx < VX + VW - 10 && qy > VY + 30 && qy < VY + VH - 30 ? (
         col(cRMTT, 0.75); DL(rx, ry, qx, qy, 4, 4, 1.2); DL(qx - 6, qy - 6, qx + 6, qy - 6, 2, 2, 1); DL(qx + 6, qy - 6, qx + 6, qy + 6, 2, 2, 1);
@@ -10284,7 +10373,7 @@ function lanno() local(lrc, dx1, dy1, lbk, lbg, k, t, rpx, rpy, msx, msy, rx, ry
   );
   // the direct sound
   PJ(sx, sy, 0); dx1 = qx; dy1 = qy; PJ(lx, ly, 0);
-  col(cSRC, 1); LNW(dx1, dy1, qx, qy, 2.5);
+  col(cSRC, 1); LNGAP(dx1, dy1, qx, qy, LGAP, LGAP, 1.3);
   sprintf(#lw2, "%.1f m · arrives after %.1f ms · %.0f dB", rdir, tapT[0], 20 * log10(max(0.000001, tapG[0])));
   lbox((dx1 + qx) / 2 + 14, (dy1 + qy) / 2 + 6, "Direct sound", #lw2, cSRC);
   // the reverb: in the corner of the room
@@ -10528,6 +10617,7 @@ function gfxpL()
 // Heading and chrome of the Stage View: fold/zoom/lock/info, morph, hide, view tabs, start positions, snapshot name
 function gfxp4()
 (
+rvTX = 0;
 // ---------- 3D room ----------
 card(VX, VY, VW, VH);
 zoomv ? ( zxbX = gox + (VX + VW) * gs; zxbY = goy + VY * gs; zxbOn = 1; );
@@ -10693,7 +10783,7 @@ slider64 >= 1 ? (
 );
 vwopen ? ( clX0 = VX + 8; clX1 = VX + VW - 8; clY0 = VY + 24; clY1 = VY + VH - (vtab >= 2 ? 4 : 26); gclp = 1; vtab < 2 ? (gfxp1();
 gfxp2();
-gfxp3();
+gfxp3(); rvTX = 0;
 mtRec ? (   // the hint at the bottom right of the view (not over the room), beside the source pill
   gfx_setfont(6); strcpy(#mtbt, drag == 20 ? (planv ? "Drawing – let go to use the path" : "Drawing – hold Shift: up / down = height") : (planv ? "Draw the motion path: hold the mouse button and draw in the room" : "Draw the path in the room – hold Shift for the height"));
   mtBw = tws(#mtbt) + 24; VX + VW - 10 - mtBw < VX + 156 ? ( strcpy(#mtbt, drag == 20 ? "Drawing…" : "Draw the path in the room"); mtBw = tws(#mtbt) + 24; );
@@ -10725,7 +10815,6 @@ learn && planv ? lanno()) : gfxpT(); gclp = 0;
     click && vzh ? ( vzf = 1; vzox = vzoy = 0; vzFitOn = 0; click = 0; );
     tipbox(vzbx, vzby, vzw, 16, "View zoom (mouse wheel over the empty floor: in and out) – click: back to 1:1. The room keeps its size");
   );
-  vtab < 2 && !lrnTL && !isfree && slider136 >= 0.5 ? prospk();   // RoomservicePro: the monitoring ring
   vtab < 2 && !lrnTL && VW >= 230 && VH >= 170 ? srcpill(VX + 10, VY + VH - 50);   // source width + mono, from every module
 );   // end of: room view open (Plan / 3D: the room, Timeline / RT60: the analysis)
 );
@@ -12102,10 +12191,10 @@ function dmfoot(ly, ty) local(tw, th, mh, mw)
 // the letters: the bar from the top of the h, the dot - the sound source - centred on the baseline, two reflections
 // around it, open at the top. Drawn in pixels from the font's own metrics (Arimo Bold: ascent 1854, descent 434,
 // h 1485 units high, ink of "Ahh" from 0.025 to 1.88 em), so the bar lines up with the h at every scale.
-function ahhmark(x, yc) local(fh, px, ty, bl, lh, em, ink, cx, rr, dr, bw, gp, top, k, a1, a2, rw)
+function ahhmark(x, yc, sz, ctx, crf, cdot) local(fh, px, ty, bl, lh, em, ink, cx, rr, dr, bw, gp, top, k, a1, a2, rw)
 (
-  fh = floor(24 * gT + 0.5); gfx_setfont(5, "Arial", fh, 'b');
-  col(cTEXT, 1); txt("Ahh", x, yc, 0);
+  fh = max(6, floor(sz * gT + 0.5)); gfx_setfont(5, "Arial", fh, 'b');
+  col(ctx, 1); txt("Ahh", x, yc, 0);
   px = floor(gox + x * gs + 0.5); ty = floor(goy + yc * gs - fh / 2 + 0.5);     // where txt put the text box
   bl = ty + fh * 1854 / 2288; lh = fh * 1485 / 2288; em = fh * 2048 / 2288;
   ink = px + 1.88 * em;
@@ -12114,17 +12203,25 @@ function ahhmark(x, yc) local(fh, px, ty, bl, lh, em, ink, cx, rr, dr, bw, gp, t
   bw = max(2, floor(bw + 0.5)); dr = max(1.6, dr);
   // reflections: two arcs around the dot, open at the top (62 degrees each side), drawn as rings of 1 px arcs
   a1 = 62 * $pi / 180; a2 = 2 * $pi - a1;
-  col(cACTO, 0.35); rw = max(1, floor(0.045 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, rr - 0.0225 * lh - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
-  col(cACTO, 0.7);  rw = max(1, floor(0.055 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, 0.62 * rr - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
+  col(crf, 0.35); rw = max(1, floor(0.045 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, rr - 0.0225 * lh - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
+  col(crf, 0.7);  rw = max(1, floor(0.055 * lh + 0.5)); k = 0; loop(rw, gfx_arc(cx, bl, 0.62 * rr - rw / 2 + 0.5 + k, a1, a2, 1); k += 1; );
   // the bar: a rounded line from the top of the h down to the gap above the dot
-  col(cTEXT, 1);
+  col(ctx, 1);
   gfx_rect(floor(cx - bw / 2), top + floor(bw / 2), bw, max(1, floor(bl - dr - gp + 0.5) - top - 2 * floor(bw / 2)));
   gfx_circle(cx - 0.5, top + bw / 2 - 0.5, bw / 2, 1, 1); gfx_circle(cx - 0.5, floor(bl - dr - gp + 0.5) - bw / 2 - 0.5, bw / 2, 1, 1);
-  col(cSRC, 1); gfx_circle(cx - 0.5, bl - 0.5, dr, 1, 1);
+  col(cdot, 1); gfx_circle(cx - 0.5, bl - 0.5, dr, 1, 1);
 );
+// THE LOGO: the plug-in icon itself (resources/Ahh_icon.svg, drawn by the host in vector) at the window scale gT - sharp at
+// every size and screen scale. x, yc: its left edge and vertical middle in gT units. The same in light and dark mode.
+function ahhicon(x, yc, S)
+(
+  gfx_ahhicon(gox + x * gs, goy + (yc - S / 2) * gs, S * gs);
+)
+
 // Top bar: name, Basic/Expert and view mode switches, Tabs/All/Fit, room presets menu button and snapshot slots
 function gfxp11()
 (
+rvTX = 0;   // (Labels off only ever covers the room drawing)
 gclp = 0;   // the clipping of the room view never reaches the top bar
 col(cBG, 1); gfx_rect(0, 0, gfx_w, gfx_h);
 
@@ -12132,8 +12229,19 @@ szoom ? ( gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx =
 // ---------- top bar ----------
 // THE NAME AND THE MARK keep one size in every view (Basic, Expert, Tabs, All, Learn): drawn at gT (window only), not at the page scale;
 // vertically centered on the switch row, the view switches start after them (tbOff)
-tbOff = max(0, ceil((117.4 * gT - gox) / gs + 9 - 126)); roombx = 242 + tbOff;   // (again with the scale of this frame's top bar)
-gsT0 = gs; gs = gT; ahhmark(11, 17 * gsT0 / gT);
+thgeo(); tbOff = max(0, ceil(o51X + o51W + 8 - 126)); roombx = 242 + tbOff;   // (again with the scale of this frame's top bar)
+gsT0 = gs; gs = gT; ahhicon(9, 17 * gsT0 / gT, 31); gs = gsT0;
+darkmode ? ( col(0x4A4B52, 1); RRO(thX, thY, thS, thS, thS * 0.233); );   // dark mode: the logo's fill is the page color - a light edge keeps its shape
+thm_open ? ( col(cACTO, 1); RRO(thX - 2, thY - 2, thS + 4, thS + 4, thS * 0.233 + 2); );
+thh = inbox(thX, thY, thS, thS);
+click && thh ? ( thm_open = !thm_open; click = 0; );
+!thm_open ? tipbox(thX, thY, thS, thS, "Interface: System (follows your computer), Dark or Light – click to choose");
+// OUTPUT FORMAT: Stereo | 5.1, in every view (Basic, Expert, Learn) - the 5.1 output needs a track with 6 channels
+segtrack(o51X, o51Y, o51W, o51H);
+segp(o51X, o51Y, o51W, o51H, 2, 0, "Stereo", slider136 < 0.5, cTEXT) ? ( slider136 = 0; slider_automate(slider136); click = 0; );
+segp(o51X, o51Y, o51W, o51H, 2, 1, "5.1", slider136 >= 0.5, cTEXT) ? ( slider136 = 1; slider_automate(slider136); click = 0; );
+tipbox(o51X, o51Y, o51W / 2, o51H, slider136 >= 0.5 ? "Stereo output. Click: back to stereo (the 5.1 settings stay)" : "Stereo output – two channels");
+tipbox(o51X + o51W / 2, o51Y, o51W / 2, o51H, slider136 >= 0.5 ? (num_ch >= 6 ? "5.1 output: the room on six loudspeaker channels (L R C LFE Ls Rs) – a stereo source keeps its two channels; the loudspeakers are shown in the Stage View" : "5.1 output: the room on six loudspeaker channels (L R C LFE Ls Rs) – a stereo source keeps its two channels and is moved in the room as it is") : "5.1 output: the room on six loudspeaker channels (L R C LFE Ls Rs) – a stereo source keeps its two channels");
 gs = gsT0; gfx_setfont(5, "Arial", FS5, 'b');   // the dmajorsound mark, raised a little, right after the name (the name a little smaller, the switches 8 units further right: nothing touches)
 // Basic | Expert | Learn: one segmented switch, the active segment filled
 // VIEW MODE: a dark switch right after the name (the plugin's own view - not a preset, not a snapshot)
@@ -12242,7 +12350,7 @@ hlpbx = 516 + tbOff;
   tipbox(hlpbx, 9, 19, 16, "Help: how Ahh works and the most used keys");
 );
 // RESET: a button next to View (Save belongs to the snapshots)
-vgx = WT - 204; rsx = tabm ? 522 + tbOff : vgx - 42;
+vgx = WT - (basic ? 204 : 234); rsx = tabm ? 522 + tbOff : vgx - 42;
 col(cHAIR, 1); LNW(rsx - 6, 9, rsx - 6, 25, 1);                      // separator: Save belongs to the snapshots
 chip(rsx, 9, 34, 16, "Reset", 0, cTEXT);
 tipbox(rsx, 9, 34, 16, vlock ? "Reset: only the room stays on – living room, listener in the middle, source 2 m in front of it; delay, barrier, filters, source model and EQ off. The limiter stays on as a protection. The layout is locked and stays (snapshots are kept)"
@@ -12278,12 +12386,6 @@ mhit = sqr(mx - mbx) + sqr(my - mby) < 42;
 click && mhit ? ( vopt[7] = monoOn ? 0 : 1; );
 mhit ? ( tipon = 1; tipstr = monoOn ? "Colors on" : "Black & white: switch all colors off"; tipx = mbx - 60; tipy = mby + 22; );
 );
-tx = WT - 18; ty = 24;
-thit = sqr(mx - tx) + sqr(my - ty) < 42;
-darkmode ? ( col(0xF2C94C, 1); CI(tx, ty, 4.2, 1); col(cBG, 1); CI(tx + 2.2, ty - 1.6, 3.6, 1); )
-         : ( col(cAMB, 1); CI(tx, ty, 2.6, 1); gk = 0; loop(8, an1 = gk * $pi / 4; LNW(tx + cos(an1) * 4.2, ty + sin(an1) * 4.2, tx + cos(an1) * 5.8, ty + sin(an1) * 5.8, 1.1); gk += 1; ); );
-click && thit ? ( vopt[4] = darkmode ? 0 : 1; );
-thit ? ( tipon = 1; tipstr = darkmode ? "Switch to light mode" : "Switch to dark mode"; tipx = tx - 50; tipy = ty + 22; );
 // ---------- SIGNAL-FLOW STRIP: the modules in the order the sound passes them - dot = on / off (click), Shift / Alt + click = solo ----------
 fsY = tabm ? 5 : (!basic && !learn ? 46 : 36); fsH = 24; fsC = fsY + fsH / 2;                 // tabs: the right part of the strip sits in the top bar
 !tabm ? card(8, fsY, WT - 16, fsH);
@@ -12302,7 +12404,7 @@ soloM > 0 ? ( strcpy(#stp, soloM == 1 ? "SOLO  Source" : (soloM == 2 ? "SOLO  De
   hearM > 0 ? ( strcpy(#stp, hearM == 6 ? "HEAR  Direct" : (hearM == 5 ? "HEAR  Early" : (hearM == 3 ? "HEAR  Late" : "HEAR  part"))); stpw = tws(#stp) + 30; ) : ( stpw = 0; ); );
 stpwT = stpw; tabm ? stpw = 0;   // tabs: the solo sign is in the tab row
 gfx_setfont(6); lkw = tws(vlock ? "GUI locked" : "Lock GUI") + 28;        // GUI lock: right end of the strip
-mcw2 = !basic && !learn ? mcorrw() + 8 : 0; mcOn = 0;
+mcw2 = 0; mcOn = 0;   // (no mini correlation meter in the strip any more - the full meter and the goniometer stay in Output)
 tabm && abOn ? mcw2 = 0;   // the mini correlation meter at the end of the chain (Expert) - Tabs: the strip sits in the top bar and the meter takes the place of the word "compare"; with A / B running there is no room
 stRm = tabm ? 34 : 18; abw = abOn ? 126 : (mcw2 > 0 ? 46 : (tabm ? 88 : 126)); fitw = learn || tabm || !basic ? 0 : 52; udw = 74 + (basic && xpn > 0 ? 150 : 0); fsX0 = 20; fsX1 = WT - stRm - lkw - 10 - fitw - (stpw > 0 ? stpw + 10 : 0) - mcw2 - abw - 10 - udw;
 stfix = 0; k = 0;
@@ -12434,7 +12536,7 @@ click && lkhit ? ( vopt[15] = vlock ? 0 : 1; click = 0; );
 lkhit ? ( tipon = 1; tipforce = 0; tipstr = vlock ? "GUI locked: folding, column widths and view options stay (also on Reset) – click to unlock. The sound is not affected" : "Lock the GUI: folding, column widths and view options stay as they are (also on Reset) – saved with the project. The sound is not affected"; tipx = lkx + lkw / 2 - 120; tipy = fsY + fsH + 12; );
 // footer
 !szoom ? ( dmfoot(LH - 15.5, LH - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, LH - 8, 0); updnote(LH - 8); );
-tabm && szoom ? ( !vgone ? gfxp4(); !zoomv && !vgone ? viewgrp(VX + VW - 78 - 180, VY + 12 - 17); tabrow();   // tabs: room view and tab row at the page scale, above the module
+tabm && szoom ? ( !vgone ? gfxp4(); !zoomv && !vgone ? viewgrp(VX + VW - 78 - 210, VY + 12 - 17); tabrow();   // tabs: room view and tab row at the page scale, above the module
   !zoomv ? ( dmfoot(HT - 15.5, HT - 8); col(cMUTED, 1); gfx_setfont(7); txt(#verstr, 12, HT - 8, 0); updnote(HT - 8); ); );   // the footer also in Tabs
 szoom ? (                                                    // back to the zoom scale for the section
   tabm && tipon ? ( tipx = (tipx * gsN + goxN - goxZ) / gsZ; tipy = (tipy * gsN + goyN - goyZ) / gsZ; ) : ( tipon = 0; );   // tabs: a tip of the room view stays
@@ -12521,6 +12623,20 @@ dmenu ? (
 // Draws the popup menus: room presets (search, my rooms), motion presets, free field presets and source model menu
 function gfxp13()
 (
+thm_open ? (
+  col(cINK, 0.14); RR(thmx + 1, thmy + 3, thmw, thmh, 8);
+  col(cSURF, 1); RR(thmx, thmy, thmw, thmh, 8); col(cBORD, 1); RRO(thmx, thmy, thmw, thmh, 8);
+  col(cMUTED, 1); gfx_setfont(7); txt("Interface", thmx + 12, thmy + 15, 0);
+  gk = 0;
+  loop(3,
+    thry = thmy + 28 + gk * thmr; thon = thmode == gk; thhv = inbox(thmx + 4, thry, thmw - 8, thmr);
+    thon || thhv ? ( col(thon ? cACT : cLINE, 1); RR(thmx + 5, thry + 1, thmw - 10, thmr - 2, 6); );
+    thon ? ( col(cACTO, 1); LNW(thmx + 14, thry + 11, thmx + 17.5, thry + 14.5, 1.6); LNW(thmx + 17.5, thry + 14.5, thmx + 24, thry + 7.5, 1.6); );
+    col(thon ? cACTX : cTEXT, 1); gfx_setfont(2); txt(gk == 0 ? "System" : (gk == 1 ? "Dark" : "Light"), thmx + 32, thry + thmr / 2, 0);
+    thhv ? ( tipon = 1; tipstr = gk == 0 ? "Follows the light / dark setting of your computer" : (gk == 1 ? "The dark look" : "The light look"); tipx = thmx + thmw + 80; tipy = thry + thmr / 2; );
+    gk += 1;
+  );
+);
 rmenu ? (
   rmZ = tabm && szoom;   // tabs: the room menu at the page scale (it opens from the top bar)
   rmZ ? ( gsS = gs; goxS = gox; goyS = goy; mxS = mx; myS = my; WTS = WT; HTS = HT; gs = gsN; gox = goxN; goy = goyN; WT = WTN; HT = HTN; setfonts(); mx = (mouse_x - gox) / gs; my = (mouse_y - goy) / gs; );
@@ -13243,7 +13359,7 @@ tipon && (tipShow || tipforce) && (!(mouse_cap & 1) || tipforce) ? (   // tipSho
 cfade = 1;
 lasttip = tipon && (tipShow || tipforce) && (!(mouse_cap & 1) || tipforce);
 );
-dofull ? (mzfr += 1;   // a new stamp for the module boxes (the section headers of the full frame write it; a box with an older stamp was not drawn)
+dofull ? (mzfr += 1; mmN = 0;   // a new stamp for the module boxes (the section headers of the full frame write it; a box with an older stamp was not drawn)
 gfxp11();
 gfxp12();
 gfxp13();
@@ -13260,6 +13376,13 @@ gfxp15();
     !zoomv && !szoom ? ( ovlon ? ( !(hlpon || kovl) ? ( fullcnt = 0; ); ) : ( col(cBG, 1); R(IOX - 1, IOY - 1, IOW + 2, IOH + 2); drawio(); rzon && rzok(basic ? 22 : 7) ? rcdraw(basic ? 44 : 7); ); );   // (its corner grip lies inside: drawn again)
 // the mini correlation meter in the strip moves too - also in Tabs, where another module is open (szoom)
     mcOn && !ovlon && (tabm || (!zoomv && !szoom)) ? ( mgsS = gs; mgxS = gox; mgyS = goy; gs = mcGS; gox = mcGX; goy = mcGY; setfonts(); col(tabm ? cBG : cSURF, 1); R(mcX - 2, mcCY - 8, mcW + 4, 16); mcorrdraw(mcX, mcCY); gs = mgsS; gox = mgxS; goy = mgyS; setfonts(); );
+    // the small In / Out meters in the module headers
+    !ovlon ? (
+      mgsS = gs; mgxS = gox; mgyS = goy; gk = 0;
+      loop(mmN, gs = mmB[gk * 5 + 2]; gox = mmB[gk * 5 + 3]; goy = mmB[gk * 5 + 4];
+        col(cSURF, 1); R(mmB[gk * 5] - 0.5, mmB[gk * 5 + 1] - 7, 17.5, 14); mmeter(mmB[gk * 5], mmB[gk * 5 + 1]); gk += 1; );
+      gs = mgsS; gox = mgxS; goy = mgyS;
+    );
     lastiokey = iokey; );
 );   // end of: full / partial frame
 
@@ -13268,7 +13391,7 @@ tabm && szoom ? ( gs = gsN; gox = goxN; goy = goyN; mx = (mouse_x - gox) / gs; m
 vwopen && (!szoom || tabm) && mouse_wheel != 0 && !(mouse_cap & 1) && inbox(VX, VY, VW, VH) ? (
   PJ(lx, ly, lz); wLs = sqrt(sqr(mx - qx) + sqr(my - qy));
   PJ(sx, sy, sz); wSr = sqrt(sqr(mx - qx) + sqr(my - qy));
-  wstep = mouse_wheel / 120 * ((mouse_cap & 8) ? 0.02 : 0.1);
+  wstep = mouse_wheel / 120 * 0.1;   // (Shift + wheel = stereo width, below)
   wEl = 0;
   bon && bew > 0 ? (
     planv ? ( PJ(brX0, yb, 0); ex0s = qx; ey0s = qy; PJ(brX1, yb, 0); wEl = mx >= ex0s - 6 && mx <= qx + 8 && abs(my - qy) <= 8; )   // plan: the whole line
@@ -13276,10 +13399,17 @@ vwopen && (!szoom || tabm) && mouse_wheel != 0 && !(mouse_cap & 1) && inbox(VX, 
   );
   weh = !isfree && wLs >= 18 && wSr >= 18 && !wEl && !nearmth() ? edgehit() : -1;
 
+  // SHIFT + WHEEL anywhere in the Stage View: the stereo width of the source (up = the handles move apart, down = together; 5 % a notch)
+  (mouse_cap & 8) ? (
+    setp(98, min(200, max(0, floor(slider98 / 5 + 0.5) * 5 + 5 * (mouse_wheel > 0 ? 1 : -1))));
+    swfmt(); strcpy(#swt, "Stereo width "); strcat(#swt, #fv); strcat(#swt, slider110 >= 0.5 ? " – mono mix is on, the width counts again when it is off" : " – Shift + wheel up = wider, down = narrower");
+    tipon = 1; tipforce = 0; tipstr = #swt; PJ(sx, sy, sz); tipx = qx; tipy = qy - 30;
+    wheelused = 1;
+  ) :
   wLs < 18 ? moveobjz(2, lz + wstep) : ( wSr < 18 ? moveobjz(1, sz + wstep) : (
-    wEl && !lockE ? setp(43, min(100, max(0, slider43 + mouse_wheel / 120 * ((mouse_cap & 8) ? 1 : 5))));   // wheel over door / window: opening
+    wEl && !lockE ? setp(43, min(100, max(0, slider43 + mouse_wheel / 120 * 5)));   // wheel over door / window: opening
     weh >= 0 ? (                                                   // wheel over a room edge: that dimension (Alt = height, Ctrl/Cmd = size)
-      wf = (1 + ((mouse_cap & 8) ? 0.005 : 0.02)) ^ (mouse_wheel / 120);
+      wf = 1.02 ^ (mouse_wheel / 120);
       (mouse_cap & 4) ? setp(31, min(4, max(0.25, slider31 * wf))) : (
       sidevOn && floor(weh / 4) == 2 ? (frontv ? setp(2, min(40, max(0.8, slider2 * wf))) : setp(3, min(40, max(0.8, slider3 * wf)))) : ((mouse_cap & 16) || floor(weh / 4) == 2 || sidevOn ? setp(4, min(15, max(0.8, slider4 * wf))) : (
       floor(weh / 4) == 0 ? setp(2, min(40, max(0.8, slider2 * wf))) : setp(3, min(40, max(0.8, slider3 * wf))); ); ); );

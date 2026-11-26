@@ -81,12 +81,12 @@ std::vector<float> Engine::saveState() {
 // Sound: 18 (solo, cleared on load), 49 (ear model), 52 .. 66 (reflectors), 68 (input guard), 69. All other entries
 // are read by @gfx only: Basic / Expert / Learn, tabs, folded modules, heights, column width, zoom, ...
 // tools/check_vopt.py checks this split against the JSFX on every build.
-static bool isViewOption(int i) { return (i >= 1 && i <= 51 && i != 18 && i != 49) || i == 67; }
+static bool isViewOption(int i) { return (i >= 1 && i <= 51 && i != 18 && i != 49) || i == 67 || i == 70 || i == 71; }   // 70 Interface (System / Dark / Light), 71 Labels off
 
 void Engine::loadState(const std::vector<float>& data, bool keepView) {
     Gen& g = *gen;
     ensureInit();
-    const int kVoptBase = g.g_vopt > 0 ? (int)g.g_vopt : 2048, kVoptCount = 70;
+    const int kVoptBase = g.g_vopt > 0 ? (int)g.g_vopt : 2048, kVoptCount = 72;
     double view[kVoptCount];
     if (keepView && g.mem.ok()) for (int i = 0; i < kVoptCount; i++) view[i] = g.mem[(size_t)(kVoptBase + i)];
     g.serBuf = data; g.serPos = 0; g.serMode = 0;

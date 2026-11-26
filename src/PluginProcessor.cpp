@@ -22,6 +22,8 @@ RoomServiceProcessor::RoomServiceProcessor()
         const rs::SliderInfo& s = rs::kSliders[i];
         juce::NormalisableRange<float> range((float)s.lo, (float)s.hi, (float)juce::jmax(0.0, s.step));
         auto attr = juce::AudioParameterFloatAttributes();
+        // Stereo | 5.1 (and the fixed ITU layout) are set up once, not automated: the host must not switch the format during playback
+        if (s.idx == 136 || s.idx == 137) attr = attr.withAutomatable(false);
         if (s.enums) {
             const rs::SliderInfo* sp = &s;
             attr = attr.withStringFromValueFunction([sp](float v, int) { return enumLabel(*sp, v); });

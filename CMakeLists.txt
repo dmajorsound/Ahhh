@@ -37,7 +37,7 @@ juce_add_plugin(Roomservice
 # The plug-in's own font (Arimo: the metric twin of Arial, SIL Open Font License, resources/fonts/OFL.txt) is built in,
 # so the text looks the same on every machine and never depends on installed fonts.
 juce_add_binary_data(RoomserviceData NAMESPACE RsData HEADER_NAME RsData.h
-  SOURCES resources/fonts/Arimo-Regular.ttf resources/fonts/Arimo-Bold.ttf)
+  SOURCES resources/fonts/Arimo-Regular.ttf resources/fonts/Arimo-Bold.ttf resources/Ahh_icon.svg)
 set_target_properties(RoomserviceData PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 file(GLOB RS_GEN ${CMAKE_CURRENT_SOURCE_DIR}/gen/*.cpp)

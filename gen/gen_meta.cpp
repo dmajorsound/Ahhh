@@ -139,7 +139,7 @@ const SliderInfo kSliders[] = {
   {134, 0.0, 0.0, 1.0, 1.0, "Reflectors bypass", true, "On|Off"},
   {135, 0.0, 0.0, 1.0, 1.0, "Doppler when dragging by hand", true, "On|Off"},
   {136, 0.0, 0.0, 1.0, 1.0, "Output format", true, "Stereo|5.1"},
-  {137, 0.0, 0.0, 1.0, 1.0, "Loudspeaker layout", true, "ITU|Film"},
+  {137, 0.0, 0.0, 1.0, 1.0, "Loudspeaker layout (always ITU)", true, "ITU|ITU"},
   {138, 30.0, 15.0, 45.0, 0.1, "ITU front angle (deg)", true, nullptr},
   {139, 110.0, 90.0, 150.0, 0.1, "ITU surround angle (deg)", true, nullptr},
   {140, 1.2, 0.3, 3.0, 0.01, "Loudspeaker height (m)", true, nullptr},
@@ -149,8 +149,13 @@ const SliderInfo kSliders[] = {
   {144, 100.0, 0.0, 100.0, 0.1, "Phantom ... discrete center (%)", true, nullptr},
   {145, 0.0, 0.0, 1.0, 1.0, "Loudspeaker ring", true, "Follows the listener|Fixed in the room"},
   {146, 0.0, 0.0, 1.0, 1.0, "Source snaps to a speaker", true, "Off|On"},
+  {147, 0.0, (-24.0), 6.0, 0.1, "5.1 level L (dB)", true, nullptr},
+  {148, 0.0, (-24.0), 6.0, 0.1, "5.1 level R (dB)", true, nullptr},
+  {149, 0.0, (-24.0), 6.0, 0.1, "5.1 level C (dB)", true, nullptr},
+  {150, 0.0, (-24.0), 6.0, 0.1, "5.1 level Ls (dB)", true, nullptr},
+  {151, 0.0, (-24.0), 6.0, 0.1, "5.1 level Rs (dB)", true, nullptr},
 };
-const int kNumSliders = 146;
+const int kNumSliders = 151;
 const int kNumInPins = 6;
 const int kNumOutPins = 6;
 }

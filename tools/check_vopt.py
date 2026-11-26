@@ -45,7 +45,7 @@ def main(path):
             errors.append('line %d: computed vopt index outside the reflector block: %s' % (l, lines[l - 1].strip()[:100]))
     if not re.search(r'\bRFB = 52;', src): errors.append('RFB is no longer 52 (reflectors: vopt[52 .. 66])')
     if not re.search(r'\bvopt = 2048;', src): errors.append('vopt is no longer at 2048')
-    if not re.search(r'ser_so = 70;', src): errors.append('@serialize no longer writes 70 view options')
+    if not re.search(r'ser_so = 72;', src): errors.append('@serialize no longer writes 72 view options')
     for e in errors: print('check_vopt: ' + e)
     print('check_vopt: %s (audio reads vopt%s, reflector block by index on %d lines)' % ('FAILED' if errors else 'ok', sorted(audio), len(set(dyn))))
     return 1 if errors else 0

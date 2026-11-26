@@ -89,6 +89,7 @@ struct GfxBackend {
     virtual void arc(double x, double y, double r, double a1, double a2, bool aa) = 0;
     virtual void triangle(const double* xy, int npts) = 0;
     virtual void roundrect(double x, double y, double w, double h, double radius, bool aa) = 0;
+    virtual void ahhicon(double, double, double) {}   // the plug-in icon, drawn in vector (x, y = top left, s = size, pixels)
     virtual void gradrect(const double* p, int n) = 0;
     virtual void drawstr(const std::string& s, int flags, double right, double bottom) = 0;
     virtual void measurestr(const std::string& s, double& w, double& h) = 0;
@@ -214,6 +215,7 @@ struct Runtime {
     double gfx_arc(std::initializer_list<double> a);
     double gfx_triangle(std::initializer_list<double> a);
     double gfx_roundrect(std::initializer_list<double> a);
+    double gfx_ahhicon(std::initializer_list<double> a);
     double gfx_gradrect(std::initializer_list<double> a);
     double gfx_drawstr(std::initializer_list<double> a);
     double gfx_measurestr(double s, double& w, double& h);

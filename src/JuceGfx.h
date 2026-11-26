@@ -33,6 +33,7 @@ public:
     void arc(double x, double y, double r, double a1, double a2, bool aa) override;
     void triangle(const double* xy, int npts) override;
     void roundrect(double x, double y, double w, double h, double radius, bool aa) override;
+    void ahhicon(double x, double y, double s) override;
     void gradrect(const double* p, int n) override;
     void drawstr(const std::string& s, int flags, double right, double bottom) override;
     void measurestr(const std::string& s, double& w, double& h) override;

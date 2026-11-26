@@ -186,6 +186,17 @@ void JuceGfx::roundrect(double x, double y, double w, double h, double radius, b
     gr.drawRoundedRectangle((float)ti(x) + 0.5f, (float)ti(y) + 0.5f, (float)ti(w), (float)ti(h), (float)radius, 1.0f);
 }
 
+// the plug-in icon (resources/Ahh_icon.svg) as vector paths: sharp at every size and screen scale
+void JuceGfx::ahhicon(double x, double y, double s) {
+    if (!(fin(x) && fin(y) && fin(s)) || s < 2) return;
+    static std::unique_ptr<juce::Drawable> icon = [] {
+        return juce::Drawable::createFromSVGString(juce::String::fromUTF8(RsData::Ahh_icon_svg, RsData::Ahh_icon_svgSize));
+    }();
+    if (!icon) return;
+    auto& gr = G();
+    icon->drawWithin(gr, juce::Rectangle<float>((float)x, (float)y, (float)s, (float)s), juce::RectanglePlacement::centred, 1.0f);
+}
+
 void JuceGfx::gradrect(const double* p, int n) {
     juce::Image* im = destImage();
     if (!im || n < 8) return;

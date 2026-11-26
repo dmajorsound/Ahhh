@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include <cstdlib>
 
 RoomServiceEditor::RoomServiceEditor(RoomServiceProcessor& p)
     : AudioProcessorEditor(&p), proc(p), gfx(*p.engine.gen) {
@@ -77,6 +78,14 @@ void RoomServiceEditor::timerCallback() {
     // a frame that took long is followed by a pause at least as long: the host's own window, mouse and keyboard
     // handling always get half of the time, however large the window is (the picture slows down, nothing freezes)
     if (juce::Time::getMillisecondCounterHiRes() < nextFrameMs) return;
+    // WHILE THE WINDOW IS BEING RESIZED: no new frames - the last one is stretched to the window (paint), which costs nothing.
+    // Every new size means new fonts and every text drawn anew; doing that 30 times a second made the resize stutter.
+    // 150 ms after the last size change the frame is drawn once at the final size.
+    {
+        const double nowMs = juce::Time::getMillisecondCounterHiRes();
+        if (getWidth() != lastW || getHeight() != lastH) { if (lastW > 0) sizeChangeMs = nowMs; lastW = getWidth(); lastH = getHeight(); }   // (the first size: no wait)
+        if (nowMs - sizeChangeMs < 150.0) { repaint(); return; }
+    }
     // the script expects @init before @gfx (REAPER guarantees it); a host may show the editor before the first block
     if (proc.engine.needsInit() || proc.hasHeldState()) proc.initForEditor();
     const double s = scale();
@@ -91,6 +100,13 @@ void RoomServiceEditor::timerCallback() {
         if (updState == 1) g->setString(1000, tag.c_str());
     }
     g->g_updav = updState == 1 ? 1.0 : 0.0;
+    // Interface "System": the computer's light / dark setting, asked about once a second (cheap, and the OS rarely changes it)
+    if (sysDarkAge-- <= 0) {
+        sysDarkAge = 30;
+        if (auto* e = std::getenv("AHH_TEST_SYSDARK")) sysDark = e[0] == '1';
+        else sysDark = juce::Desktop::getInstance().isDarkModeActive();
+    }
+    g->g_sysdark = sysDark ? 1.0 : 0.0;
     const double t0 = juce::Time::getMillisecondCounterHiRes();
     gfx.beginFrame(w, h);
     proc.engine.runGfx(&gfx, w, h);

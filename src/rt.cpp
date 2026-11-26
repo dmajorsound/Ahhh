@@ -315,6 +315,7 @@ double Runtime::gfx_circle(std::initializer_list<double> a) { ARGS; if (gfx) gfx
 double Runtime::gfx_arc(std::initializer_list<double> a) { ARGS; if (gfx) gfx->arc(p[0], p[1], p[2], p[3], p[4], n > 5 ? B(p[5]) : true); return 0; }
 double Runtime::gfx_triangle(std::initializer_list<double> a) { ARGS; if (gfx) gfx->triangle(p, n / 2); return 0; }
 double Runtime::gfx_roundrect(std::initializer_list<double> a) { ARGS; if (gfx) gfx->roundrect(p[0], p[1], p[2], p[3], p[4], n > 5 ? B(p[5]) : true); return 0; }
+double Runtime::gfx_ahhicon(std::initializer_list<double> a) { ARGS; if (gfx && n >= 3) gfx->ahhicon(p[0], p[1], p[2]); return 0; }
 double Runtime::gfx_gradrect(std::initializer_list<double> a) { ARGS; if (gfx) gfx->gradrect(p, n); return 0; }
 double Runtime::gfx_drawstr(std::initializer_list<double> a) {
     ARGS; if (gfx) gfx->drawstr(cstr(p[0]), n > 1 ? (int)p[1] : 0, n > 2 ? p[2] : 0, n > 3 ? p[3] : 0); return 0;

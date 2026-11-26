@@ -31,7 +31,10 @@ private:
     rs::JuceGfx gfx;
     // pixel scale of the screen the window is on (1, 1.25, 1.5, 2 ...), taken from the paint context. A new value
     // counts only when two paints in a row report it, so the frame size cannot flip between two values.
-    int updState = 0; std::string updUrl;
+    int updState = 0;
+    std::string updUrl;
+    int lastW = 0, lastH = 0; double sizeChangeMs = -1.0e9;   // live resize: frames wait until the size stands still
+    int sysDarkAge = 0; bool sysDark = false;   // the computer's dark mode (Interface: System)
     double nextFrameMs = 0, lastPaintMs = 0;
     float lastPaintScale = 1.0f, candidateScale = 1.0f;
     juce::RectangleList<int> dirty;

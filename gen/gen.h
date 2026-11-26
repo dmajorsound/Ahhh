@@ -825,6 +825,7 @@ struct Gen : Runtime {
   double g_helpon = 0;
   double g_hfr2 = 0;
   double g_hfrp = 0;
+  double g_hidetx = 0;
   double g_hidew = 0;
   double g_hil = 0;
   double g_hin = 0;
@@ -974,6 +975,7 @@ struct Gen : Runtime {
   double g_lfc = 0;
   double g_lfr2 = 0;
   double g_lfrp = 0;
+  double g_lgap = 0;
   double g_lgh = 0;
   double g_lgs = 0;
   double g_lgt = 0;
@@ -1111,9 +1113,12 @@ struct Gen : Runtime {
   double g_mfy = 0;
   double g_mm0x = 0;
   double g_mm0y = 0;
+  double g_mmb = 0;
+  double g_mmcap = 0;
   double g_mmcx = 0;
   double g_mmcy = 0;
   double g_mmdrag = 0;
+  double g_mmn = 0;
   double g_mmtc = 0;
   double g_mnvb = 0;
   double g_mnvl = 0;
@@ -1257,6 +1262,10 @@ struct Gen : Runtime {
   double g_nsnap = 0;
   double g_nsp = 0;
   double g_nt = 0;
+  double g_o51h = 0;
+  double g_o51w = 0;
+  double g_o51x = 0;
+  double g_o51y = 0;
   double g_oa = 0;
   double g_oc0 = 0;
   double g_oc1 = 0;
@@ -1486,6 +1495,8 @@ struct Gen : Runtime {
   double g_qst = 0;
   double g_qsts = 0;
   double g_qtailr = 0;
+  double g_qvd = 0;
+  double g_qvr = 0;
   double g_qx = 0;
   double g_qy = 0;
   double g_r0 = 0;
@@ -1614,6 +1625,7 @@ struct Gen : Runtime {
   double g_rtb = 0;
   double g_rtbv = 0;
   double g_rtqd = 0;
+  double g_rvtx = 0;
   double g_rwc = 0;
   double g_rzgs = 0;
   double g_rzgw = 0;
@@ -1843,6 +1855,7 @@ struct Gen : Runtime {
   double g_sym = 0;
   double g_syr = 0;
   double g_sys = 0;
+  double g_sysdark = 0;
   double g_syv = 0;
   double g_syw = 0;
   double g_sz = 0;
@@ -1887,6 +1900,16 @@ struct Gen : Runtime {
   double g_tcs0 = 0;
   double g_tcus = 0;
   double g_tfit = 0;
+  double g_thm_open = 0;
+  double g_thmh = 0;
+  double g_thmode = 0;
+  double g_thmr = 0;
+  double g_thmw = 0;
+  double g_thmx = 0;
+  double g_thmy = 0;
+  double g_ths = 0;
+  double g_thx = 0;
+  double g_thy = 0;
   double g_til = 0;
   double g_tipforce = 0;
   double g_tipon = 0;
@@ -1934,6 +1957,16 @@ struct Gen : Runtime {
   double g_tpx0 = 0;
   double g_tpy = 0;
   double g_tpzw = 0;
+  double g_trgc = 0;
+  double g_trgl = 0;
+  double g_trgls = 0;
+  double g_trgr = 0;
+  double g_trgrs = 0;
+  double g_trsc = 0;
+  double g_trsl = 0;
+  double g_trsls = 0;
+  double g_trsr = 0;
+  double g_trsrs = 0;
   double g_ts = 0;
   double g_tst = 0;
   double g_tzha = 0;
@@ -2204,7 +2237,8 @@ struct Gen : Runtime {
   double F_abload(double);
   double F_abstore(double);
   double F_actlines();
-  double F_ahhmark(double, double);
+  double F_ahhicon(double, double, double);
+  double F_ahhmark(double, double, double, double, double, double);
   double F_airdb(double, double, double);
   double F_alloc(double);
   double F_alloca(double);
@@ -2449,6 +2483,7 @@ struct Gen : Runtime {
   double F_lis_walk(double, double);
   double F_ln(double, double, double, double);
   double F_lnbox(double, double, double, double, double);
+  double F_lngap(double, double, double, double, double, double, double);
   double F_lnmenu(double);
   double F_lnname(double);
   double F_lnpx(double, double, double, double);
@@ -2485,6 +2520,8 @@ struct Gen : Runtime {
   double F_mhp(double, double, double);
   double F_mixc(double, double, double);
   double F_mloc(double, double, double);
+  double F_mmbar(double, double, double, double);
+  double F_mmeter(double, double);
   double F_modeset(double);
   double F_modreset();
   double F_modstep(double);
@@ -2706,6 +2743,7 @@ struct Gen : Runtime {
   double F_tabstep(double);
   double F_tgl(double, double, double, double);
   double F_thf(double);
+  double F_thgeo();
   double F_tileicon(double, double, double);
   double F_tipbox(double, double, double, double, double);
   double F_tnc(double);

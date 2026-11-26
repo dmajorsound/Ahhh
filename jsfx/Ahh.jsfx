@@ -6751,7 +6751,12 @@ clipwarn > 0 ? clipwarn -= 1;
 
 pkOL = max(abs(outL), pkOL * pmdec); pkOR = max(abs(outR), pkOR * pmdec);
 pro_on ? ( qPK[2] = max(abs(qO[2]), qPK[2] * pmdec); qPK[3] = max(abs(qO[3]), qPK[3] * pmdec); qPK[4] = max(abs(qO[4]), qPK[4] * pmdec); qPK[5] = max(abs(qO[5]), qPK[5] * pmdec); );   // (meters of C, Ls, Rs - the Output module shows them in Step 7)
-crXY = crXY * crk + outL * outR; crXX = crXX * crk + outL * outL; crYY = crYY * crk + outR * outR;   // correlation (GUI)
+pro_on ? (   // 5.1: the correlation of the standard stereo downmix (ITU: Lo = L + 0.707 C + 0.707 Ls, Ro = R + 0.707 C + 0.707 Rs, no LFE)
+  dmxL = outL + 0.70710678 * (qO[2] + qO[3]); dmxR = outR + 0.70710678 * (qO[2] + qO[4]);
+  crXY = crXY * crk + dmxL * dmxR; crXX = crXX * crk + dmxL * dmxL; crYY = crYY * crk + dmxR * dmxR;
+) : (
+  crXY = crXY * crk + outL * outR; crXX = crXX * crk + outL * outL; crYY = crYY * crk + outR * outR;   // correlation (GUI)
+);
 spOn ? ( spRI[spw] = spIn; spRO[spw] = (outL + outR) * 0.5; spw = (spw + 1) & 8191; );   // spectrum (only while the window is open)
 spOn ? ( gonC += 1; gonC >= 4 ? ( gonC = 0; gonB[2 * gonP] = outL; gonB[2 * gonP + 1] = outR; gonP = (gonP + 1) & (GONN - 1); ); );   // goniometer ring
 
@@ -7659,6 +7664,14 @@ secopen(7) ? (
       );
       gk += 1;
     );
+    // the correlation of the stereo downmix, right of the knobs (when there is room)
+    o5cx0 = o5x0 + 5 * o5sp + 16; o5cw = IOX + IOW - 14 - o5cx0;
+    o5cw >= 90 ? (
+      col(cMUTED, 1); gfx_setfont(4); txt("Correlation · stereo downmix", o5cx0, o5y - 13, 0);
+      crv = crvS; corrbar(o5cx0, o5y + 2, o5cw, crv); crv <= 1.5 ? sprintf(#w1, "%+.2f", crv) : strcpy(#w1, "–");
+      col(crvC, 1); gfx_setfont(2); txt(#w1, o5cx0 + o5cw, o5y - 13, 2);
+      tipbox(o5cx0, o5y - 20, o5cw, 30, "Correlation of the stereo downmix of the 5.1 output (Lo = L + 0.7 C + 0.7 Ls, Ro = R + 0.7 C + 0.7 Rs, without LFE): +1 = mono, 0 = wide, below 0 = parts cancel when the mix is folded down to stereo or mono");
+    );
     grdb = -dbs(mGV); sprintf(#w1, clipon ? (grdb > 0.05 ? "Limiter −%.1f dB" : "Limiter idle") : "Limiter off", grdb);
     col(clipon && grdb > 0.05 ? cIOTT : cMUTED, 1); gfx_setfont(4); txt(#w1, iosx + iosw, IOY + 30, 2);   // (5.1: right of the spectrum's title - the knob row has no room for it)
     ) : !basic ? (
@@ -7699,11 +7712,12 @@ secopen(7) ? (
   grdb = -dbs(mGV);                                  // limiter gain reduction: a thin bar from the right (output color), 0 … 12 dB
   clipon && grdb > 0.05 ? ( col(cIOTT, 1); gw = mbw * min(1, grdb / 12); R(mx0 + mbw - gw, my0 + (slider136 >= 0.5 ? 24 : 18), gw, 1.5); );
   !basic ? (
-    cyy = my0 + 31; col(cMUTED, 1); gfx_setfont(4); txt("Corr", IOX + 12, cyy, 0);
+    cyy = my0 + 31; col(cMUTED, 1); gfx_setfont(4); txt(slider136 >= 0.5 ? "Dmx" : "Corr", IOX + 12, cyy, 0);
     crv = crvS;
     corrbar(mx0, cyy, mbw, crv); crv <= 1.5 ? sprintf(#w1, "%+.2f", crv) : strcpy(#w1, "–");
     col(crvC, 1); gfx_setfont(2); txt(#w1, IOX + mtw - 8, cyy, 2);
-    tipbox(IOX + 4, cyy - 6, mtw - 8, 12, "Correlation of the output, left against right: +1 = mono, 0 = wide, below 0 = parts cancel in a mono or TV downmix");
+    tipbox(IOX + 4, cyy - 6, mtw - 8, 12, slider136 >= 0.5 ? "5.1: correlation of the stereo downmix (Lo = L + 0.7 C + 0.7 Ls, Ro = R + 0.7 C + 0.7 Rs): +1 = mono, 0 = wide, below 0 = parts cancel when the 5.1 mix is folded down to stereo or mono"
+                                                    : "Correlation of the output, left against right: +1 = mono, 0 = wide, below 0 = parts cancel in a mono or TV downmix");
   );
   !basic ? tipbox(IOX + 4, my0 - 7, mtw - 8, 13, "Input level (peak, dBFS) – upper bar = left, lower bar = right, marker = peak hold");
   tipbox(IOX + 4, my0 + 6, mtw - 8, 16, slider136 >= 0.5 ? "Output level 5.1 (peak, dBFS) after the limiter – six bars: L R C LFE Ls Rs from the top; the thin blue bar from the right = gain reduction" : "Output level (peak, dBFS) after the limiter – the thin blue bar from the right = gain reduction of the limiter (0 … 12 dB)");

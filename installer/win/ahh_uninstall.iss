@@ -28,10 +28,16 @@ WizardSmallImageFile=small-100.bmp,small-200.bmp
 WizardImageStretch=no
 DisableWelcomePage=no
 
+[Files]
+Source: "welcome-icon-100.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "welcome-icon-200.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "welcome-brand-100.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "welcome-brand-200.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+
 [Messages]
 SetupWindowTitle=Uninstall Ahh!
 WelcomeLabel1=Uninstall Ahh!
-WelcomeLabel2=This removes Ahh as VST3 and CLAP plug-in from the common plug-in folders - and Roomservice, as the plug-in was called up to version 1.0.4.%n%nYour projects and presets stay untouched.%n%nPlease quit your audio applications before you continue.
+WelcomeLabel2=This removes Ahh as VST3 and CLAP plug-in from the common plug-in folders - and Roomservice, as the plug-in was called up to version 1.0.4.%n%nYour projects and presets stay untouched.%n%nQuit your DAW first.
 WizardReady=Ready to uninstall
 ReadyLabel1=Ahh will now be removed.
 ReadyLabel2a=Click Uninstall to continue.
@@ -40,18 +46,17 @@ ButtonInstall=&Uninstall
 WizardInstalling=Uninstalling
 InstallingLabel=Please wait while Ahh is removed.
 FinishedHeadingLabel=Ahh is removed
-FinishedLabelNoIcons=Ahh has been removed. Rescan your plug-ins in your Applications.
-FinishedLabel=Ahh has been removed. Rescan your plug-ins in your Applications.
+FinishedLabelNoIcons=Ahh has been removed. Rescan your plug-ins in your DAW.
+FinishedLabel=Ahh has been removed. Rescan your plug-ins in your DAW.
 
 [Code]
-// white behind the artwork on every page, so the logo never sits in a box of another color
+#include "branding.iss"
+
 procedure InitializeWizard();
 begin
-  WizardForm.Color := clWhite;
-  WizardForm.MainPanel.Color := clWhite;
-  WizardForm.InnerPage.Color := clWhite;
-  WizardForm.WelcomePage.Color := clWhite;
-  WizardForm.FinishedPage.Color := clWhite;
+  BrandWelcome('Uninstall Ahh!',
+    'This removes Ahh as VST3 and CLAP plug-in from the common plug-in folders - and Roomservice, as the plug-in was called up to version 1.0.4. Your projects and presets stay untouched.' + #13#10 + #13#10 +
+    'Quit your DAW first.');
 end;
 
 procedure Gone(Path: String; IsDir: Boolean; var Failed: Boolean);

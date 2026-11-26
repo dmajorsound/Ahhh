@@ -30,6 +30,10 @@ WizardImageStretch=no
 DisableWelcomePage=no
 
 [Files]
+Source: "welcome-icon-100.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "welcome-icon-200.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "welcome-brand-100.bmp"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "welcome-brand-200.bmp"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "..\..\build\Roomservice_artefacts\Release\VST3\Ahh.vst3\*"; DestDir: "{commoncf64}\VST3\Ahh.vst3"; Components: vst3; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\build\Roomservice_artefacts\Release\CLAP\Ahh.clap"; DestDir: "{commoncf64}\CLAP"; Components: clap; Flags: ignoreversion
 
@@ -50,15 +54,14 @@ Name: "clap"; Description: "CLAP (REAPER, Bitwig Studio and other DAWs that supp
 
 [Messages]
 WelcomeLabel1=Ahh!%nRoom Simulation
-WelcomeLabel2=This installs Ahh as VST3 and CLAP plug-in into the common plug-in folders.%n%nAfterwards, rescan your plug-ins in your Applications.
+WelcomeLabel2=This installs Ahh as VST3 and CLAP plug-in into the common plug-in folders.%n%nAfterwards, rescan your plug-ins in your DAW.
 
 [Code]
-// white behind the artwork on every page, so the logo never sits in a box of another color
+#include "branding.iss"
+
 procedure InitializeWizard();
 begin
-  WizardForm.Color := clWhite;
-  WizardForm.MainPanel.Color := clWhite;
-  WizardForm.InnerPage.Color := clWhite;
-  WizardForm.WelcomePage.Color := clWhite;
-  WizardForm.FinishedPage.Color := clWhite;
+  BrandWelcome('Ahh! - Room Simulation',
+    'This installs Ahh as VST3 and CLAP plug-in into the common plug-in folders.' + #13#10 + #13#10 +
+    'Quit your DAW first. Afterwards, rescan your plug-ins in your DAW.');
 end;

@@ -1,7 +1,7 @@
 desc: Ahh
 //tags: reverb room acoustics image-source filter education surround
 //author: Bernd Dormayer
-//version: 1.2.2
+//version: 1.3.0
 //
 // Physical room reverb:
 //   Direct sound  : delay r/c, level 1/r, air absorption, stereo by facing direction (level + delay)
@@ -184,7 +184,7 @@ options:want_all_kb
 
 @init
 // THE VERSION, once: the footer text (the desc line and //version above must say the same)
-strcpy(#verstr, "V 1.2.2 - developed with AI assistance");
+strcpy(#verstr, "V 1.3.0 - developed with AI assistance");
 ext_noinit = 1;                            // do not re-run @init at every playback start
 gfx_ext_retina = 1;
 C_SND = 343;
@@ -5473,6 +5473,75 @@ function prstep() local(t, e)
   prLo ? ( setp(13, prA3 + (prB3 - prA3) * e); setp(14, prA4 + (prB4 - prA4) * e); setp(15, prA5 + (prB5 - prA5) * e); setp(17, prang(prA6, prB6, e)); );
   t >= 1 ? ( prOn = 0; snap_notify(); );
 );
+// The 5.1 sliders (above 119) are not part of setp / sset (their lists end at 119): set here directly and sent to the host
+function set51(i, v) (
+  i == 136 ? ( slider136 = v; slider_automate(slider136); );
+  i == 141 ? ( slider141 = v; slider_automate(slider141); );
+  i == 145 ? ( slider145 = v; slider_automate(slider145); );
+  i == 146 ? ( slider146 = v; slider_automate(slider146); );
+  i == 152 ? ( slider152 = v; slider_automate(slider152); );
+  i == 143 ? ( slider143 = v; slider_automate(slider143); );
+  i == 144 ? ( slider144 = v; slider_automate(slider144); );
+  i == 147 ? ( slider147 = v; slider_automate(slider147); );
+  i == 148 ? ( slider148 = v; slider_automate(slider148); );
+  i == 149 ? ( slider149 = v; slider_automate(slider149); );
+  i == 150 ? ( slider150 = v; slider_automate(slider150); );
+  i == 151 ? ( slider151 = v; slider_automate(slider151); );
+);
+// SURROUND PRESETS (page "5.1" of the preset menu): each one loads a room, a scenario, a delay preset or a motion preset that
+// is already there, switches the output to 5.1 and sets what 5.1 adds - the ring, the Center, the LFE, where the echoes'
+// width plays, and for some the source behind the listener. Groups: 0 Rooms, 1 Scenarios, 2 Delay, 3 Motion.
+// S5T (stride 9): group, index of the preset it loads, ring (0 listener / 1 room), Center %, LFE on, LFE dB, echoes
+// (0 front / 1 rear / 2 around), source (0 as loaded, 1 behind, 2 behind left, 3 behind right); -1 = leave as it is
+NS5 = 17; s5X = alloc(NS5); s5Y = alloc(NS5); S5T = alloc(9 * NS5); s5last = -1;
+function s5put(k, g, ix, ring, ctr, lfon, lfdb, echo, sdir) local(b) ( b = S5T + k * 9; b[0] = g; b[1] = ix; b[2] = ring; b[3] = ctr; b[4] = lfon; b[5] = lfdb; b[6] = echo; b[7] = sdir; );
+s5put(0, 0, 20, 1, 100, 1, 0, 0, 0);     // Cinema
+s5put(1, 0, 25, 0, 50, 1, -6, 0, 0);     // Church
+s5put(2, 0, 13, 0, 100, 1, 3, 0, 0);     // Car
+s5put(3, 0, 2, 0, 100, 1, 0, 0, 1);      // Living room, voice behind
+s5put(4, 0, 24, 0, 0, 1, -6, 0, 0);      // Concert hall
+s5put(5, 1, 0, 0, 100, 1, 3, 0, 2);      // Party next door, behind left
+s5put(6, 1, 14, 0, 100, 0, 0, 2, 0);     // Station announcement
+s5put(7, 1, 2, 0, 100, 0, 0, 0, 1);      // Argument behind you
+s5put(8, 1, 15, 0, 50, 1, 0, 2, 0);      // Stadium PA
+s5put(9, 2, 0, -1, -1, -1, 0, 1, 0);     // Slapback behind
+s5put(10, 2, 20, -1, -1, -1, 0, 2, 0);   // Ping-pong around
+s5put(11, 2, 10, -1, -1, -1, 0, 1, 0);   // Canyon echo behind
+s5put(12, 2, 26, -1, -1, -1, 0, 2, 0);   // Dub echoes around
+s5put(13, 3, 0, 0, -1, -1, 0, -1, 0);    // Circle around the head
+s5put(14, 3, 1, 0, -1, -1, 0, -1, 0);    // Insect
+s5put(15, 3, 5, 0, -1, -1, 0, -1, 0);    // front - back
+s5put(16, 3, 10, 0, -1, -1, 0, -1, 0);   // Square
+function s5name(k) ( k == 0 ? "Cinema – discrete center" : (k == 1 ? "Church – all around" : (k == 2 ? "Car interior" : (k == 3 ? "Living room – voice behind you" : (k == 4 ? "Concert hall – phantom center" :
+  (k == 5 ? "Party next door – behind left" : (k == 6 ? "Station announcement" : (k == 7 ? "Argument behind you" : (k == 8 ? "Stadium PA – all around" :
+  (k == 9 ? "Slapback behind" : (k == 10 ? "Ping-pong around" : (k == 11 ? "Canyon echo behind" : (k == 12 ? "Dub echoes around" :
+  (k == 13 ? "Circle around the head" : (k == 14 ? "Insect around the head" : (k == 15 ? "Front – back through the room" : "Square around the listener"))))))))))))))); );
+function s5desc(k) ( k == 0 ? "The Cinema room with the loudspeakers fixed in the room, a hard center and the LFE" : (k == 1 ? "The Church with half of the front on the center and a soft LFE – the reverb comes from all sides" : (k == 2 ? "The Car with a hard center and a strong LFE" : (k == 3 ? "The Living room with the source behind the listener" : (k == 4 ? "The Concert hall without a center loudspeaker (phantom) and a soft LFE" :
+  (k == 5 ? "The scenario Party next door, the source behind you on the left" : (k == 6 ? "The scenario Station announcement, its echoes on all four corners, no LFE" : (k == 7 ? "The scenario Argument behind the wall, the source behind you" : (k == 8 ? "The scenario Stadium PA with its echoes all around" :
+  (k == 9 ? "The delay Slapback alley, the width of its echoes on Ls / Rs – your room stays" : (k == 10 ? "The delay Ping-pong 1/8, bouncing on all four corners – your room stays" : (k == 11 ? "The delay Canyon echo, its width behind you – your room stays" : (k == 12 ? "The delay Dub 1/4 dotted on all four corners – your room stays" :
+  (k == 13 ? "Motion: the source circles the listener – through all five loudspeakers" : (k == 14 ? "Motion: small and fast around the head" : (k == 15 ? "Motion: the source comes closer, passes and goes away" : "Motion: the source walks a square around the listener"))))))))))))))); );
+function s5gname(g) ( g == 0 ? "Rooms" : (g == 1 ? "Scenarios" : (g == 2 ? "Delay" : "Motion")); );
+function s5load(k) local(b, g, W, D, px, py)
+(
+  b = S5T + k * 9; g = b[0];
+  g == 0 ? ( isfree ? modeset(0); loadroom(b[1]); );
+  g == 1 ? ( isfree ? modeset(0); scnload(b[1]); );
+  g == 2 ? dpload(b[1]);
+  g == 3 ? mpapply(b[1]);
+  set51(136, 1);
+  b[2] >= 0 ? ( set51(145, b[2]); set51(146, 0); );
+  b[3] >= 0 ? set51(144, b[3]);
+  b[4] >= 0 ? ( set51(141, b[4]); set51(143, b[5]); );
+  b[6] >= 0 ? set51(152, b[6]);
+  b[7] > 0 ? (   // the source behind the listener (1), behind left (2), behind right (3) - inside the room
+    W = slider2; D = slider3;
+    px = slider13 + (b[7] == 2 ? -1 : (b[7] == 3 ? 1 : 0)) * min(1.5, 0.6 * min(slider13, W - slider13));
+    py = slider14 + min(1.8, 0.7 * (D - slider14));
+    setp(10, min(W - 0.2, max(0.2, px))); setp(11, min(D - 0.2, max(0.2, py)));
+  );
+  s5last = k;
+);
+
 // Moves source (which = 1) or listener (2) to x/y (nx, ny); shifts the motion pattern center while MOTION runs and drags the linked partner with Link S+L.
 function moveobj(which, nx, ny) local(dx, dy)
 (
@@ -6933,16 +7002,6 @@ function rzgeo(id) (
 // (also the one of the 3D view) folds / opens everything.
 // RESET of one module: its parameters back to the defaults - the power button (on / off) stays; one undo step
 function mrr(a, b) local(i) ( i = a; loop(b - a + 1, sset(i, sdef(i)); i += 1; ); );
-// The 5.1 sliders (above 119) are not part of setp / sset (their lists end at 119): set here directly and sent to the host
-function set51(i, v) (
-  i == 143 ? ( slider143 = v; slider_automate(slider143); );
-  i == 144 ? ( slider144 = v; slider_automate(slider144); );
-  i == 147 ? ( slider147 = v; slider_automate(slider147); );
-  i == 148 ? ( slider148 = v; slider_automate(slider148); );
-  i == 149 ? ( slider149 = v; slider_automate(slider149); );
-  i == 150 ? ( slider150 = v; slider_automate(slider150); );
-  i == 151 ? ( slider151 = v; slider_automate(slider151); );
-);
 // Resets module id's sliders to defaults via sset/mrr (Filter, Source, Delay, Room, Walls/Reflectors, Free field); takes an undo snapshot first
 function modulereset(id) local(i) (
   id != 15 ? snap_take();
@@ -8301,7 +8360,7 @@ thm_open && click ? (
 roombx = 242 + tbOff; roomby = 11; roombw = 98; roombh = 17;
 roommx = roombx; roommy = roomby + roombh + 4; roomih = 16; RMCW = 240; RMHH = 16; roommw = 2 * RMCW + 12;
 NOPOS = -99999;
-rmhy = roommy + 6; rsqx = roommx + 8; rsqw = 148; rsvw = 104; rsvx = roommx + roommw - 8 - rsvw;   // header: search field, Save room
+rmhy = roommy + 6; rsqx = roommx + 8; rsqw = 116; rsvw = 104; rsvx = roommx + roommw - 8 - rsvw;   // header: search field, Save room
 rmyl = roommy + 30; rmyr = rmyl; rmfirst = -1; urfirst = -1;
 // MY ROOMS (the ones the search finds): two columns under one heading
 urnv = 0; u = 0; loop(URM, urX[u] = NOPOS; urb[u * URL] && bmatch(urb + u * URL + 2, rqb, rqlen) ? ( urX[u] = 0; urnv += 1; ); u += 1; );
@@ -8311,12 +8370,12 @@ urnv > 0 ? (
   rmyl += ceil(urnv / 2) * roomih + 8; rmyr = rmyl; ursep = rmyl - 4;
 );
 // factory rooms: a category heading above the first one that is shown
-rmsc = rmpg == 2 && rqlen <= 0; rmfp = rmpg == 3 && rqlen <= 0;   // page 4 = free-field presets // page 3 = the scenes
+rmsc = rmpg == 2 && rqlen <= 0; rmfp = rmpg == 3 && rqlen <= 0; rm51 = rmpg == 4 && rqlen <= 0;   // page 4 = free-field presets // page 3 = the scenes
 rcl0 = rcl1 = -1; k = 0;
 loop(NPRE,
   // category rcc: (rcc % 6) < 3 = left column, otherwise right column
   rcc = roomcat(k); rcr = (rcc % 6) >= 3; rmH[k] = 0;
-  (rqlen <= 0 ? (!rmsc && !rmfp && (k >= NPG1) == rmpg) : bmatch(strtob(roomname(k), rtb), rqb, rqlen)) ? (   // one page; a search finds rooms on both
+  (rqlen <= 0 ? (!rmsc && !rmfp && !rm51 && (k >= NPG1) == rmpg) : bmatch(strtob(roomname(k), rtb), rqb, rqlen)) ? (   // one page; a search finds rooms on both
     rmfirst < 0 ? rmfirst = k;
     (rcr ? rcl1 : rcl0) != rcc ? ( rmH[k] = 1; rcr ? ( rmyr += RMHH + (rcl1 >= 0) * 4; rcl1 = rcc; ) : ( rmyl += RMHH + (rcl0 >= 0) * 4; rcl0 = rcc; ); );
     rmX[k] = roommx + 4 + rcr * (RMCW + 4); rmY[k] = rcr ? rmyr : rmyl;
@@ -8347,11 +8406,21 @@ rmfp ? (
     rmyl += ceil(ffpn / 2) * roomih; rmyr = rmyl;
   );
 );
-rmnone = urnv == 0 && rmfirst < 0 && !rmsc && !rmfp && scl0 < 0 && scl1 < 0 && ffpn == 0;
+// page 5 = the surround presets: Rooms and Scenarios left, Delay and Motion right
+k = 0; loop(NS5, s5X[k] = NOPOS; k += 1; );
+rm51 ? (
+  k = 0; loop(NS5,
+    s5b = S5T + k * 9; rcr = s5b[0] >= 2; s5b[8] = k == 0 || s5b[0] != (S5T + (k - 1) * 9)[0];   // [8]: a heading above it
+    s5b[8] ? ( rcr ? ( rmyr += RMHH + (s5b[0] == 3) * 4; ) : ( rmyl += RMHH + (s5b[0] == 1) * 4; ); );
+    s5X[k] = roommx + 4 + rcr * (RMCW + 4); s5Y[k] = rcr ? rmyr : rmyl;
+    rcr ? ( rmyr += roomih; ) : ( rmyl += roomih; );
+    k += 1; );
+);
+rmnone = urnv == 0 && rmfirst < 0 && !rmsc && !rmfp && !rm51 && scl0 < 0 && scl1 < 0 && ffpn == 0;
 rmX[NPRE] = NOPOS; rmY[NPRE] = max(rmyl, rmyr) + 7;   // row below both columns (the "Keep when loading" chips sit in it; Free field is its own tab, no longer a row here)
 roommh = rmY[NPRE] + roomih + 4 - roommy;
 rkx = roommx + 12; rky = rmY[NPRE] + 1; rkc1 = rkx + 74; rkc2 = rkc1 + 84;          // "Keep when loading" chips
-rpgx = rsvx - 6 - 208;                                                // pages 1 | 2 | 3 | 4 (not while searching: the search shows the room pages together)
+rpgx = rsvx - 6 - 240;                                                // pages 1 | 2 | 3 | 4 (not while searching: the search shows the room pages together)
 NOPOS = -99999;                                                          // position of a control that is not shown
 mnvl = szoom ? 4 - gox / gs : 4; mnvr = WT - 4;                            // visible part of the page (current scale)
 mnvt = szoom ? (68 * gsN - goy) / gs : scy + 4; mnvb = szoom ? HT - 4 : scy + HT - 4;
@@ -8603,9 +8672,9 @@ helpon ? (
     );
     click ? ( menuxhit(roommx, roommy, roommw, 1) ? ( rmenu = 0; ) : (
       // room page tabs (208 px wide at rpgx): 0 = first, 1 = second, 2 = scenes, 3 = free field
-      rqlen <= 0 && inbox(rpgx, rmhy + 1, 208, 16) ? ( rmpg = mx < rpgx + 100 ? (mx < rpgx + 50 ? 0 : 1) : (mx < rpgx + 156 ? 2 : 3); ) : (
-      !rmsc && !rmfp && inbox(rkc1, rky, 80, 14) ? ( vopt[16] = vopt[16] >= 0.5 ? 0 : 1; ) : (
-      !rmsc && !rmfp && inbox(rkc2, rky, 50, 14) ? ( vopt[17] = vopt[17] >= 0.5 ? 0 : 1; ) : (
+      rqlen <= 0 && inbox(rpgx, rmhy + 1, 240, 16) ? ( rmpg = mx < rpgx + 100 ? (mx < rpgx + 50 ? 0 : 1) : (mx < rpgx + 156 ? 2 : (mx < rpgx + 210 ? 3 : 4)); ) : (
+      !rmsc && !rmfp && !rm51 && inbox(rkc1, rky, 80, 14) ? ( vopt[16] = vopt[16] >= 0.5 ? 0 : 1; ) : (
+      !rmsc && !rmfp && !rm51 && inbox(rkc2, rky, 50, 14) ? ( vopt[17] = vopt[17] >= 0.5 ? 0 : 1; ) : (
       !inbox(rsqx, rmhy, rsqw, 18) ? (                  // the search field: type to search
       inbox(rsvx, rmhy + 1, rsvw, 16) ? (                                               // Save room: the name dialog
         rsave = 1; rsren = 0; rmenu = 0; rst0 = time_precise(); rscat = 6;
@@ -8622,9 +8691,12 @@ helpon ? (
             hk = -1; k = 0; loop(NPRE + 1, rmX[k] != NOPOS && inbox(rmX[k], rmY[k], RMCW, roomih) ? ( hk = k; ); k += 1; );
             sh = -1; k = 0; loop(NSC, scnX[k] != NOPOS && inbox(scnX[k], scnY[k], RMCW, roomih) ? ( sh = k; ); k += 1; );
             fh = -1; k = 0; loop(NFF, ffpmX[k] != NOPOS && inbox(ffpmX[k], ffpmY[k], RMCW, roomih) ? fh = k; k += 1; );
+            s5h = -1; k = 0; loop(NS5, s5X[k] != NOPOS && inbox(s5X[k], s5Y[k], RMCW, roomih) ? s5h = k; k += 1; );
+            s5h >= 0 ? ( s5load(s5h); snlast = 0; ) : (
+            s5last = -1;
             fh >= 0 ? ( !isfree ? modeset(1); ffpapply(fh); snlast = 0; ) : (
             sh >= 0 ? ( isfree ? modeset(0); scnload(sh); snlast = 0; ) : (
-            hk >= 0 && hk < NPRE ? ( isfree ? modeset(0); loadroom(hk); snlast = 0; ); ); );
+            hk >= 0 && hk < NPRE ? ( isfree ? modeset(0); loadroom(hk); snlast = 0; ); ); ); );
             rmenu = 0;
           );
         ) : ( rmenu = 0; );
@@ -12771,9 +12843,9 @@ rmenu ? (
   rqlen > 0 ? ( col(cMUTED, 1); gfx_setfont(7); txt("Esc = clear  ·  Enter = load the first", rsqx + rsqw + 8, rmhy + 9, 0); );
   chip(rsvx, rmhy + 1, rsvw, 16, "+ Save this room", 0, cRMTT);
   rqlen <= 0 ? (
-    chip(rpgx, rmhy + 1, 48, 16, "Page 1", rmpg == 0, cRMTT); chip(rpgx + 50, rmhy + 1, 48, 16, "Page 2", rmpg == 1, cRMTT); chip(rpgx + 100, rmhy + 1, 54, 16, "Scenario", rmpg == 2, cRMTT); chip(rpgx + 156, rmhy + 1, 52, 16, "Outdoor", rmpg == 3, cFFTT);
-    inbox(rpgx, rmhy + 1, 208, 16) ? ( tipon = 1; tipforce = 0; tipx = rpgx + 52; tipy = rmhy + 30;
-      tipstr = mx >= rpgx + 156 ? "Outdoor: free-field presets – a street, an alley, a soccer field, a canyon … (area, ground and the two reflectors; switches the free field on)" : mx < rpgx + 50 ? "Page 1: household, work & school, vehicles, studio & media, venues, industrial & large" : (mx < rpgx + 100 ? "Page 2: homes, offices & schools, trains, cars & trucks, basements & huts, churches & caves, effect rooms" : "Scenario presets: film situations in one click – source, room, barrier and delay (behind a wall, outside a door, in the woods, …)"); );
+    chip(rpgx, rmhy + 1, 48, 16, "Page 1", rmpg == 0, cRMTT); chip(rpgx + 50, rmhy + 1, 48, 16, "Page 2", rmpg == 1, cRMTT); chip(rpgx + 100, rmhy + 1, 54, 16, "Scenario", rmpg == 2, cRMTT); chip(rpgx + 156, rmhy + 1, 52, 16, "Outdoor", rmpg == 3, cFFTT); chip(rpgx + 210, rmhy + 1, 30, 16, "5.1", rmpg == 4, cIOTT);
+    inbox(rpgx, rmhy + 1, 240, 16) ? ( tipon = 1; tipforce = 0; tipx = rpgx + 52; tipy = rmhy + 30;
+      tipstr = mx >= rpgx + 210 ? "5.1: surround presets – rooms, scenarios, delays and motion set up for six loudspeakers (they switch the output to 5.1)" : mx >= rpgx + 156 ? "Outdoor: free-field presets – a street, an alley, a soccer field, a canyon … (area, ground and the two reflectors; switches the free field on)" : mx < rpgx + 50 ? "Page 1: household, work & school, vehicles, studio & media, venues, industrial & large" : (mx < rpgx + 100 ? "Page 2: homes, offices & schools, trains, cars & trucks, basements & huts, churches & caves, effect rooms" : "Scenario presets: film situations in one click – source, room, barrier and delay (behind a wall, outside a door, in the woods, …)"); );
   );
   inbox(rsvx, rmhy + 1, rsvw, 16) ? ( tipon = 1; tipforce = 0; tipx = rsvx + rsvw / 2; tipy = rmhy + 30;
     tipstr = "Save the current room (size, materials, positions, barrier, reverb) under a name in My rooms – stored with the project; for all projects: REAPER's FX window + → Save preset / Save as default"; );
@@ -12844,13 +12916,27 @@ rmenu ? (
     );
     k += 1;
   );
+  k = 0;
+  loop(NS5,
+    ix = s5X[k]; iy = s5Y[k];
+    ix != NOPOS ? (
+      s5b = S5T + k * 9;
+      s5b[8] ? ( col(cMUTED, 1); gfx_setfont(7); txt(s5gname(s5b[0]), ix + 8, iy - 7, 0); );
+      msel = s5last == k && slider136 >= 0.5; mhov = inbox(ix, iy, RMCW, roomih);
+      msel ? ( col(cTEXT, 1); RR(ix, iy + 1, RMCW, roomih - 2, 5); ) : ( mhov ? ( col(cLINE, 1); RR(ix, iy + 1, RMCW, roomih - 2, 5); ); );
+      col(msel ? cSURF : cTEXT, 1); gfx_setfont(6); txtfit(s5name(k), ix + 8, iy + roomih / 2, RMCW - 16);
+      mhov ? ( tipon = 1; tipforce = 0; tipx = ix + RMCW / 2; tipy = iy - 10; strcpy(#sctp, s5name(k)); strcat(#sctp, ":  "); strcat(#sctp, s5desc(k)); tipstr = #sctp; );
+    );
+    k += 1;
+  );
+  rm51 ? ( col(cMUTED, 1); gfx_setfont(7); txt("A surround preset switches the output to 5.1 – Delay and Motion presets keep your room; undo (Ctrl/Cmd + Z) brings the old settings back", rkx, rky + 7, 0); ) :
   rmfp ? ( col(cMUTED, 1); gfx_setfont(7); txt("A free-field preset sets area, ground and both reflectors – the room comes back when you pick a room", rkx, rky + 7, 0); ) :
   rmsc ? ( col(cMUTED, 1); gfx_setfont(7); txt("A scenario sets room, source, listener, barrier and delay – undo (Ctrl/Cmd + Z) brings the old settings back", rkx, rky + 7, 0); ) : (
   col(cMUTED, 1); gfx_setfont(7); txt("Keep when loading", rkx, rky + 7, 0);
   chip(rkc1, rky, 80, 14, "Source + listener", vopt[16] >= 0.5, cTEXT);
   chip(rkc2, rky, 50, 14, "Barrier", vopt[17] >= 0.5, cBARTT); );
-  !rmsc && !rmfp && inbox(rkc1, rky, 80, 14) ? ( tipon = 1; tipforce = 0; tipstr = vopt[16] >= 0.5 ? "On: source, listener and facing stay where you put them (moved inside the new room if needed)" : "Off: the preset sets source and listener on the center line, the listener faces the back wall"; tipx = rkc1 + 40; tipy = rky + 26; );
-  !rmsc && !rmfp && inbox(rkc2, rky, 50, 14) ? ( tipon = 1; tipforce = 0; tipstr = vopt[17] >= 0.5 ? "On: the barrier (type, position, opening, damping, back part) stays when a preset is loaded" : "Off: loading a preset removes the barrier"; tipx = rkc2 + 25; tipy = rky + 26; );
+  !rmsc && !rmfp && !rm51 && inbox(rkc1, rky, 80, 14) ? ( tipon = 1; tipforce = 0; tipstr = vopt[16] >= 0.5 ? "On: source, listener and facing stay where you put them (moved inside the new room if needed)" : "Off: the preset sets source and listener on the center line, the listener faces the back wall"; tipx = rkc1 + 40; tipy = rky + 26; );
+  !rmsc && !rmfp && !rm51 && inbox(rkc2, rky, 50, 14) ? ( tipon = 1; tipforce = 0; tipstr = vopt[17] >= 0.5 ? "On: the barrier (type, position, opening, damping, back part) stays when a preset is loaded" : "Off: loading a preset removes the barrier"; tipx = rkc2 + 25; tipy = rky + 26; );
   urctx ? (
     tipon = 0; tipforce = 0;
     col(cINK, 0.14); RR(urcx + 2, urcy + 3, 190, 58, 6);

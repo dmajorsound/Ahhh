@@ -1266,6 +1266,7 @@ struct Gen : Runtime {
   double g_npg1 = 0;
   double g_npre = 0;
   double g_nrp = 0;
+  double g_ns5 = 0;
   double g_nsc = 0;
   double g_nsl = 0;
   double g_nsn = 0;
@@ -1566,6 +1567,7 @@ struct Gen : Runtime {
   double g_rkc2 = 0;
   double g_rkx = 0;
   double g_rky = 0;
+  double g_rm51 = 0;
   double g_rmcw = 0;
   double g_rmenu = 0;
   double g_rmfirst = 0;
@@ -1648,6 +1650,11 @@ struct Gen : Runtime {
   double g_rztc = 0;
   double g_rzv0 = 0;
   double g_rzy0 = 0;
+  double g_s5b = 0;
+  double g_s5last = 0;
+  double g_s5t = 0;
+  double g_s5x = 0;
+  double g_s5y = 0;
   double g_savearm = 0;
   double g_sbdrag = 0;
   double g_sbmy0 = 0;
@@ -2645,6 +2652,11 @@ struct Gen : Runtime {
   double F_rzgeo(double);
   double F_rzidx(double);
   double F_rzok(double);
+  double F_s5desc(double);
+  double F_s5gname(double);
+  double F_s5load(double);
+  double F_s5name(double);
+  double F_s5put(double, double, double, double, double, double, double, double, double);
   double F_sauto(double);
   double F_sauto1(double);
   double F_sauto_end(double);

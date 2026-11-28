@@ -8904,7 +8904,7 @@ pgkey = pgSc * 3.7 + pgDrag * 811.3 + hlpH * 1.3
       + (mouse_x >= pbX0 && mouse_x < pbX1 && mouse_y >= pbY0 && mouse_y < pbY1) * 2027.3
       + (hlpon && mouse_x >= hkX0 && mouse_x < hkX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3049.7 + (hlpon && mouse_x >= mnX0 && mouse_x < mnX1 && mouse_y >= hkY0 && mouse_y < hkY1) * 3061.3;
 pgst ? ( ukey += pgkey; );
-updav ? ( ukey += (floor(time_precise() * 1.6) % 2) * 5171.3; );
+updav ? ( ukey += (floor(time_precise() * 1.6) % 2) * 5171.3 + updav * 311.7 + floor(updprog * 100) * 17.3; );
 dofull = pgst ? ( ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 3) || (lastcap & 3) || mouse_wheel != 0 )
               : ( mtRec || (mtE > 0 && time_precise() - lastblk < 0.3) || ((szoom == 7 || szoom == 6) && time_precise() - lastblk < 0.3) || tbdrag || fhdrag || prOn || vedit || vedPend || kovl || kovlw || hlpon || hlpw || snctx || snctxw || (abOn && abCur == 1 && abMatch && (floor(time_precise() * 4) != abfr ? ( abfr = floor(time_precise() * 4); 1; ) : 0)) || time_precise() - wcT < 1 || ukey != lastukey || fullcnt <= 0 || gfxgap > 0.25 || lasttip || (mouse_cap & 4) || (lastcap & 4) || mouse_wheel != 0 || (tpon && (anaOn || anaCmd != anaSeen || time_precise() - tapLast < 2.2)) || snedit || snPend || shpin || shlast || kdrag || eqdrag || wbdrag || animing || sbdrag || (mouse_cap & 1) || (wavesOn && (time_precise() - wlast < wlife + 0.2 || dbs(max(pkIL, pkIR)) > -59 && time_precise() - lastblk < 0.3)) );   // waves: animate only while fronts are alive
 dofull ? ( lastukey = ukey; fullcnt = 15; ) : ( !pgst ? ( fullcnt -= 1; ); );
@@ -12354,18 +12354,27 @@ function dmlogo(x, y, hU) local(th, lpx0, lpy0, i, j, c)
   gfx_a = 1;
 );
 // UPDATE NOTE (VST3 / AU / CLAP only): the plug-in asks GitHub once per session whether a newer release is out and
-// then sets updav = 1 and string 1000 = its tag. A small button right after the version text shows it; a click sets
-// updgo = 1 and the plug-in opens the download page. As a JSFX in REAPER nothing sets updav: nothing is drawn.
-function updnote(ty) local(x, w, h)
+// then sets updav and string 1000 = its version; the plug-in downloads and opens the installer itself (see updnote).
+// As a JSFX in REAPER nothing sets updav: nothing is drawn.
+function updnote(ty) local(x, w, h, mh, mw, xr, cx, cy)
 (
   updav ? (
-    gfx_setfont(7); x = 12 + tws(#verstr) + 10;
-    sprintf(#updl, "%s is out", 1000); w = tws(#updl) + 12;
+    // right in the footer, left of "dmajorsound.com": 1 "x is out" (the dot blinks), 2 "Downloading x … 42%" (a ring),
+    // 3 "x downloaded", 4 "Download failed". Click and right-click go to the plug-in (updgo 1 / 2); string 1001 = the hint
+    gfx_setfont(7);
+    updav == 2 ? ( updprog >= 0 ? sprintf(#updl, "Downloading %s … %d%%", 1000, floor(updprog * 100 + 0.5)) : sprintf(#updl, "Downloading %s …", 1000); ) :
+    updav == 3 ? sprintf(#updl, "%s downloaded", 1000) : (updav == 4 ? strcpy(#updl, "Download failed") : sprintf(#updl, "%s is out", 1000));
+    mh = 10; mw = mh * LGW / LGH; xr = WT - 20 - mw - mh / 2 - tws("dmajorsound.com") - 16;
+    w = tws(#updl) + 12; x = xr - w;
     h = inbox(x - 3, ty - 6, w + 6, 12);
-    floor(time_precise() * 1.6) % 2 == 0 || h ? ( gfx_r = 1; gfx_g = 0.45; gfx_b = 0.42; gfx_a = 1; gfx_circle(gox + (x + 3) * gs - 0.5, goy + ty * gs - 0.5, 2.6 * gs, 1, 1); );
+    cx = gox + (x + 3) * gs - 0.5; cy = goy + ty * gs - 0.5;
+    gfx_r = 1; gfx_g = 0.45; gfx_b = 0.42; gfx_a = 1;
+    updav == 2 ? ( gfx_circle(cx, cy, 2.8 * gs, 0, 1); gfx_circle(cx, cy, 2.8 * gs - 1, 0, 1); ) :
+    ( updav != 1 || floor(time_precise() * 1.6) % 2 == 0 || h ? gfx_circle(cx, cy, 2.6 * gs, 1, 1); );
     gfx_r = 1; gfx_g = 0.45; gfx_b = 0.42; gfx_a = h ? 1 : 0.9; gfx_setfont(7); txt(#updl, x + 10, ty, 0);
-    h ? ( sprintf(#updt, "Ahh %s is out. Click to open the download page.", 1000); tipbox(x - 3, ty - 6, w + 6, 12, #updt); tipforce = 1; );
+    h ? ( sprintf(#updt, "%s", 1001); tipbox(x - 3, ty - 6, w + 6, 12, #updt); tipforce = 1; );
     h && click ? ( updgo = 1; click = 0; );
+    h && rclick ? ( updgo = 2; rclick = 0; );
   );
 );
 // Footer: hairline, then the dmajorsound mark in the bottom right corner with "dmajorsound.com" to its left

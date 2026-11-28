@@ -1999,6 +1999,7 @@ struct Gen : Runtime {
   double g_unn = 0;
   double g_updav = 0;
   double g_updgo = 0;
+  double g_updprog = 0;
   double g_urb = 0;
   double g_urctx = 0;
   double g_urcx = 0;

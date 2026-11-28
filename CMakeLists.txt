@@ -76,3 +76,9 @@ if(EXISTS "${CLAP_JUCE_DIR}/CMakeLists.txt")
     CLAP_ID "com.dmajorsound.ahh"
     CLAP_FEATURES audio-effect reverb stereo mono)
 endif()
+
+# The build's self-test of the update download (see tests/update_download.cpp): the same code as in the plug-in
+juce_add_console_app(ahh_update_test PRODUCT_NAME "ahh_update_test")
+target_sources(ahh_update_test PRIVATE tests/update_download.cpp src/UpdateCheck.cpp)
+target_compile_definitions(ahh_update_test PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JucePlugin_VersionString="0.0.0")
+target_link_libraries(ahh_update_test PRIVATE juce::juce_core juce::juce_data_structures PUBLIC juce::juce_recommended_config_flags)

@@ -62,7 +62,9 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR="$GITHUB_WORKSPACE/juce" -DCLAP_JUCE_DIR="$GITHUB_WORKSPACE/clap-juce-extensions" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
       - name: Build
-        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_AU Roomservice_CLAP -j 4
+        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_AU Roomservice_CLAP ahh_update_test -j 4
+      - name: Check the update download (fetches the released 1.2.2 installer like the footer note does)
+        run: build/ahh_update_test_artefacts/Release/ahh_update_test https://github.com/dmajorsound/Ahhh/releases/download/v1.2.2/Ahh_1.2.2_installer_mac.dmg "$RUNNER_TEMP"
       - name: Strip and sign (ad hoc)
         run: |
           A=build/Roomservice_artefacts/Release
@@ -176,7 +178,9 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -A x64 -DJUCE_DIR="${{ github.workspace }}/juce" -DCLAP_JUCE_DIR="${{ github.workspace }}/clap-juce-extensions"
       - name: Build
-        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_CLAP -j 4
+        run: cmake --build build --config Release --target Roomservice_VST3 Roomservice_CLAP ahh_update_test -j 4
+      - name: Check the update download (fetches the released 1.2.2 installer like the footer note does)
+        run: build/ahh_update_test_artefacts/Release/ahh_update_test.exe https://github.com/dmajorsound/Ahhh/releases/download/v1.2.2/Ahh_1.2.2_installer_win64.exe "$env:RUNNER_TEMP"
       - name: Installer (.exe)
         shell: pwsh
         run: |

@@ -95,11 +95,33 @@ void RoomServiceEditor::timerCallback() {
     g->v_mouse_cap = liveCap | latchedButtons;   // a press seen since the last frame counts for this frame
     // a newer release on GitHub: the script shows a small button in the footer (updav, string 1000 = the tag)
     if (updState != 1) {
-        std::string tag;
-        updState = rs::UpdateCheck::state(&tag, &updUrl);
-        if (updState == 1) g->setString(1000, tag.c_str());
+        updState = rs::UpdateCheck::state(&updTag, &updUrl);
+        if (updState == 1) g->setString(1000, updTag.c_str());
     }
-    g->g_updav = updState == 1 ? 1.0 : 0.0;
+    // updav: 0 nothing, 1 "x is out", 2 downloading (updprog 0..1, -1 = size unknown), 3 downloaded, 4 failed; string 1001 = the hint
+    {
+        double prog = 0.0; std::string path, err;
+        int dl = rs::UpdateCheck::downloadState(&prog, &path, &err);
+        int phase = updState != 1 ? 0 : (dl == 1 ? 2 : (dl == 2 ? 3 : (dl == 3 ? 4 : 1)));
+       #if JUCE_LINUX
+        if (const char* t = std::getenv("AHH_TEST_UPDPHASE")) { if (updState == 1) { phase = juce::jlimit(1, 4, std::atoi(t)); prog = 0.42; err = "the connection broke off"; } }
+       #endif
+        if (phase != updPhase) {
+            updPhase = phase;
+            const bool direct = !rs::UpdateCheck::assetUrl().empty();
+            const std::string v = updTag.size() > 1 && (updTag[0] == 'v' || updTag[0] == 'V') ? updTag.substr(1) : updTag;
+            std::string tip;
+            if (phase == 1) tip = direct ? "Ahh " + v + " is out. Click to download and install it - quit your DAW before you click Install. Right-click: download only, the download folder, what's new."
+                                         : "Ahh " + v + " is out. Click to open the download page.";
+            else if (phase == 2) tip = "Downloading Ahh " + v + " to " + rs::UpdateCheck::folder().getFullPathName().toStdString() + ". The installer opens when it is there.";
+            else if (phase == 3) tip = "Ahh " + v + " is downloaded. Click to install - quit your DAW before you click Install. Right-click: show the file.";
+            else if (phase == 4) tip = "Ahh " + v + " could not be downloaded (" + err + "). Click to try again, right-click to open the page instead.";
+            g->setString(1001, tip.c_str());
+            g->setString(1000, v.c_str());
+        }
+        g->g_updav = (double)phase;
+        g->g_updprog = prog;
+    }
     // Interface "System": the computer's light / dark setting, asked about once a second (cheap, and the OS rarely changes it)
     if (sysDarkAge-- <= 0) {
         sysDarkAge = 30;
@@ -128,7 +150,11 @@ void RoomServiceEditor::timerCallback() {
         nextFrameMs = busy > 16.0 ? t1 + pause : 0.0;
     }
     latchedButtons = 0;
-    if (g->g_updgo != 0.0) { g->g_updgo = 0.0; rs::UpdateCheck::openPage(updUrl); }
+    if (g->g_updgo != 0.0) {   // the footer note: 1 = click, 2 = right-click (the menu)
+        const bool menu = g->g_updgo >= 2.0;
+        g->g_updgo = 0.0;
+        if (menu) updateMenu(); else updateClick();
+    }
     if (g->g_mango != 0.0) {   // Help: "Read manual"
         g->g_mango = 0.0;
         if (std::getenv("AHH_TEST_NOBROWSER") == nullptr) juce::URL("https://dmajorsound.com/software/ahh/manual.html").launchInDefaultBrowser();
@@ -231,4 +257,53 @@ bool RoomServiceEditor::keyPressed(const juce::KeyPress& k) {
     }
     if (c) { gfx.keyQueue.push_back(c); if (gfx.keyQueue.size() > 64) gfx.keyQueue.pop_front(); }
     return true;   // all keys go to the plugin while it has the focus
+}
+
+// ---- the update note in the footer (as in OLAAF) ----
+// a click: download and install; when the file is there: install; without an installer for this system: the release page
+void RoomServiceEditor::updateClick() {
+    if (updState != 1) return;
+    std::string path;
+    const int dl = rs::UpdateCheck::downloadState(nullptr, &path, nullptr);
+    if (rs::UpdateCheck::assetUrl().empty()) rs::UpdateCheck::openPage(updUrl);
+    else if (dl == 2) rs::UpdateCheck::installStart(path);
+    else if (dl != 1) rs::UpdateCheck::downloadStart(true);
+}
+
+// a right-click: download and install, download only, where to, what's new
+void RoomServiceEditor::updateMenu() {
+    if (updState != 1) return;
+    std::string path;
+    const int dl = rs::UpdateCheck::downloadState(nullptr, &path, nullptr);
+    const bool direct = !rs::UpdateCheck::assetUrl().empty();
+    const juce::File dir = rs::UpdateCheck::folder();
+    juce::PopupMenu m;
+    if (dl == 2) {
+        m.addItem(3, "Install now");
+       #if JUCE_MAC
+        m.addItem(4, "Show in Finder");
+       #else
+        m.addItem(4, "Show in Explorer");
+       #endif
+        m.addSeparator();
+    } else {
+        m.addItem(1, "Download and install", direct && dl != 1);
+        m.addItem(2, "Download only (install later)", direct && dl != 1);
+        m.addSeparator();
+    }
+    m.addItem(5, "Download to: " + dir.getFileName() + juce::String::fromUTF8(" \xe2\x80\xa6"), dl != 1);
+    m.addItem(6, "What's new (release page)");
+    juce::Component::SafePointer<RoomServiceEditor> self(this);
+    m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this).withMousePosition(), [self, path, dir](int cmd) {
+        if (self == nullptr) return;
+        if (cmd == 1 || cmd == 2) rs::UpdateCheck::downloadStart(cmd == 1);
+        else if (cmd == 3) rs::UpdateCheck::installStart(path);
+        else if (cmd == 4) rs::UpdateCheck::reveal(path);
+        else if (cmd == 6) rs::UpdateCheck::openPage(self->updUrl);
+        else if (cmd == 5) {
+            self->folderChooser = std::make_unique<juce::FileChooser>("Ahh: choose where updates are downloaded to", dir);
+            self->folderChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                [](const juce::FileChooser& fc) { const juce::File f = fc.getResult(); if (f.isDirectory()) rs::UpdateCheck::setFolder(f, true); });
+        }
+    });
 }

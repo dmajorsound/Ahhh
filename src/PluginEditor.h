@@ -32,7 +32,11 @@ private:
     // pixel scale of the screen the window is on (1, 1.25, 1.5, 2 ...), taken from the paint context. A new value
     // counts only when two paints in a row report it, so the frame size cannot flip between two values.
     int updState = 0;
-    std::string updUrl;
+    std::string updUrl, updTag;
+    int updPhase = -1;
+    void updateClick();
+    void updateMenu();
+    std::unique_ptr<juce::FileChooser> folderChooser;
     int lastW = 0, lastH = 0; double sizeChangeMs = -1.0e9;   // live resize: frames wait until the size stands still
     bool freshEditor = true;
     int sysDarkAge = 0; bool sysDark = false;   // the computer's dark mode (Interface: System)

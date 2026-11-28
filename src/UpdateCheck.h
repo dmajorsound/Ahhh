@@ -20,6 +20,23 @@ public:
     static void openPage(const std::string& url);
     // "v1.2.3" / "1.2.3-beta" -> is a newer than b?
     static bool newer(const std::string& a, const std::string& b);
+
+    // ---- update straight from GitHub (as in OLAAF) ----
+    // The newer release's installer for this system: ..._mac.dmg on macOS, ..._win64.exe on Windows, never an
+    // uninstaller. "" when there is none (Linux): then the release page is the way.
+    static std::string assetUrl();
+    // where downloads go: the folder chosen once (kept in the plug-in's settings file), else Downloads in the home folder
+    static juce::File folder();
+    static void setFolder(const juce::File& dir, bool save);
+    // downloads the installer into folder() in the background; install: opens it when it is there
+    static void downloadStart(bool install);
+    // 0 not started, 1 downloading (progress 0..1, -1 = size unknown), 2 there (path), 3 failed (error)
+    static int downloadState(double* progress, std::string* path, std::string* error);
+    // opens a downloaded installer in the background (macOS: "Install Ahh.pkg" from the disk image, Windows: the setup)
+    static void installStart(const std::string& path);
+    static void reveal(const std::string& path);
+    static void setAssetForTest(const std::string& url);   // (the build's self-test)
+    static void stopForTest();
 private:
     void run() override;
     juce::CriticalSection streamLock;
